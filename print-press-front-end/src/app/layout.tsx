@@ -1,6 +1,7 @@
 
 import type { Metadata } from 'next';
 import '@/globals.css';
+import { ToasterProvider } from '@/components/ui/toaster-provider';
 
 export const metadata: Metadata = {
   title: ' - Print Management System',
@@ -24,6 +25,7 @@ export default function RootLayout({
         <div className="min-h-screen bg-gray-50 font-sans">
           {children}
         </div>
+        <ToasterProvider />
       </body>
     </html>
   );

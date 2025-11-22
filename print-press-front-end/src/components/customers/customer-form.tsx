@@ -16,6 +16,7 @@ interface CustomerFormProps {
 export const CustomerForm: React.FC<CustomerFormProps> = ({ customerId, mode }) => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [formData, setFormData] = useState<CustomerFormData>({
     name: '',
@@ -25,30 +26,30 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ customerId, mode }) 
 
   useEffect(() => {
     const fetchCustomer = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get<{ customer: Customer }>(`/customers/customers/${customerId}`);
-        const customer = response.data.customer;
-        setFormData({
-          name: customer.name,
-          phone: customer.phone,
-          email: customer.email || '',
-        });
-      } catch (err: unknown) {
-        console.error('Failed to fetch customer:', err);
-        if (isApiError(err)) {
-          setError(err.error);
-        } else {
-          setError('Failed to load customer');
+      if (mode === 'edit' && customerId) {
+        try {
+          setFetchLoading(true);
+          const response = await api.get<{ customer: Customer }>(`/customers/customers/${customerId}`);
+          const customer = response.data.customer;
+          setFormData({
+            name: customer.name,
+            phone: customer.phone,
+            email: customer.email || '',
+          });
+        } catch (err: unknown) {
+          console.error('Failed to fetch customer:', err);
+          if (isApiError(err)) {
+            setError(err.error);
+          } else {
+            setError('Failed to load customer');
+          }
+        } finally {
+          setFetchLoading(false);
         }
-      } finally {
-        setLoading(false);
       }
     };
 
-    if (mode === 'edit' && customerId) {
-      fetchCustomer();
-    }
+    fetchCustomer();
   }, [mode, customerId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,7 +66,6 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ customerId, mode }) 
 
     try {
       if (mode === 'create') {
-        // Fixed: Should be POST for create, PUT for edit
         await api.post('/customers/customers', formData);
         router.push('/admin/customers');
       } else if (mode === 'edit' && customerId) {
@@ -91,6 +91,14 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ customerId, mode }) 
       [name]: value,
     }));
   };
+
+  if (fetchLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <Card className="w-full max-w-2xl">

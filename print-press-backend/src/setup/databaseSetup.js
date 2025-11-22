@@ -140,26 +140,75 @@ async function setupDatabase() {
     `);
 
     // Inventory table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS inventory (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        material_name VARCHAR(255) NOT NULL,
-        category VARCHAR(100) NOT NULL,
-        paper_size VARCHAR(50),
-        paper_type VARCHAR(100),
-        grammage INTEGER,
-        supplier VARCHAR(255),
-        current_stock DECIMAL(15,2) NOT NULL,
-        unit_of_measure VARCHAR(50) NOT NULL,
-        unit_cost DECIMAL(15,2) NOT NULL,
-        selling_price DECIMAL(15,2),
-        threshold DECIMAL(15,2) NOT NULL,
-        reorder_quantity DECIMAL(15,2),
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+        // Inventory table
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS inventory (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            material_name VARCHAR(255) NOT NULL,
+            category VARCHAR(100) NOT NULL,
+            paper_size VARCHAR(50),
+            paper_type VARCHAR(100),
+            grammage INTEGER,
+            supplier VARCHAR(255),
+            current_stock DECIMAL(15,2) NOT NULL,
+            unit_of_measure VARCHAR(50) NOT NULL,
+            unit_cost DECIMAL(15,2) NOT NULL,
+            selling_price DECIMAL(15,2),
+            threshold DECIMAL(15,2) NOT NULL,
+            reorder_quantity DECIMAL(15,2),
+            is_active BOOLEAN DEFAULT true,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+    
+        // Additional tables for material monitoring
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS material_usage (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            material_id UUID REFERENCES inventory(id) ON DELETE CASCADE,
+            job_id UUID REFERENCES jobs(id) ON DELETE SET NULL,
+            quantity_used DECIMAL(15,2) NOT NULL,
+            unit_cost DECIMAL(15,2) NOT NULL,
+            total_cost DECIMAL(15,2) NOT NULL,
+            usage_date DATE NOT NULL DEFAULT CURRENT_DATE,
+            usage_type VARCHAR(50) CHECK (usage_type IN ('production', 'waste', 'adjustment', 'other')),
+            notes TEXT,
+            recorded_by UUID REFERENCES users(id),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+    
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS material_waste (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            material_id UUID REFERENCES inventory(id) ON DELETE CASCADE,
+            job_id UUID REFERENCES jobs(id) ON DELETE SET NULL,
+            quantity_wasted DECIMAL(15,2) NOT NULL,
+            unit_cost DECIMAL(15,2) NOT NULL,
+            total_cost DECIMAL(15,2) NOT NULL,
+            waste_date DATE NOT NULL DEFAULT CURRENT_DATE,
+            reason VARCHAR(100),
+            notes TEXT,
+            recorded_by UUID REFERENCES users(id),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+    
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS stock_adjustments (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            material_id UUID REFERENCES inventory(id) ON DELETE CASCADE,
+            adjustment_type VARCHAR(50) CHECK (adjustment_type IN ('add', 'remove', 'correction')),
+            quantity DECIMAL(15,2) NOT NULL,
+            previous_stock DECIMAL(15,2) NOT NULL,
+            new_stock DECIMAL(15,2) NOT NULL,
+            reason VARCHAR(100),
+            notes TEXT,
+            adjusted_by UUID REFERENCES users(id),
+            adjustment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
 
     // Operational expenses table
     await pool.query(`

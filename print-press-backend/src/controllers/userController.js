@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { pool } from '../config/database.js';
 import emailService from '../services/emailService.js';
+import { syncCompanyContactInfo } from '../utils/companyContactSync.js';
 
 export const getAllUsers = async (req, res) => {
   try {
@@ -190,9 +191,15 @@ export const updateUser = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    const updatedUser = result.rows[0];
+
+    if (updatedUser.role === 'admin' && updatedUser.is_active) {
+      await syncCompanyContactInfo({ phone });
+    }
+
     res.json({
       message: 'User updated successfully',
-      user: result.rows[0]
+      user: updatedUser
     });
   } catch (error) {
     console.error('Update user error:', error);

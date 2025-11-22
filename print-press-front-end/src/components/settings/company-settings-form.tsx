@@ -230,10 +230,10 @@ export const CompanySettingsForm: React.FC = () => {
 
           {/* Logo Upload */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            {/* <label className="block text-sm font-medium text-gray-700 mb-2">
               Company Logo
-            </label>
-            <div className="space-y-4">
+            </label> */}
+            {/* <div className="space-y-4">
               <div className="flex items-center justify-center w-full">
                 <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -260,6 +260,7 @@ export const CompanySettingsForm: React.FC = () => {
                       width={64}
                       height={64}
                       className="h-16 w-auto max-w-32 object-contain"
+                    unoptimized
                     />
                     <div>
                       <p className="text-sm font-medium text-gray-900">Logo Preview</p>
@@ -275,44 +276,20 @@ export const CompanySettingsForm: React.FC = () => {
                   </button>
                 </div>
               )}
-            </div>
+            </div> */}
           </div>
 
-          {/* Preview */}
-          <div className="border-t pt-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-4">Preview</h3>
-            <div className="p-4 bg-gray-50 rounded-lg text-center">
-              {logoPreview && (
-                <div className="flex justify-center mb-4">
-                  <Image
-                    src={logoPreview} 
-                    alt="Company Logo" 
-                    width={64}
-                    height={64}
-                    className="h-16 w-auto max-w-32 object-contain"
-                  />
-                </div>
-              )}
-              <h2 className="text-2xl font-bold text-gray-900">{formData.name}</h2>
-              <p className="text-gray-600 text-sm">{formData.tagline}</p>
-              <div className="mt-3 text-xs text-gray-600 space-y-1">
-                <p>📍 {formData.address}</p>
-                <p>📞 {formData.phone}</p>
-                <p>✉️ {formData.email}</p>
-              </div>
-            </div>
-          </div>
         </CardContent>
 
         <CardFooter className="flex justify-between">
-          <Button
+          {/* <Button
             variant="outline"
             onClick={handleReset}
             disabled={saving}
           >
             <RotateCcw className="h-4 w-4 mr-2" />
             Reset to Current
-          </Button>
+          </Button> */}
           <Button
             onClick={handleSave}
             disabled={saving}

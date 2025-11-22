@@ -1,7 +1,45 @@
 import { pool } from '../config/database.js';
 
 export class CustomerController {
-  // Get all customers
+  
+
+    async createCustomer(req, res) {
+      try {
+        const { name, phone, email } = req.body;
+  
+        // Validation
+        if (!name || !phone) {
+          return res.status(400).json({ error: 'Name and phone are required' });
+        }
+  
+        // Check if customer with same phone already exists
+        const existingCustomer = await pool.query(
+          'SELECT id FROM customers WHERE phone = $1',
+          [phone]
+        );
+  
+        if (existingCustomer.rows.length > 0) {
+          return res.status(400).json({ error: 'Customer with this phone number already exists' });
+        }
+  
+        // Create new customer
+        const result = await pool.query(
+          `INSERT INTO customers (name, phone, email) 
+           VALUES ($1, $2, $3) 
+           RETURNING *`,
+          [name, phone, email]
+        );
+  
+        res.status(201).json({
+          message: 'Customer created successfully',
+          customer: result.rows[0]
+        });
+      } catch (error) {
+        console.error('Create customer error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    }
+
   async getCustomers(req, res) {
     try {
       const { page = 1, limit = 20, search } = req.query;
@@ -129,36 +167,39 @@ export class CustomerController {
   }
 
   // Get customer statistics
-  async getCustomerStats(req, res) {
-    try {
-      const statsResult = await pool.query(`
-        SELECT 
-          COUNT(*) as total_customers,
-          COUNT(CASE WHEN total_jobs_count > 0 THEN 1 END) as active_customers,
-          COUNT(CASE WHEN total_jobs_count > 5 THEN 1 END) as repeat_customers,
-          AVG(total_jobs_count) as avg_jobs_per_customer,
-          AVG(total_amount_spent) as avg_spent_per_customer,
-          MAX(total_amount_spent) as highest_spending
-        FROM customers
-      `);
+ // In your getCustomerStats method, convert the numeric types
+async getCustomerStats(req, res) {
+  try {
+    const statsResult = await pool.query(`
+      SELECT 
+         COUNT(*) as total_customers,
+        COUNT(CASE WHEN total_jobs_count > 0 THEN 1 END) as active_customers,
+        COUNT(CASE WHEN total_jobs_count > 5 THEN 1 END) as repeat_customers,
+        AVG(total_jobs_count)::float as avg_jobs_per_customer,
+        -- Only average customers who have actually spent money
+        AVG(CASE WHEN total_amount_spent > 0 THEN total_amount_spent END)::float as avg_spent_per_active_customer,
+        AVG(total_amount_spent)::float as avg_spent_per_customer, -- Keep original for comparison
+        MAX(total_amount_spent)::float as highest_spending
+      FROM customers
+    `);
 
-      // Get top customers
-      const topCustomersResult = await pool.query(`
-        SELECT name, total_jobs_count, total_amount_spent
-        FROM customers 
-        ORDER BY total_amount_spent DESC 
-        LIMIT 5
-      `);
+    // Get top customers
+    const topCustomersResult = await pool.query(`
+      SELECT name, total_jobs_count, total_amount_spent
+      FROM customers 
+      ORDER BY total_amount_spent DESC 
+      LIMIT 5
+    `);
 
-      res.json({
-        stats: statsResult.rows[0],
-        top_customers: topCustomersResult.rows
-      });
-    } catch (error) {
-      console.error('Get customer stats error:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+    res.json({
+      stats: statsResult.rows[0],
+      top_customers: topCustomersResult.rows
+    });
+  } catch (error) {
+    console.error('Get customer stats error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
+}
 }
 
 export const customerController = new CustomerController();

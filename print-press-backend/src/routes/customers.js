@@ -3,6 +3,8 @@ import { customerController } from '../controllers/customerController.js';
 
 const router = express.Router();
 
+router.post('/customers', customerController.createCustomer);
+
 // Get all customers with pagination and search
 router.get('/customers', customerController.getCustomers);
 

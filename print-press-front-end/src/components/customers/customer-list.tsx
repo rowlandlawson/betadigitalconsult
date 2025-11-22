@@ -5,10 +5,21 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api, isApiError } from '@/lib/api';
-import { Customer, PaginatedResponse } from '@/types';
+import { Customer } from '@/types/customers';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Search, Users, Phone, Mail, Calendar, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
+
+// Define the API response type
+interface CustomersResponse {
+  customers: Customer[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
 
 export const CustomerList: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -22,8 +33,8 @@ export const CustomerList: React.FC = () => {
 
   const fetchCustomers = async () => {
     try {
-      const response = await api.get<PaginatedResponse<Customer>>('/customers/customers');
-      setCustomers(response.data.data);
+      const response = await api.get<CustomersResponse>('/customers/customers');
+      setCustomers(response.data.customers || []);
     } catch (err: unknown) {
       console.error('Failed to fetch customers:', err);
       if (isApiError(err)) {
@@ -31,21 +42,32 @@ export const CustomerList: React.FC = () => {
       } else {
         setError('Failed to load customers');
       }
+      setCustomers([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.phone.includes(searchTerm) ||
+  // Safe filtering with null checks
+  const filteredCustomers = (customers || []).filter(customer =>
+    customer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.phone?.includes(searchTerm) ||
     customer.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getCustomerTier = (customer: Customer) => {
-    if (customer.total_amount_spent > 50000) return 'VIP';
-    if (customer.total_amount_spent > 20000) return 'Premium';
-    if (customer.total_amount_spent > 5000) return 'Regular';
+    const totalSpent = customer.total_amount_spent;
+    const jobCount = customer.total_jobs_count;
+    
+    if (totalSpent > 1000000 && jobCount > 10) return 'VIP';
+    
+    if (totalSpent > 500000 && jobCount > 8) return 'Premium';
+    
+    if (totalSpent > 50000 && jobCount > 3) return 'Regular';
+    
+    if (jobCount > 1) return 'Returning';
+    
+    // New: First-time customer
     return 'New';
   };
 
@@ -57,6 +79,10 @@ export const CustomerList: React.FC = () => {
         return 'bg-blue-100 text-blue-800';
       case 'Regular':
         return 'bg-green-100 text-green-800';
+      case 'Returning':  // Add if using the sophisticated system
+        return 'bg-yellow-100 text-yellow-800';
+      case 'Prospect':   // Add if using the sophisticated system
+        return 'bg-orange-100 text-orange-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -92,69 +118,70 @@ export const CustomerList: React.FC = () => {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Users className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Customers</p>
-                <p className="text-2xl font-bold text-gray-900">{customers.length}</p>
-              </div>
+     {/* Summary Cards */}
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Users className="h-6 w-6 text-blue-600" />
             </div>
-          </CardContent>
-        </Card>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Total Customers</p>
+              <p className="text-2xl font-bold text-gray-900">{customers.length}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Users className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active Customers</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {customers.filter(c => c.total_jobs_count > 0).length}
-                </p>
-              </div>
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <Users className="h-6 w-6 text-green-600" />
             </div>
-          </CardContent>
-        </Card>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Active Customers</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {customers.filter(c => c.total_jobs_count > 0).length}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <TrendingUp className="h-6 w-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Repeat Customers</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {customers.filter(c => c.total_jobs_count > 1).length}
-                </p>
-              </div>
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <TrendingUp className="h-6 w-6 text-purple-600" />
             </div>
-          </CardContent>
-        </Card>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Repeat Customers</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {customers.filter(c => c.total_jobs_count > 5).length}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <Calendar className="h-6 w-6 text-orange-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Avg. Jobs</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {(customers.reduce((sum, c) => sum + c.total_jobs_count, 0) / customers.length || 0).toFixed(1)}
-                </p>
-              </div>
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <Calendar className="h-6 w-6 text-orange-600" />
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Avg. Jobs</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {(customers.reduce((sum, c) => sum + c.total_jobs_count, 0) / (customers.length || 1)).toFixed(1)}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
 
       {/* Search */}
       <Card>
@@ -253,7 +280,17 @@ export const CustomerList: React.FC = () => {
                         View Profile
                       </Button>
                     </Link>
-                    <Link href={`/admin/jobs/create?customer=${customer.id}`}>
+                    <Link 
+                      href={{
+                        pathname: '/admin/jobs/create',
+                        query: { 
+                          customer: customer.id,
+                          customer_name: customer.name,
+                          customer_phone: customer.phone,
+                          customer_email: customer.email || ''
+                        }
+                      }}
+                    >
                       <Button size="sm">
                         New Job
                       </Button>

@@ -4,6 +4,7 @@ import React from 'react';
 import { User, LogOut, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NotificationBell } from '@/components/notifications/notification-bell';
+import { useCompanySettings } from '@/lib/useCompanySettings';
 
 interface HeaderProps {
   user: {
@@ -16,6 +17,8 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ user, onLogout, onToggleSidebar }) => {
+  const { settings } = useCompanySettings();
+  const companyName = settings.name || 'Company';
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-20">
       <div className="px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
@@ -36,11 +39,11 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout, onToggleSidebar 
               </h1>
             </div>
             <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#AABD77] bg-opacity-20 text-[#2c3e1f] whitespace-nowrap shrink-0">
-              {user.role}
+              {companyName}
             </span>
             {/* Mobile role badge */}
             <span className="sm:hidden inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#AABD77] bg-opacity-20 text-[#2c3e1f] whitespace-nowrap shrink-0">
-              {user.role}
+              {companyName}
             </span>
           </div>
           
@@ -56,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout, onToggleSidebar 
                 </div>
                 <div className="hidden md:block text-sm">
                   <div className="font-medium text-gray-900 truncate max-w-[120px]">
-                    {user.name}
+                    {companyName}
                   </div>
                   <div className="text-gray-500 truncate max-w-[120px]">
                     {user.email}

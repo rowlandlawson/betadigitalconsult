@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api, isApiError } from '@/lib/api';
-import { Job, JobFormData } from '@/types/jobs';
+import { JobWithDetails, JobFormData } from '@/types/jobs'; // Changed from Job to JobWithDetails
 
 interface EditJobFormProps {
   jobId: string;
@@ -30,16 +30,27 @@ export const EditJobForm: React.FC<EditJobFormProps> = ({ jobId }) => {
   useEffect(() => {
     const fetchJob = async () => {
       try {
-        const response = await api.get<Job>(`/jobs/${jobId}`);
-        const job = response.data;
+        // Use JobWithDetails instead of Job
+        const response = await api.get<{ job: JobWithDetails }>(`/jobs/${jobId}`);
+        const job = response.data.job; // Access the job from the response
+        
+        // Safe date handling
+        const dateRequested = job.date_requested 
+          ? job.date_requested.split('T')[0] 
+          : new Date().toISOString().split('T')[0];
+        
+        const deliveryDeadline = job.delivery_deadline 
+          ? job.delivery_deadline.split('T')[0] 
+          : '';
+
         setFormData({
           customer_name: job.customer_name || '',
           customer_phone: job.customer_phone || '',
-          customer_email: '',
+          customer_email: job.customer_email || '', // Now this exists in JobWithDetails
           description: job.description,
           total_cost: job.total_cost,
-          date_requested: job.date_requested.split('T')[0],
-          delivery_deadline: job.delivery_deadline ? job.delivery_deadline.split('T')[0] : '',
+          date_requested: dateRequested,
+          delivery_deadline: deliveryDeadline,
         });
       } catch (err: unknown) {
         console.error('Failed to fetch job:', err);

@@ -144,15 +144,21 @@ export const CustomerStats: React.FC = () => {
                 </span>
               </div>
               <div className="flex justify-between items-center">
+                <span className="text-gray-600">Avg. Spend (Active Customers)</span>
+                <span className="font-semibold text-green-600">
+                  {formatCurrency(stats.stats.avg_spent_per_active_customer)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
                 <span className="text-gray-600">Customer Retention Rate</span>
                 <span className="font-semibold text-blue-600">
-                  {((stats.stats.repeat_customers / stats.stats.total_customers) * 100).toFixed(1)}%
+                  {stats.stats.total_customers > 0 ? ((stats.stats.repeat_customers / stats.stats.total_customers) * 100).toFixed(1) : 0}%
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">New Customer Rate</span>
                 <span className="font-semibold text-purple-600">
-                  {(((stats.stats.total_customers - stats.stats.active_customers) / stats.stats.total_customers) * 100).toFixed(1)}%
+                  {stats.stats.total_customers > 0 ? (((stats.stats.total_customers - stats.stats.active_customers) / stats.stats.total_customers) * 100).toFixed(1) : 0}%
                 </span>
               </div>
             </div>
@@ -205,44 +211,46 @@ export const CustomerStats: React.FC = () => {
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
                 <Award className="h-6 w-6 text-purple-600" />
               </div>
-              <p className="font-semibold text-purple-900">VIP Customers</p>
+              <p className="font-semibold text-purple-900">Repeat Customers</p>
               <p className="text-2xl font-bold text-purple-600">
-                {Math.round(stats.stats.total_customers * 0.1)}
+                {stats.stats.repeat_customers}
               </p>
-              <p className="text-sm text-purple-500">Top 10% spenders</p>
+              <p className="text-sm text-purple-500">6+ jobs</p>
             </div>
 
             <div className="text-center p-4 bg-blue-50 rounded-lg">
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
                 <Star className="h-6 w-6 text-blue-600" />
               </div>
-              <p className="font-semibold text-blue-900">Premium</p>
+              <p className="font-semibold text-blue-900">Regular Customers</p>
               <p className="text-2xl font-bold text-blue-600">
-                {Math.round(stats.stats.total_customers * 0.2)}
+                {stats.stats.active_customers - stats.stats.repeat_customers}
               </p>
-              <p className="text-sm text-blue-500">Regular high-value</p>
+              <p className="text-sm text-blue-500">1-5 jobs</p>
             </div>
 
             <div className="text-center p-4 bg-green-50 rounded-lg">
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
                 <Users className="h-6 w-6 text-green-600" />
               </div>
-              <p className="font-semibold text-green-900">Regular</p>
+              <p className="font-semibold text-green-900">New Customers</p>
               <p className="text-2xl font-bold text-green-600">
-                {Math.round(stats.stats.total_customers * 0.5)}
+                {stats.stats.total_customers - stats.stats.active_customers}
               </p>
-              <p className="text-sm text-green-500">Steady customers</p>
+              <p className="text-sm text-green-500">0 jobs</p>
             </div>
 
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                <Users className="h-6 w-6 text-gray-600" />
+            <div className="text-center p-4 bg-orange-50 rounded-lg">
+              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <TrendingUp className="h-6 w-6 text-orange-600" />
               </div>
-              <p className="font-semibold text-gray-900">New</p>
-              <p className="text-2xl font-bold text-gray-600">
-                {Math.round(stats.stats.total_customers * 0.2)}
+              <p className="font-semibold text-orange-900">Active Rate</p>
+              <p className="text-2xl font-bold text-orange-600">
+                {stats.stats.total_customers > 0 ? 
+                  Math.round((stats.stats.active_customers / stats.stats.total_customers) * 100) : 0
+                }%
               </p>
-              <p className="text-sm text-gray-500">First-time customers</p>
+              <p className="text-sm text-orange-500">With 1+ jobs</p>
             </div>
           </div>
         </CardContent>

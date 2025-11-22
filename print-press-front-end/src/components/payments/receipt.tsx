@@ -14,9 +14,11 @@ import { Printer, Download, ArrowLeft } from 'lucide-react';
 interface ReceiptProps {
   paymentId: string;
   userRole: 'admin' | 'worker';
+  showBackButton?: boolean;
+  onBack?: () => void;
 }
 
-export const Receipt: React.FC<ReceiptProps> = ({ paymentId }) => {
+export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = true, onBack }) => {
   const router = useRouter();
   const { settings } = useCompanySettings();
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
@@ -67,6 +69,14 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId }) => {
     }
   };
 
+  const handleBackClick = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
+    router.back();
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-8">
@@ -89,9 +99,9 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId }) => {
 
   const { receipt: receiptData } = receipt;
   // Convert logo URL to full URL if needed
-  const logoFromSettings = settings.logo ? getLogoUrl(settings.logo) : null;
-  const logoFromReceipt = receiptData.business.logo ? getLogoUrl(receiptData.business.logo) : null;
-  const companyLogo = logoFromSettings || logoFromReceipt || '/logo.png';
+  // const logoFromSettings = settings.logo ? getLogoUrl(settings.logo) : null;
+  // const logoFromReceipt = receiptData.business.logo ? getLogoUrl(receiptData.business.logo) : null;
+  const companyLogo = '/logo.png';
   const companyName = settings.name || receiptData.business.name;
   const companyTagline = settings.tagline;
   const companyPhone = settings.phone || receiptData.business.phone || '';
@@ -102,13 +112,17 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId }) => {
     <div className="max-w-4xl mx-auto">
       {/* Action Buttons */}
       <div className="flex justify-between items-center mb-6 print:hidden">
-        <Button
-          variant="outline"
-          onClick={() => router.back()}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Payments
-        </Button>
+        {showBackButton ? (
+          <Button
+            variant="outline"
+            onClick={handleBackClick}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Payments
+          </Button>
+        ) : (
+          <span />
+        )}
         <div className="flex space-x-2">
           <Button
             variant="outline"
@@ -125,53 +139,90 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId }) => {
       </div>
 
       {/* Receipt */}
-      <Card className="print:shadow-none print:border-0">
-        <CardContent className="p-8 print:p-0">
-          {/* Header: Logo on left, Business name on right, Tagline centered below */}
-          <div className="border-b border-gray-200 pb-6 mb-6">
-            <div className="flex justify-between items-start mb-4">
-              {/* Logo on left */}
-              <div className="shrink-0">
-                {(settings.logo || receiptData.business.logo) ? (
+      <Card className="print:shadow-none print:border-0 relative">
+        {/* Watermark Logo - Larger */}
+        <div className="absolute inset-0 pointer-events-none opacity-15 print:opacity-20 z-0 flex items-center justify-center">
+          <div className="relative w-96 h-96 md:w-[500px] md:h-[500px]"> {/* Larger size with responsive breakpoints */}
+            <Image
+              src={companyLogo}
+              alt="Watermark"
+              fill
+              className="object-contain"
+              style={{
+                transform: 'rotate(-15deg) scale(1.2)' // Larger scale
+              }}
+              unoptimized
+            />
+          </div>
+        </div>
+
+        <CardContent className="p-6 md:p-8 print:p-0 relative z-10">
+          {/* Enhanced Receipt Header */}
+          <div className="border-b border-gray-300 pb-6 mb-6">
+            {/* Top Row: Logo and Company Info */}
+            <div className="flex flex-col justify-between items-center md:items-center gap-4 mb-4">
+              {/* Logo - Responsive */}
+              <div className="flex-shrink-0">
+                <div className="md:w-80 md:h-36 w-50 h-auto flex items-center justify-center">
                   <Image
                     src={companyLogo}
                     alt={companyName}
                     width={80}
                     height={80}
-                    className="h-20 w-auto"
+                    className="w-full h-full object-contain p-1"
+                    unoptimized
                     onError={(e) => { 
                       (e.target as HTMLImageElement).style.display = 'none'; 
                     }}
                   />
-                ) : (
-                  <div className="h-20 w-20 flex items-center justify-center bg-gray-100 rounded-lg">
-                    <span className="text-2xl font-bold text-gray-600">
-                      {companyName?.charAt(0) || 'L'}
-                    </span>
+                </div>
+              </div>
+
+              {/* Company Info - Centered on mobile, right on desktop */}
+              <div className="text-center">
+                {/* <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                  {companyName}
+                </h1> */}
+                {companyTagline && (
+                  <p className="text-gray-600 text-base md:text-lg font-medium">
+                    {companyTagline}
+                  </p>
+                )}
+                {(companyPhone || companyEmail) && (
+                  <div className="flex flex-col sm:flex-row sm:justify-center md:justify-end gap-2 sm:gap-4 mt-2">
+                    {companyPhone && (
+                      <span className="text-sm text-gray-500">{companyPhone}</span>
+                    )}
+                    {companyEmail && (
+                      <span className="text-sm text-gray-500">{companyEmail}</span>
+                    )}
                   </div>
                 )}
               </div>
-
-              {/* Business name on right */}
-              <div className="text-right">
-                <h1 className="text-3xl font-bold text-gray-900">
-                  {companyName}
-                </h1>
-              </div>
             </div>
 
-            {/* Tagline centered below */}
-            {(companyTagline) && (
-              <div className="text-center mt-4">
-                <p className="text-gray-600 text-lg font-medium">
-                  {companyTagline }
+            {/* Receipt Title and Number */}
+            <div className="text-center mt-4">
+              <div className="inline-flex flex-col items-center">
+                <h2 className="text-xl md:text-2xl font-bold text-blue-600 uppercase tracking-wide">
+                  OFFICIAL RECEIPT
+                </h2>
+                <div className="mt-2 px-4 py-2 bg-gray-100 rounded-lg">
+                  <span className="text-sm text-gray-600">Receipt #</span>
+                  <span className="ml-2 text-lg font-mono font-bold text-gray-900">
+                    {receiptData.receipt_number}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  Issued on {formatDate(receiptData.date)}
                 </p>
               </div>
-            )}
+            </div>
           </div>
 
+          {/* Rest of your receipt content remains exactly the same */}
           {/* Receipt Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-6">
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Receipt Information</h3>
               <div className="space-y-2">
@@ -365,6 +416,11 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId }) => {
             left: 0;
             top: 0;
             width: 100%;
+          }
+          
+          /* Ensure watermark prints properly */
+          .opacity-15 {
+            opacity: 0.15 !important;
           }
         }
       `}</style>

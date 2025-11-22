@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { passwordService } from '@/lib/passwordService';
 
 interface LoginFormProps {
   isAdmin?: boolean;
@@ -16,6 +17,10 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [recoveryIdentifier, setRecoveryIdentifier] = useState('');
+  const [recoveryMessage, setRecoveryMessage] = useState('');
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,6 +104,36 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
     }
   };
 
+  const handleRecoverySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoveryMessage('');
+
+    if (!recoveryIdentifier.trim()) {
+      setRecoveryMessage('Please provide the email or username for the account.');
+      return;
+    }
+
+    setRecoveryLoading(true);
+    try {
+      const response = await passwordService.requestResetLink({
+        identifier: recoveryIdentifier.trim(),
+      });
+      setRecoveryMessage(response.message || 'Password reset link sent successfully.');
+      setRecoveryIdentifier('');
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response?: { data?: { error?: string } } };
+        setRecoveryMessage(axiosError.response?.data?.error || 'Failed to send reset link.');
+      } else if (err instanceof Error) {
+        setRecoveryMessage(err.message);
+      } else {
+        setRecoveryMessage('Failed to send reset link.');
+      }
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
@@ -159,6 +194,50 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
           {loading ? 'Signing in...' : 'Sign in'}
         </button>
       </form>
+
+      <div className="mt-6 border-t border-gray-200 pt-4">
+        <button
+          type="button"
+          className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+          onClick={() => {
+            setShowRecovery((prev) => !prev);
+            setRecoveryMessage('');
+          }}
+        >
+          Forgot password?
+        </button>
+
+        {showRecovery && (
+          <form onSubmit={handleRecoverySubmit} className="mt-4 space-y-3">
+            <div>
+              <label htmlFor="recoveryIdentifier" className="block text-sm font-medium text-gray-700">
+                Enter your email or username
+              </label>
+              <input
+                id="recoveryIdentifier"
+                name="recoveryIdentifier"
+                type="text"
+                value={recoveryIdentifier}
+                onChange={(e) => setRecoveryIdentifier(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="you@example.com"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={recoveryLoading}
+              className="inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {recoveryLoading ? 'Sending...' : 'Send reset link'}
+            </button>
+            {recoveryMessage && (
+              <p className="text-sm text-gray-600">
+                {recoveryMessage}
+              </p>
+            )}
+          </form>
+        )}
+      </div>
     </div>
   );
 }

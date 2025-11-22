@@ -12,6 +12,8 @@ export interface CompanySettings {
   logoFile?: File;
   created_at?: string;
   updated_at?: string;
+  message?: string;
+  success?: boolean;
 }
 
 export const companySettingsService = {

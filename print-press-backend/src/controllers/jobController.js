@@ -22,6 +22,7 @@ export const getAllJobs = async (req, res) => {
         j.*,
         c.name as customer_name,
         c.phone as customer_phone,
+        c.total_jobs_count,
         u.name as worker_name,
         COALESCE(SUM(p.amount), 0) as amount_paid,
         (j.total_cost - COALESCE(SUM(p.amount), 0)) as balance,
@@ -78,7 +79,7 @@ export const getAllJobs = async (req, res) => {
     }
 
     query += ` 
-      GROUP BY j.id, c.name, c.phone, u.name
+      GROUP BY j.id, c.name, c.phone, c.total_jobs_count, u.name
       ORDER BY j.created_at DESC 
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `;
@@ -117,6 +118,7 @@ export const getJobById = async (req, res) => {
         c.name as customer_name,
         c.phone as customer_phone,
         c.email as customer_email,
+        c.total_jobs_count,
         u.name as worker_name,
         COALESCE(SUM(p.amount), 0) as amount_paid,
         (j.total_cost - COALESCE(SUM(p.amount), 0)) as balance,
@@ -130,7 +132,7 @@ export const getJobById = async (req, res) => {
       LEFT JOIN users u ON j.worker_id = u.id
       LEFT JOIN payments p ON j.id = p.job_id
       WHERE j.id = $1
-      GROUP BY j.id, c.name, c.phone, c.email, u.name
+      GROUP BY j.id, c.name, c.phone, c.email, c.total_jobs_count, u.name
     `, [id]);
 
     if (jobResult.rows.length === 0) {
@@ -160,9 +162,16 @@ export const getJobById = async (req, res) => {
       [id]
     );
 
-    // Get payments - FIXED: using payment_type instead of payment_date
+    // Get payments - FIXED: using date field and aliasing it as payment_date
     const paymentsResult = await pool.query(
-      'SELECT * FROM payments WHERE job_id = $1 ORDER BY payment_type DESC',
+      `SELECT 
+        id, 
+        amount, 
+        date as payment_date,
+        payment_method,
+        payment_type,
+        created_at
+       FROM payments WHERE job_id = $1 ORDER BY date DESC`,
       [id]
     );
 
@@ -185,6 +194,7 @@ export const createJob = async (req, res) => {
     await client.query('BEGIN');
 
     const {
+      customer_id, // NEW: Add this parameter to accept customer ID from URL
       customer_name,
       customer_phone,
       customer_email,
@@ -208,28 +218,58 @@ export const createJob = async (req, res) => {
     const random = Math.random().toString(36).substr(2, 4).toUpperCase();
     const ticketId = `PRESS-${timestamp}-${random}`;
 
-    // Find or create customer
-    let customerResult = await client.query(
-      'SELECT id FROM customers WHERE phone = $1',
-      [customer_phone]
-    );
+    let customerId = customer_id; // Use the provided customer_id if available
 
-    let customerId;
-    if (customerResult.rows.length > 0) {
-      customerId = customerResult.rows[0].id;
+    // If customer_id is provided, use existing customer
+    if (customerId) {
+      // Verify the customer exists
+      const customerResult = await client.query(
+        'SELECT id, name, phone FROM customers WHERE id = $1',
+        [customerId]
+      );
+
+      if (customerResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Customer not found' });
+      }
+
+      const customer = customerResult.rows[0];
+      
+      // Optional: Log if there's a mismatch between URL params and database
+      if (customer.name !== customer_name || customer.phone !== customer_phone) {
+        console.log('Customer details from URL differ from database:', {
+          url: { customer_name, customer_phone },
+          db: { name: customer.name, phone: customer.phone }
+        });
+      }
+
       // Update customer last interaction
       await client.query(
         'UPDATE customers SET last_interaction_date = CURRENT_TIMESTAMP WHERE id = $1',
         [customerId]
       );
     } else {
-      customerResult = await client.query(
-        `INSERT INTO customers (name, phone, email) 
-         VALUES ($1, $2, $3) 
-         RETURNING id`,
-        [customer_name, customer_phone, customer_email]
+      // If no customer_id provided, find or create customer by phone (existing logic)
+      let customerResult = await client.query(
+        'SELECT id FROM customers WHERE phone = $1',
+        [customer_phone]
       );
-      customerId = customerResult.rows[0].id;
+
+      if (customerResult.rows.length > 0) {
+        customerId = customerResult.rows[0].id;
+        // Update customer last interaction
+        await client.query(
+          'UPDATE customers SET last_interaction_date = CURRENT_TIMESTAMP WHERE id = $1',
+          [customerId]
+        );
+      } else {
+        customerResult = await client.query(
+          `INSERT INTO customers (name, phone, email) 
+           VALUES ($1, $2, $3) 
+           RETURNING id`,
+          [customer_name, customer_phone, customer_email]
+        );
+        customerId = customerResult.rows[0].id;
+      }
     }
 
     // Create job with initial payment status
@@ -418,6 +458,7 @@ export const getJobByTicketId = async (req, res) => {
         j.*,
         c.name as customer_name,
         c.phone as customer_phone,
+        c.total_jobs_count,
         u.name as worker_name,
         COALESCE(SUM(p.amount), 0) as amount_paid,
         (j.total_cost - COALESCE(SUM(p.amount), 0)) as balance,
@@ -430,7 +471,7 @@ export const getJobByTicketId = async (req, res) => {
           DISTINCT jsonb_build_object(
             'id', p.id,
             'amount', p.amount,
-            'payment_type', p.payment_type,  -- FIXED: using payment_type
+            'payment_date', p.date,
             'payment_method', p.payment_method,
             'created_at', p.created_at
           )
@@ -440,7 +481,7 @@ export const getJobByTicketId = async (req, res) => {
       LEFT JOIN users u ON j.worker_id = u.id
       LEFT JOIN payments p ON j.id = p.job_id
       WHERE j.ticket_id = $1
-      GROUP BY j.id, c.name, c.phone, u.name
+      GROUP BY j.id, c.name, c.phone, c.total_jobs_count, u.name
     `, [ticketId]);
 
     if (result.rows.length === 0) {

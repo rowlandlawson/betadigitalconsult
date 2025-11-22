@@ -40,6 +40,7 @@ export interface CustomerStats {
     repeat_customers: number;
     avg_jobs_per_customer: number;
     avg_spent_per_customer: number;
+    avg_spent_per_active_customer: number;
     highest_spending: number;
   };
   top_customers: Array<{

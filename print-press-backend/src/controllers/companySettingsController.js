@@ -24,6 +24,32 @@ async function ensureUploadDir() {
 }
 
 /**
+ * Remove any stale logo files from disk, optionally keeping the latest file.
+ */
+async function cleanupLogoDirectory(fileToKeep = null) {
+  try {
+    const files = await fs.readdir(UPLOAD_DIR);
+    await Promise.all(
+      files
+        .filter((file) => file !== fileToKeep)
+        .map(async (file) => {
+          const filePath = path.join(UPLOAD_DIR, file);
+          try {
+            await fs.unlink(filePath);
+            console.log('🧹 Removed stale logo file:', filePath);
+          } catch (err) {
+            console.warn('⚠️ Could not remove stale logo file:', filePath, err.message);
+          }
+        })
+    );
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      console.warn('⚠️ Could not inspect logo upload directory:', err.message);
+    }
+  }
+}
+
+/**
  * Get company settings
  * GET /api/company-settings
  */
@@ -224,6 +250,7 @@ export const uploadLogo = async (req, res) => {
     console.log('💾 Saving new logo to:', filepath);
     await fs.writeFile(filepath, req.file.buffer);
     console.log('✅ Logo saved to disk successfully');
+    await cleanupLogoDirectory(filename);
 
     // Check if settings exist
     const settingsExists = await pool.query(
@@ -290,6 +317,8 @@ export const deleteLogo = async (req, res) => {
         console.error('Error deleting file:', err);
       }
     }
+
+    await cleanupLogoDirectory();
 
     // Update database - set logo to NULL
     const updateResult = await pool.query(

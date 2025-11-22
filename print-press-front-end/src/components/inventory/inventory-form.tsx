@@ -17,6 +17,7 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ itemId, mode }) =>
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [customUnit, setCustomUnit] = useState(false);
   const [formData, setFormData] = useState<InventoryFormData>({
     material_name: '',
     category: '',
@@ -36,8 +37,8 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ itemId, mode }) =>
     const fetchItem = async () => {
       try {
         setLoading(true);
-        const response = await api.get<{ inventory: InventoryItem[] }>('/inventory');
-        const item = response.data.inventory.find(item => item.id === itemId);
+        const response = await api.get<{ item: InventoryItem }>(`/inventory/${itemId}`);
+        const item = response.data.item;
         if (item) {
           setFormData({
             material_name: item.material_name,
@@ -53,6 +54,12 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ itemId, mode }) =>
             threshold: item.threshold,
             reorder_quantity: item.reorder_quantity || undefined,
           });
+          
+          // Check if unit is custom
+          const standardUnits = ['sheets', 'reams', 'rolls', 'liters', 'kilograms', 'grams', 'pieces', 'packs', 'boxes'];
+          if (!standardUnits.includes(item.unit_of_measure)) {
+            setCustomUnit(true);
+          }
         }
       } catch (err: unknown) {
         console.error('Failed to fetch item:', err);
@@ -112,6 +119,17 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ itemId, mode }) =>
     }));
   };
 
+  const handleUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    if (value === 'custom') {
+      setCustomUnit(true);
+      setFormData(prev => ({ ...prev, unit_of_measure: '' }));
+    } else {
+      setCustomUnit(false);
+      setFormData(prev => ({ ...prev, unit_of_measure: value }));
+    }
+  };
+
   const commonCategories = [
     'Paper',
     'Ink',
@@ -133,7 +151,8 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ itemId, mode }) =>
     'grams',
     'pieces',
     'packs',
-    'boxes'
+    'boxes',
+    'custom'
   ];
 
   return (
@@ -247,19 +266,33 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ itemId, mode }) =>
                 Unit of Measure *
               </label>
               <select
-                name="unit_of_measure"
+                name="unit_of_measure_select"
                 required
-                value={formData.unit_of_measure}
-                onChange={handleChange}
+                value={customUnit ? 'custom' : formData.unit_of_measure}
+                onChange={handleUnitChange}
                 disabled={loading}
                 className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
+                <option value="">Select Unit</option>
                 {unitOptions.map(unit => (
                   <option key={unit} value={unit}>
-                    {unit}
+                    {unit === 'custom' ? 'Custom Unit...' : unit}
                   </option>
                 ))}
               </select>
+              
+              {customUnit && (
+                <Input
+                  name="unit_of_measure"
+                  type="text"
+                  required
+                  value={formData.unit_of_measure}
+                  onChange={handleChange}
+                  placeholder="Enter custom unit (e.g., bottles, tubes, etc.)"
+                  disabled={loading}
+                  className="mt-2"
+                />
+              )}
             </div>
             
             <Input

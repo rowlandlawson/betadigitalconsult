@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { pool } from '../config/database.js';
+import { syncCompanyContactInfo } from '../utils/companyContactSync.js';
 
 /**
  * @desc Admin login only (email or username)
@@ -354,9 +355,15 @@ export const updateProfile = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    const updatedUser = result.rows[0];
+
+    if (updatedUser.role === 'admin') {
+      await syncCompanyContactInfo({ email, phone });
+    }
+
     res.json({
       message: 'Profile updated successfully',
-      user: result.rows[0]
+      user: updatedUser
     });
   } catch (error) {
     console.error('Update profile error:', error);

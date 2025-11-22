@@ -66,13 +66,22 @@ const adminNavGroups: NavGroup[] = [
     ]
   },
   {
-    title: 'Inventory',
-    items: [
-      { href: '/admin/inventory', label: 'Inventory', icon: Package },
-      { href: '/admin/inventory/create', label: 'Add Item', icon: PlusCircle },
-      { href: '/admin/inventory/alerts', label: 'Stock Alerts', icon: AlertTriangle }
-    ]
-  },
+  //   title: 'Inventory',
+  //   items: [
+  //     { href: '/admin/inventory', label: 'Inventory', icon: Package },
+  //     { href: '/admin/inventory/create', label: 'Add Item', icon: PlusCircle },
+  //     { href: '/admin/inventory/alerts', label: 'Stock Alerts', icon: AlertTriangle }
+  //   ]
+  // },
+  title: 'Inventory',
+  items: [
+    { href: '/admin/inventory', label: 'All Items', icon: Package },
+    { href: '/admin/inventory/create', label: 'Add Item', icon: PlusCircle },
+    { href: '/admin/inventory/monitoring', label: 'Material Monitoring', icon: TrendingUp },
+    { href: '/admin/inventory/tracking', label: 'Usage Tracking', icon: BarChart3 },
+    { href: '/admin/inventory/alerts', label: 'Stock Alerts', icon: AlertTriangle }
+  ]
+},
   {
     title: 'Payments',
     items: [
@@ -228,12 +237,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex items-center justify-center w-full">
           <div className="relative w-32 h-12 lg:w-40 lg:h-14">
             <Image
-              src={companyLogo}
+              src="/logo.png"
               alt={`${companyName} Logo`}
               fill
               className="object-contain"
               sizes="(max-width: 768px) 128px, 160px"
               priority
+              unoptimized
             />
           </div>
         </div>

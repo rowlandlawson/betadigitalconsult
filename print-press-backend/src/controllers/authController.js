@@ -5,7 +5,7 @@ import { pool } from '../config/database.js';
 import { syncCompanyContactInfo } from '../utils/companyContactSync.js';
 
 /**
- * @desc Admin login only (email or username)
+ * @desc Admin login (email or username)
  */
 export const adminLogin = async (req, res) => {
   try {

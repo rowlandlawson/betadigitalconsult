@@ -360,7 +360,7 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ itemId, mode }) =>
             disabled={loading}
           />
 
-          {/* Stock Value Calculation */}
+          {/* Value Calculation */}
           <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
             <h4 className="font-semibold text-blue-900 mb-2">Stock Value Calculation</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">

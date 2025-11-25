@@ -1,8 +1,10 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --bg: #f8fafc;
-  --fg: #0f172a;
+  --bg: #f8fafc; /* gray-50 */
+  --fg: #0f172a; /* gray-900 */
 }
 
 html, body, #__next {

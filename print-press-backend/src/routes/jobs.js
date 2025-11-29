@@ -7,7 +7,9 @@ import {
   updateJobStatus,
   getJobByTicketId,
   updateJob,
-  deleteJob
+  deleteJob,
+  updateJobMaterials,
+  getMaterialEditHistory
 } from '../controllers/jobController.js';
 import { authenticateToken, requireWorkerOrAdmin } from '../middleware/auth.js';
 
@@ -22,5 +24,7 @@ router.post('/', createJob);
 router.patch('/:id/status', updateJobStatus);
 router.put('/:id', updateJob);
 router.delete('/:id', deleteJob);
+router.put('/:jobId/materials', updateJobMaterials);
+router.get('/:jobId/material-edit-history', getMaterialEditHistory);
 
 export default router;

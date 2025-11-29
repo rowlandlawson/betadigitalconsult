@@ -162,7 +162,7 @@ export const getJobById = async (req, res) => {
       [id]
     );
 
-    // Get payments - FIXED: using date field and aliasing it as payment_date
+    // Get payments
     const paymentsResult = await pool.query(
       `SELECT 
         id, 
@@ -191,10 +191,16 @@ export const createJob = async (req, res) => {
   const client = await pool.connect();
   
   try {
+    console.log('🚀 [CreateJob] Payload:', req.body);
+
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
     await client.query('BEGIN');
 
     const {
-      customer_id, // NEW: Add this parameter to accept customer ID from URL
+      customer_id,
       customer_name,
       customer_phone,
       customer_email,
@@ -209,113 +215,110 @@ export const createJob = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    if (total_cost <= 0) {
-      return res.status(400).json({ error: 'Total cost must be positive' });
-    }
-
-    // Generate ticket ID
+    // Generate Ticket ID
     const timestamp = Date.now();
     const random = Math.random().toString(36).substr(2, 4).toUpperCase();
     const ticketId = `PRESS-${timestamp}-${random}`;
 
-    let customerId = customer_id; // Use the provided customer_id if available
+    let finalCustomerId = null;
 
-    // If customer_id is provided, use existing customer
-    if (customerId) {
-      // Verify the customer exists
+    // 1. Check if specific Customer ID provided
+    if (customer_id && typeof customer_id === 'string' && customer_id.trim().length > 0) {
       const customerResult = await client.query(
-        'SELECT id, name, phone FROM customers WHERE id = $1',
-        [customerId]
-      );
-
-      if (customerResult.rows.length === 0) {
-        return res.status(404).json({ error: 'Customer not found' });
-      }
-
-      const customer = customerResult.rows[0];
-      
-      // Optional: Log if there's a mismatch between URL params and database
-      if (customer.name !== customer_name || customer.phone !== customer_phone) {
-        console.log('Customer details from URL differ from database:', {
-          url: { customer_name, customer_phone },
-          db: { name: customer.name, phone: customer.phone }
-        });
-      }
-
-      // Update customer last interaction
-      await client.query(
-        'UPDATE customers SET last_interaction_date = CURRENT_TIMESTAMP WHERE id = $1',
-        [customerId]
-      );
-    } else {
-      // If no customer_id provided, find or create customer by phone (existing logic)
-      let customerResult = await client.query(
-        'SELECT id FROM customers WHERE phone = $1',
-        [customer_phone]
+        'SELECT id FROM customers WHERE id = $1',
+        [customer_id]
       );
 
       if (customerResult.rows.length > 0) {
-        customerId = customerResult.rows[0].id;
+        finalCustomerId = customerResult.rows[0].id;
+        await client.query(
+          'UPDATE customers SET last_interaction_date = CURRENT_TIMESTAMP WHERE id = $1',
+          [finalCustomerId]
+        );
+      }
+    }
+
+    // 2. If no ID, find by phone or create new
+    if (!finalCustomerId) {
+      const cleanPhone = customer_phone.trim();
+      const cleanEmail = customer_email ? customer_email.trim() : null;
+
+      let customerResult = await client.query(
+        'SELECT id FROM customers WHERE phone = $1',
+        [cleanPhone]
+      );
+
+      if (customerResult.rows.length > 0) {
+        finalCustomerId = customerResult.rows[0].id;
         // Update customer last interaction
         await client.query(
           'UPDATE customers SET last_interaction_date = CURRENT_TIMESTAMP WHERE id = $1',
-          [customerId]
+          [finalCustomerId]
         );
       } else {
+        // Create new customer (will trigger Error 23505 if email exists, which frontend will now catch)
         customerResult = await client.query(
           `INSERT INTO customers (name, phone, email) 
            VALUES ($1, $2, $3) 
            RETURNING id`,
-          [customer_name, customer_phone, customer_email]
+          [customer_name, cleanPhone, cleanEmail]
         );
-        customerId = customerResult.rows[0].id;
+        finalCustomerId = customerResult.rows[0].id;
       }
     }
 
-    // Create job with initial payment status
+    // 3. CRITICAL FIX: Sanitize Dates (Prevent crash on empty string)
+    const dbDeliveryDeadline = (delivery_deadline && delivery_deadline !== '') ? delivery_deadline : null;
+    const dbDateRequested = (date_requested && date_requested !== '') ? date_requested : new Date();
+
+    // 4. Create Job
     const jobResult = await client.query(
       `INSERT INTO jobs (
         ticket_id, customer_id, worker_id, description, total_cost, 
-        date_requested, delivery_deadline, balance, payment_status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        date_requested, delivery_deadline, balance, payment_status, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'not_started')
       RETURNING *`,
       [
         ticketId,
-        customerId,
+        finalCustomerId,
         req.user.userId,
         description,
         total_cost,
-        date_requested,
-        delivery_deadline,
-        total_cost, // Initial balance equals total cost
-        'pending' // Initial payment status
+        dbDateRequested,
+        dbDeliveryDeadline,
+        total_cost, // Initial balance
+        'pending' // Initial status
       ]
     );
 
     const job = jobResult.rows[0];
 
-    // Update customer stats
+    // 5. Update Customer Stats
     await client.query(
       `UPDATE customers 
        SET total_jobs_count = total_jobs_count + 1,
            total_amount_spent = total_amount_spent + $1,
            last_interaction_date = CURRENT_TIMESTAMP
        WHERE id = $2`,
-      [total_cost, customerId]
+      [total_cost, finalCustomerId]
     );
 
-    // Notify admins about new job
-    await notificationService.notifyNewJob(job, req.user);
-    broadcastToAdmins({
-      type: 'new_notification',
-      notification: {
-        title: 'New Job Created',
-        message: `New job ${job.ticket_id} created by ${req.user.name} for ${customer_name}`,
-        type: 'new_job',
-        relatedEntityId: job.id,
-        createdAt: new Date()
+    // 6. Notifications
+    try {
+      if (notificationService) {
+        await notificationService.notifyNewJob(job, req.user);
+        broadcastToAdmins({
+          type: 'new_notification',
+          notification: {
+            title: 'New Job Created',
+            message: `New job ${job.ticket_id} created by ${req.user.name} for ${customer_name}`,
+            type: 'new_job',
+            relatedEntityId: job.id,
+            createdAt: new Date()
+          }
+        });
       }
-    });
+    } catch (e) { console.log('Notification error ignored'); }
 
     await client.query('COMMIT');
 
@@ -325,8 +328,15 @@ export const createJob = async (req, res) => {
     });
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Create job error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('❌ Create job error:', error);
+    
+    // UPDATED: Return specific Postgres error details (like duplicates) to frontend
+    res.status(500).json({ 
+      error: 'Database Error', 
+      message: error.message,
+      code: error.code,
+      detail: error.detail
+    });
   } finally {
     client.release();
   }
@@ -556,6 +566,274 @@ export const updateJob = async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Update job error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+};
+
+// Get material edit history for a job
+export const getMaterialEditHistory = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    const result = await pool.query(`
+      SELECT 
+        meh.*,
+        u.name as editor_name,
+        mu.material_name as current_material_name
+      FROM material_edit_history meh
+      LEFT JOIN users u ON meh.edited_by = u.id
+      LEFT JOIN materials_used mu ON meh.material_used_id = mu.id
+      WHERE meh.job_id = $1
+      ORDER BY meh.edited_at DESC
+    `, [jobId]);
+
+    res.json({ editHistory: result.rows });
+  } catch (error) {
+    console.error('Get material edit history error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Update materials with edit tracking
+export const updateJobMaterials = async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    const { jobId } = req.params;
+    const { materials, edit_reason } = req.body;
+    const userId = req.user.userId;
+
+    if (!edit_reason || edit_reason.trim().length < 5) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'Edit reason is required and must be at least 5 characters long' 
+      });
+    }
+
+    // Verify job exists and user has access
+    const jobCheck = await client.query(
+      `SELECT j.*, u.name as worker_name 
+       FROM jobs j 
+       LEFT JOIN users u ON j.worker_id = u.id 
+       WHERE j.id = $1`,
+      [jobId]
+    );
+
+    if (jobCheck.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    const job = jobCheck.rows[0];
+
+    // Check access - workers can only edit their own jobs, admins can edit all
+    if (req.user.role === 'worker' && job.worker_id !== userId) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Get current materials for comparison
+    const currentMaterials = await client.query(
+      'SELECT * FROM materials_used WHERE job_id = $1',
+      [jobId]
+    );
+
+    const currentMaterialsMap = new Map();
+    currentMaterials.rows.forEach(material => {
+      currentMaterialsMap.set(material.id, material);
+    });
+
+    // Process material updates
+    for (const material of materials) {
+      if (material.id) {
+        // Update existing material
+        const currentMaterial = currentMaterialsMap.get(material.id);
+        
+        if (currentMaterial) {
+          // Check if any changes were made
+          const hasChanges = 
+            currentMaterial.material_name !== material.material_name ||
+            currentMaterial.paper_size !== material.paper_size ||
+            currentMaterial.paper_type !== material.paper_type ||
+            currentMaterial.grammage !== material.grammage ||
+            parseFloat(currentMaterial.quantity) !== parseFloat(material.quantity) ||
+            parseFloat(currentMaterial.unit_cost) !== parseFloat(material.unit_cost) ||
+            parseFloat(currentMaterial.total_cost) !== parseFloat(material.total_cost);
+
+          if (hasChanges) {
+            // Record edit history
+            await client.query(
+              `INSERT INTO material_edit_history (
+                material_used_id, job_id,
+                previous_material_name, previous_paper_size, previous_paper_type, 
+                previous_grammage, previous_quantity, previous_unit_cost, previous_total_cost,
+                new_material_name, new_paper_size, new_paper_type, 
+                new_grammage, new_quantity, new_unit_cost, new_total_cost,
+                edit_reason, edited_by
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+              [
+                material.id, jobId,
+                currentMaterial.material_name, currentMaterial.paper_size, 
+                currentMaterial.paper_type, currentMaterial.grammage,
+                currentMaterial.quantity, currentMaterial.unit_cost, currentMaterial.total_cost,
+                material.material_name, material.paper_size, material.paper_type,
+                material.grammage, material.quantity, material.unit_cost, material.total_cost,
+                edit_reason.trim(), userId
+              ]
+            );
+
+            // Update the material
+            await client.query(
+              `UPDATE materials_used 
+               SET material_name = $1, paper_size = $2, paper_type = $3, 
+                   grammage = $4, quantity = $5, unit_cost = $6, total_cost = $7,
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = $8 AND job_id = $9`,
+              [
+                material.material_name,
+                material.paper_size || null,
+                material.paper_type || null,
+                material.grammage || null,
+                material.quantity,
+                material.unit_cost,
+                material.total_cost || (material.quantity * material.unit_cost),
+                material.id,
+                jobId
+              ]
+            );
+          }
+        }
+      } else {
+        // Add new material
+        const newMaterialResult = await client.query(
+          `INSERT INTO materials_used (
+            job_id, material_name, paper_size, paper_type, grammage, 
+            quantity, unit_cost, total_cost
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          RETURNING *`,
+          [
+            jobId,
+            material.material_name,
+            material.paper_size || null,
+            material.paper_type || null,
+            material.grammage || null,
+            material.quantity,
+            material.unit_cost,
+            material.total_cost || (material.quantity * material.unit_cost)
+          ]
+        );
+
+        const newMaterial = newMaterialResult.rows[0];
+
+        // Record addition in edit history
+        await client.query(
+          `INSERT INTO material_edit_history (
+            material_used_id, job_id,
+            previous_material_name, previous_paper_size, previous_paper_type, 
+            previous_grammage, previous_quantity, previous_unit_cost, previous_total_cost,
+            new_material_name, new_paper_size, new_paper_type, 
+            new_grammage, new_quantity, new_unit_cost, new_total_cost,
+            edit_reason, edited_by
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+          [
+            newMaterial.id, jobId,
+            null, null, null, null, null, null, null, // All nulls for previous values indicates addition
+            material.material_name, material.paper_size, material.paper_type,
+            material.grammage, material.quantity, material.unit_cost, material.total_cost,
+            `${edit_reason} (New material added)`, userId
+          ]
+        );
+      }
+    }
+
+    // Handle material deletions
+    const updatedMaterialIds = materials.map(m => m.id).filter(Boolean);
+    const materialsToDelete = currentMaterials.rows.filter(
+      m => !updatedMaterialIds.includes(m.id)
+    );
+
+    for (const materialToDelete of materialsToDelete) {
+      // Record deletion in edit history
+      await client.query(
+        `INSERT INTO material_edit_history (
+          material_used_id, job_id,
+          previous_material_name, previous_paper_size, previous_paper_type, 
+          previous_grammage, previous_quantity, previous_unit_cost, previous_total_cost,
+          new_material_name, new_paper_size, new_paper_type, 
+          new_grammage, new_quantity, new_unit_cost, new_total_cost,
+          edit_reason, edited_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+        [
+          materialToDelete.id, jobId,
+          materialToDelete.material_name, materialToDelete.paper_size, 
+          materialToDelete.paper_type, materialToDelete.grammage,
+          materialToDelete.quantity, materialToDelete.unit_cost, materialToDelete.total_cost,
+          null, null, null, null, null, null, null, // All nulls indicate deletion
+          `${edit_reason} (Material deleted)`, userId
+        ]
+      );
+
+      // Delete the material
+      await client.query(
+        'DELETE FROM materials_used WHERE id = $1',
+        [materialToDelete.id]
+      );
+    }
+
+    // Update job's updated_at timestamp
+    await client.query(
+      'UPDATE jobs SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+      [jobId]
+    );
+
+    // Get updated materials for response
+    const updatedMaterials = await client.query(
+      'SELECT * FROM materials_used WHERE job_id = $1 ORDER BY created_at',
+      [jobId]
+    );
+
+    // Get edit history for response
+    const editHistory = await client.query(
+      `SELECT meh.*, u.name as editor_name 
+       FROM material_edit_history meh 
+       LEFT JOIN users u ON meh.edited_by = u.id 
+       WHERE meh.job_id = $1 
+       ORDER BY meh.edited_at DESC 
+       LIMIT 10`,
+      [jobId]
+    );
+
+    await client.query('COMMIT');
+
+    // Send notification
+    try {
+      broadcastToAdmins({
+        type: 'materials_updated',
+        notification: {
+          title: 'Job Materials Updated',
+          message: `Materials for job ${job.ticket_id} were updated by ${req.user.name}`,
+          type: 'materials_updated',
+          relatedEntityId: jobId,
+          createdAt: new Date()
+        }
+      });
+    } catch (notifyError) {
+      console.warn('Notification failed:', notifyError);
+    }
+
+    res.json({
+      message: 'Materials updated successfully',
+      materials: updatedMaterials.rows,
+      editHistory: editHistory.rows
+    });
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Update materials error:', error);
     res.status(500).json({ error: 'Internal server error' });
   } finally {
     client.release();

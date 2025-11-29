@@ -225,6 +225,43 @@ async function setupDatabase() {
       );
     `);
 
+    await pool.query(`
+      -- Add this to your database setup
+CREATE TABLE IF NOT EXISTS material_edit_history (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    material_used_id UUID NOT NULL REFERENCES materials_used(id) ON DELETE CASCADE,
+    job_id UUID NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    
+    -- Previous values
+    previous_material_name TEXT,
+    previous_paper_size TEXT,
+    previous_paper_type TEXT,
+    previous_grammage TEXT,
+    previous_quantity DECIMAL(10,2),
+    previous_unit_cost DECIMAL(10,2),
+    previous_total_cost DECIMAL(10,2),
+    
+    -- New values
+    new_material_name TEXT,
+    new_paper_size TEXT,
+    new_paper_type TEXT,
+    new_grammage TEXT,
+    new_quantity DECIMAL(10,2),
+    new_unit_cost DECIMAL(10,2),
+    new_total_cost DECIMAL(10,2),
+    
+    -- Edit metadata
+    edit_reason TEXT NOT NULL,
+    edited_by UUID NOT NULL REFERENCES users(id),
+    edited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_material_edit_history_job_id ON material_edit_history(job_id);
+CREATE INDEX IF NOT EXISTS idx_material_edit_history_material_id ON material_edit_history(material_used_id);
+CREATE INDEX IF NOT EXISTS idx_material_edit_history_edited_at ON material_edit_history(edited_at DESC);
+    `);
+
     // Notifications table
     // Update notifications table for push notifications
 await pool.query(`

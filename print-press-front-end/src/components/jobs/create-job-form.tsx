@@ -1,4 +1,3 @@
-// components/jobs/create-job-form.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -8,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { jobService } from '@/lib/jobService';
-import { isApiError } from '@/lib/api';
+import { AlertCircle, WifiOff } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface JobFormData {
   customer_id?: string;
@@ -27,6 +27,7 @@ export const CreateJobForm: React.FC = () => {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [isNetworkError, setIsNetworkError] = useState(false);
   const [customerId, setCustomerId] = useState<string>('');
   const [formData, setFormData] = useState<JobFormData>({
     customer_name: '',
@@ -76,30 +77,87 @@ export const CreateJobForm: React.FC = () => {
     
     const validationError = validateForm(formData);
     if (validationError) {
+      toast.error('Validation Error', { description: validationError });
       setError(validationError);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     setLoading(true);
     setError('');
+    setIsNetworkError(false);
 
     try {
-      // Include customer_id if available from URL parameters
-      const submitData = customerId 
-        ? { ...formData, customer_id: customerId }
-        : formData;
+      // Data Cleaning
+      const submitData = {
+        ...formData,
+        // Only include customer_id if it is a real string, otherwise undefined
+        customer_id: customerId && customerId.trim() !== '' ? customerId : undefined,
+        // Ensure numeric values are numbers
+        total_cost: Number(formData.total_cost),
+        // Send undefined if strings are empty to avoid DB errors
+        delivery_deadline: formData.delivery_deadline === '' ? undefined : formData.delivery_deadline,
+        customer_email: formData.customer_email === '' ? undefined : formData.customer_email,
+      };
 
       console.log('Submitting job data:', submitData);
       
       await jobService.createJob(submitData);
+      
+      toast.success('Job Created Successfully');
       router.push('/admin/jobs');
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error('Failed to create job:', err);
-      if (isApiError(err)) {
-        setError(err.error);
-      } else {
-        setError('Failed to create job');
+      
+      let toastTitle = 'Failed to create job';
+      let userInstruction = 'Please check your inputs and try again.';
+
+      // --- 1. HANDLE NETWORK ERRORS (No Internet / Server Down) ---
+      if (!err.response) {
+        toastTitle = 'Network Error';
+        userInstruction = 'Unable to connect to the server. Please check your internet connection.';
+        setIsNetworkError(true);
+      } 
+      // --- 2. HANDLE SERVER/DATABASE ERRORS ---
+      else if (err.response && err.response.data) {
+        const backendError = err.response.data;
+        // Convert error object to string to search for keywords (handles 'details', 'message', 'error')
+        const fullErrorString = JSON.stringify(backendError).toLowerCase();
+
+        // SCENARIO: Duplicate Email (Postgres Code 23505)
+        if (fullErrorString.includes('email') && (fullErrorString.includes('already exists') || fullErrorString.includes('duplicate'))) {
+          toastTitle = 'Email Already Exists';
+          userInstruction = 'This email is already registered to another customer. Please use a different email.';
+        }
+        // SCENARIO: Duplicate Phone
+        else if (fullErrorString.includes('phone') && (fullErrorString.includes('already exists') || fullErrorString.includes('duplicate'))) {
+          toastTitle = 'Phone Number Exists';
+          userInstruction = 'This phone number is already registered. Please check the number or select the existing customer.';
+        }
+        // SCENARIO: Invalid Date
+        else if (fullErrorString.includes('invalid input syntax') && fullErrorString.includes('date')) {
+          toastTitle = 'Invalid Date Format';
+          userInstruction = 'Please ensure the "Delivery Deadline" is a valid date or leave it empty.';
+        }
+        // SCENARIO: Text too long
+        else if (fullErrorString.includes('value too long')) {
+          toastTitle = 'Input Too Long';
+          userInstruction = 'One of your text inputs is too long for the database. Please shorten it.';
+        }
+        // SCENARIO: Fallback for generic backend message
+        else if (backendError.error && backendError.error !== 'Internal server error') {
+          userInstruction = backendError.error;
+        }
       }
+
+      // Show Toast Notification
+      toast.error(toastTitle, { description: userInstruction });
+      
+      // Show Persistent Error Box
+      setError(userInstruction);
+      
+      // Scroll to top so user sees the error
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
     }
@@ -125,9 +183,22 @@ export const CreateJobForm: React.FC = () => {
       
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6">
+          
+          {/* Enhanced Error Display */}
           {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
-              {error}
+            <div className={`p-4 rounded-md border flex items-start space-x-3 ${
+              isNetworkError ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'
+            }`}>
+              {isNetworkError ? (
+                <WifiOff className="h-5 w-5 text-yellow-600 mt-0.5" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+              )}
+              <div className={`text-sm font-medium ${
+                isNetworkError ? 'text-yellow-700' : 'text-red-700'
+              }`}>
+                {error}
+              </div>
             </div>
           )}
 
@@ -177,8 +248,6 @@ export const CreateJobForm: React.FC = () => {
                 className="mt-1"
               />
             </div>
-
-            
           </div>
 
           {/* Job Details Section */}

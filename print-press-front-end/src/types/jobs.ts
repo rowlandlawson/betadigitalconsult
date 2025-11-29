@@ -33,6 +33,18 @@ export interface MaterialUsed {
   update_inventory?: boolean;
 }
 
+export interface Material extends MaterialUsed {
+  id?: string;
+  material_name: string;
+  paper_size?: string;
+  paper_type?: string;
+  grammage?: number;
+  quantity: number;
+  unit_cost: number;
+  total_cost: number;
+  update_inventory?: boolean;
+}
+
 export interface WasteExpense {
   id?: string;
   type: 'paper_waste' | 'material_waste' | 'labor' | 'operational' | 'other';
@@ -47,6 +59,42 @@ export interface JobStatusUpdate {
   status: 'not_started' | 'in_progress' | 'completed' | 'delivered';
   materials?: MaterialUsed[];
   waste?: WasteExpense[];
+}
+
+export interface MaterialEditHistory {
+  id: string;
+  material_used_id: string;
+  job_id: string;
+  previous_material_name: string | null;
+  previous_paper_size: string | null;
+  previous_paper_type: string | null;
+  previous_grammage: string | null;
+  previous_quantity: number | null;
+  previous_unit_cost: number | null;
+  previous_total_cost: number | null;
+  new_material_name: string | null;
+  new_paper_size: string | null;
+  new_paper_type: string | null;
+  new_grammage: string | null;
+  new_quantity: number | null;
+  new_unit_cost: number | null;
+  new_total_cost: number | null;
+  edit_reason: string;
+  edited_by: string;
+  editor_name: string;
+  edited_at: string;
+  current_material_name: string | null;
+}
+
+export interface MaterialsUpdateRequest {
+  materials: Material[];
+  edit_reason: string;
+}
+
+export interface MaterialsUpdateResponse {
+  message: string;
+  materials: Material[];
+  editHistory: MaterialEditHistory[];
 }
 
 export interface Job {
@@ -83,7 +131,7 @@ export interface JobWithDetails extends Job {
   materials: MaterialUsed[];
   waste: WasteExpense[];
   payments: Payment[];
-  total_jobs_count?: number; // Added this property
+  total_jobs_count?: number;
 }
 
 export interface PaginatedJobsResponse {
@@ -94,4 +142,25 @@ export interface PaginatedJobsResponse {
     total: number;
     totalPages: number;
   };
+}
+
+// Types for job completion modal (if not already defined)
+export interface MaterialEntry {
+  material_name: string;
+  paper_size?: string;
+  paper_type?: string;
+  grammage?: string;
+  quantity: number;
+  unit_cost: number;
+  total_cost: number;
+  update_inventory?: boolean;
+}
+
+export interface WasteEntry {
+  type: 'paper_waste' | 'material_waste' | 'labor' | 'operational' | 'other';
+  description: string;
+  quantity?: number;
+  unit_cost?: number;
+  total_cost: number;
+  waste_reason?: string;
 }

@@ -19,17 +19,28 @@ export interface MaterialEntry {
 }
 
 export interface WasteEntry {
-  type: 'paper_waste' | 'material_waste' | 'other';
+  type: 'paper_waste' | 'material_waste' | 'labor' | 'operational' | 'other';
   description: string;
-  quantity: number;
+  quantity?: number;
+  unit_cost?: number;
   total_cost: number;
   waste_reason: string;
+  material_id?: string;
+}
+
+export interface OperationalExpenseEntry {
+  description: string;
+  category: string;
+  amount: number;
+  expense_date: string;
+  receipt_number?: string;
+  notes?: string;
 }
 
 interface JobCompletionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (materials: MaterialEntry[], waste: WasteEntry[]) => Promise<void>;
+  onConfirm: (materials: MaterialEntry[], waste: WasteEntry[], expenses: OperationalExpenseEntry[]) => Promise<void>;
   loading: boolean;
 }
 
@@ -41,6 +52,7 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
 }) => {
   const [materials, setMaterials] = useState<MaterialEntry[]>([]);
   const [waste, setWaste] = useState<WasteEntry[]>([]);
+  const [expenses, setExpenses] = useState<OperationalExpenseEntry[]>([]);
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
 
   // Fetch inventory when modal opens
@@ -122,6 +134,40 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
     ]);
   };
 
+  const addExpenseRow = () => {
+    setExpenses(prev => [
+      ...prev,
+      {
+        description: '',
+        category: '',
+        amount: 0,
+        expense_date: new Date().toISOString().split('T')[0],
+        receipt_number: '',
+        notes: ''
+      }
+    ]);
+  };
+
+  const removeExpenseRow = (index: number) => {
+    setExpenses(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateExpense = (index: number, field: keyof OperationalExpenseEntry, value: any) => {
+    setExpenses(prev => {
+      const newExpenses = [...prev];
+      const updatedItem = { ...newExpenses[index] };
+      
+      if (field === 'amount') {
+        updatedItem.amount = parseFloat(value) || 0;
+      } else {
+        (updatedItem as any)[field] = value;
+      }
+      
+      newExpenses[index] = updatedItem;
+      return newExpenses;
+    });
+  };
+
   const removeWasteRow = (index: number) => {
     setWaste(prev => prev.filter((_, i) => i !== index));
   };
@@ -143,11 +189,12 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
   };
 
   const handleConfirm = () => {
-    onConfirm(materials, waste);
+    onConfirm(materials, waste, expenses);
   };
 
   const totalMaterialCost = materials.reduce((sum, m) => sum + m.total_cost, 0);
   const totalWasteCost = waste.reduce((sum, w) => sum + w.total_cost, 0);
+  const totalExpenseCost = expenses.reduce((sum, e) => sum + e.amount, 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -179,11 +226,18 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                     onChange={(e) => updateMaterial(index, 'material_name', e.target.value)}
                   >
                     <option value="">-- Select --</option>
-                    {inventoryItems.map(inv => (
-                      <option key={inv.id} value={inv.material_name}>
-                        {inv.material_name} ({formatCurrency(inv.unit_cost)})
-                      </option>
-                    ))}
+                    {inventoryItems.map(inv => {
+                      const isDisabled = inv.current_stock <= 0;
+                      return (
+                        <option 
+                          key={inv.id} 
+                          value={inv.material_name}
+                          disabled={isDisabled}
+                        >
+                          {inv.material_name} ({formatCurrency(inv.unit_cost)}) {isDisabled ? '- OUT OF STOCK' : `- Stock: ${inv.current_stock}`}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div className="md:col-span-2">
@@ -282,10 +336,65 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
             ))}
              {waste.length === 0 && <p className="text-sm text-gray-500 italic text-center py-4 bg-gray-50 rounded border border-dashed">No waste recorded.</p>}
           </div>
+
+          <hr />
+
+          {/* Operational Expenses Section */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-medium text-orange-700">Operational Expenses</h3>
+              <Button type="button" variant="outline" size="sm" onClick={addExpenseRow} className="text-orange-600 border-orange-200 hover:bg-orange-50">
+                <Plus className="h-4 w-4 mr-2" /> Add Expense
+              </Button>
+            </div>
+
+            {expenses.map((item, index) => (
+              <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border border-orange-100 p-3 rounded-md bg-orange-50">
+                <div className="md:col-span-4">
+                  <Label className="text-xs">Description</Label>
+                  <Input 
+                    value={item.description}
+                    onChange={(e) => updateExpense(index, 'description', e.target.value)}
+                    placeholder="e.g. Equipment maintenance"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="text-xs">Category</Label>
+                  <Input 
+                    value={item.category}
+                    onChange={(e) => updateExpense(index, 'category', e.target.value)}
+                    placeholder="e.g. Maintenance"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="text-xs">Amount</Label>
+                  <Input 
+                    type="number"
+                    value={item.amount}
+                    onChange={(e) => updateExpense(index, 'amount', e.target.value)}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="text-xs">Date</Label>
+                  <Input 
+                    type="date"
+                    value={item.expense_date}
+                    onChange={(e) => updateExpense(index, 'expense_date', e.target.value)}
+                  />
+                </div>
+                <div className="md:col-span-1 flex justify-end md:justify-center">
+                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-100" onClick={() => removeExpenseRow(index)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {expenses.length === 0 && <p className="text-sm text-gray-500 italic text-center py-4 bg-gray-50 rounded border border-dashed">No expenses recorded.</p>}
+          </div>
           
           <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg flex justify-between items-center">
             <span className="font-semibold text-blue-900">Total Additional Cost:</span>
-            <span className="font-bold text-lg text-blue-900">{formatCurrency(totalMaterialCost + totalWasteCost)}</span>
+            <span className="font-bold text-lg text-blue-900">{formatCurrency(totalMaterialCost + totalWasteCost + totalExpenseCost)}</span>
           </div>
 
         </div>

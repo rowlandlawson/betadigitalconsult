@@ -2,6 +2,7 @@
 import { pool } from '../config/database.js';
 import { NotificationService } from '../services/notificationService.js';
 import { broadcastToAdmins } from '../websocket/notificationServer.js';
+import { SheetCalculator } from '../utils/sheetCalculator.js';
 
 const notificationService = new NotificationService();
 
@@ -349,11 +350,11 @@ export const updateJobStatus = async (req, res) => {
     await client.query('BEGIN');
 
     const { id } = req.params;
-    const { status, materials, waste } = req.body;
+    const { status, materials, waste, expenses } = req.body;
 
     // Get current job status
     const currentJob = await client.query(
-      'SELECT status, worker_id FROM jobs WHERE id = $1',
+      'SELECT status, worker_id, ticket_id FROM jobs WHERE id = $1',
       [id]
     );
 
@@ -367,6 +368,7 @@ export const updateJobStatus = async (req, res) => {
     }
 
     const oldStatus = currentJob.rows[0].status;
+    const jobTicketId = currentJob.rows[0].ticket_id;
 
     // Update job status
     await client.query(
@@ -377,27 +379,134 @@ export const updateJobStatus = async (req, res) => {
     // Record materials used if provided
     if (materials && Array.isArray(materials)) {
       for (const material of materials) {
-        await client.query(
-          `INSERT INTO materials_used (job_id, material_name, paper_size, paper_type, grammage, quantity, unit_cost, total_cost)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        // Get inventory item
+        let materialId = null;
+        let inventoryItem = null;
+        
+        if (material.material_name) {
+          const invResult = await client.query(
+            'SELECT * FROM inventory WHERE material_name ILIKE $1 AND is_active = true LIMIT 1',
+            [`%${material.material_name}%`]
+          );
+          
+          if (invResult.rows.length > 0) {
+            inventoryItem = invResult.rows[0];
+            materialId = inventoryItem.id;
+          }
+        }
+
+        // Calculate sheets used
+        const sheetsPerUnit = inventoryItem?.sheets_per_unit || 500;
+        const sheetsUsed = material.quantity_sheets || 
+          (material.quantity * sheetsPerUnit) || 
+          material.quantity; // Fallback to quantity if no conversion
+
+        // Always record material usage
+        const materialUsedResult = await client.query(
+          `INSERT INTO materials_used (
+            job_id, material_id, material_name, quantity, quantity_sheets,
+            unit_cost, total_cost, unit_of_measure, sheets_converted
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          RETURNING *`,
           [
             id,
+            materialId,
             material.material_name,
-            material.paper_size,
-            material.paper_type,
-            material.grammage,
-            material.quantity,
+            material.quantity || (sheetsUsed / sheetsPerUnit),
+            sheetsUsed,
             material.unit_cost,
-            material.total_cost || (material.quantity * material.unit_cost)
+            material.total_cost || (sheetsUsed * (inventoryItem?.cost_per_sheet || material.unit_cost / sheetsPerUnit)),
+            material.unit_of_measure || 'sheets',
+            !!inventoryItem
           ]
         );
 
-        // Update inventory if material exists and update_inventory is true
-        if (material.update_inventory) {
+        // Update inventory if material exists
+        if (materialId && inventoryItem) {
+          // Check stock
+          if (sheetsUsed > inventoryItem.current_stock_sheets) {
+            // Insufficient stock - log warning but continue
+            console.warn(`Insufficient stock for ${inventoryItem.material_name}. Need: ${sheetsUsed}, Have: ${inventoryItem.current_stock_sheets}`);
+            
+            // Option 1: Use what's available
+            const actualSheetsUsed = Math.min(sheetsUsed, inventoryItem.current_stock_sheets);
+            const newSheets = inventoryItem.current_stock_sheets - actualSheetsUsed;
+            
+            await client.query(
+              'UPDATE inventory SET current_stock_sheets = $1 WHERE id = $2',
+              [newSheets, materialId]
+            );
+            
+            // Update materials_used with actual used
+            await client.query(
+              'UPDATE materials_used SET quantity_sheets = $1 WHERE id = $2',
+              [actualSheetsUsed, materialUsedResult.rows[0].id]
+            );
+            
+            // Send urgent notification
+            await notificationService.createNotification({
+              title: 'Stock Shortage',
+              message: `${inventoryItem.material_name} had insufficient stock. Used ${actualSheetsUsed} of ${sheetsUsed} requested sheets.`,
+              type: 'system',
+              priority: 'high'
+            });
+          } else {
+            // Normal case - enough stock
+            const newSheets = inventoryItem.current_stock_sheets - sheetsUsed;
+            
+            await client.query(
+              'UPDATE inventory SET current_stock_sheets = $1 WHERE id = $2',
+              [newSheets, materialId]
+            );
+          }
+
+          // Record in material_usage table
           await client.query(
-            'UPDATE inventory SET current_stock = current_stock - $1, updated_at = CURRENT_TIMESTAMP WHERE material_name = $2 AND current_stock >= $1',
-            [material.quantity, material.material_name]
+            `INSERT INTO material_usage (
+              material_id, job_id, quantity_used, quantity_sheets, unit_cost, total_cost,
+              usage_date, usage_type, notes, recorded_by
+            ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE, 'production', $7, $8)`,
+            [
+              materialId,
+              id,
+              sheetsUsed / sheetsPerUnit,
+              sheetsUsed,
+              material.unit_cost || inventoryItem.unit_cost,
+              sheetsUsed * inventoryItem.cost_per_sheet,
+              `Job ${job.ticket_id}`,
+              req.user.userId
+            ]
           );
+
+          // Check stock status
+          const updatedInv = await client.query(
+            'SELECT * FROM inventory WHERE id = $1',
+            [materialId]
+          );
+          
+          if (updatedInv.rows.length > 0) {
+            const updatedItem = updatedInv.rows[0];
+            const stockStatus = SheetCalculator.checkStockStatus(
+              updatedItem.current_stock_sheets,
+              updatedItem.threshold_sheets
+            );
+            
+            if (stockStatus.isLow) {
+              const display = SheetCalculator.toDisplay(
+                updatedItem.current_stock_sheets,
+                updatedItem.sheets_per_unit
+              );
+              
+              await notificationService.createNotification({
+                title: 'Low Stock Alert',
+                message: `${updatedItem.material_name} is below threshold. ${display.display}`,
+                type: 'low_stock',
+                relatedEntityType: 'inventory',
+                relatedEntityId: materialId,
+                priority: stockStatus.priority
+              });
+            }
+          }
         }
       }
     }
@@ -405,41 +514,96 @@ export const updateJobStatus = async (req, res) => {
     // Record waste if provided
     if (waste && Array.isArray(waste)) {
       for (const wasteItem of waste) {
+        let materialId = null;
+        if (wasteItem.material_id) {
+          materialId = wasteItem.material_id;
+        } else if (wasteItem.material_name) {
+          const invResult = await client.query(
+            'SELECT id FROM inventory WHERE material_name = $1 LIMIT 1',
+            [wasteItem.material_name]
+          );
+          if (invResult.rows.length > 0) {
+            materialId = invResult.rows[0].id;
+          }
+        }
+
         await client.query(
-          `INSERT INTO waste_expenses (job_id, type, description, quantity, unit_cost, total_cost, waste_reason)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          `INSERT INTO waste_expenses (job_id, material_id, type, description, quantity, unit_cost, total_cost, waste_reason)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
             id,
+            materialId,
             wasteItem.type,
             wasteItem.description,
-            wasteItem.quantity || 1,
-            wasteItem.unit_cost || wasteItem.total_cost,
+            wasteItem.quantity || null,
+            wasteItem.unit_cost || null,
             wasteItem.total_cost,
-            wasteItem.waste_reason
+            wasteItem.waste_reason || null
           ]
         );
       }
     }
 
-    // Notify admins about status change
-    if (oldStatus !== status) {
-      const jobResult = await client.query(
-        'SELECT ticket_id FROM jobs WHERE id = $1',
-        [id]
-      );
-      
-      const job = { 
-        id, 
-        ticket_id: jobResult.rows[0].ticket_id,
-        status 
-      };
+    // Record operational expenses if provided
+    if (expenses && Array.isArray(expenses)) {
+      for (const expense of expenses) {
+        await client.query(
+          `INSERT INTO operational_expenses (description, category, amount, expense_date, receipt_number, notes, recorded_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [
+            expense.description,
+            expense.category,
+            expense.amount,
+            expense.expense_date,
+            expense.receipt_number || null,
+            expense.notes || null,
+            req.user.userId
+          ]
+        );
+      }
+    }
 
+    // Notify admins about status change and material/expense updates
+    const job = { 
+      id, 
+      ticket_id: jobTicketId,
+      status 
+    };
+
+    if (oldStatus !== status) {
       await notificationService.notifyStatusChange(job, oldStatus, status, req.user);
       broadcastToAdmins({
         type: 'new_notification',
         notification: {
           title: 'Job Status Updated',
           message: `Job ${job.ticket_id} status changed from ${oldStatus} to ${status} by ${req.user.name}`,
+          type: 'status_change',
+          relatedEntityId: id,
+          createdAt: new Date()
+        }
+      });
+    }
+
+    // Notify about materials/expenses updates
+    if (materials && materials.length > 0) {
+      broadcastToAdmins({
+        type: 'new_notification',
+        notification: {
+          title: 'Job Materials Updated',
+          message: `${materials.length} material(s) recorded for job ${job.ticket_id} by ${req.user.name}`,
+          type: 'status_change',
+          relatedEntityId: id,
+          createdAt: new Date()
+        }
+      });
+    }
+
+    if (expenses && expenses.length > 0) {
+      broadcastToAdmins({
+        type: 'new_notification',
+        notification: {
+          title: 'Operational Expenses Recorded',
+          message: `${expenses.length} expense(s) recorded for job ${job.ticket_id} by ${req.user.name}`,
           type: 'status_change',
           relatedEntityId: id,
           createdAt: new Date()
@@ -604,7 +768,7 @@ export const updateJobMaterials = async (req, res) => {
     await client.query('BEGIN');
 
     const { jobId } = req.params;
-    const { materials, edit_reason } = req.body;
+    const { materials, waste, expenses, edit_reason } = req.body;
     const userId = req.user.userId;
 
     if (!edit_reason || edit_reason.trim().length < 5) {
@@ -629,6 +793,7 @@ export const updateJobMaterials = async (req, res) => {
     }
 
     const job = jobCheck.rows[0];
+    const jobTicketId = job.ticket_id;
 
     // Check access - workers can only edit their own jobs, admins can edit all
     if (req.user.role === 'worker' && job.worker_id !== userId) {
@@ -649,11 +814,17 @@ export const updateJobMaterials = async (req, res) => {
 
     // Process material updates
     for (const material of materials) {
+      const sheetsPerUnit = material.sheets_per_unit || 500;
+      const quantitySheets = material.quantity_sheets || (material.quantity * sheetsPerUnit);
+
       if (material.id) {
         // Update existing material
         const currentMaterial = currentMaterialsMap.get(material.id);
         
         if (currentMaterial) {
+          const oldQuantitySheets = currentMaterial.quantity_sheets || (currentMaterial.quantity * sheetsPerUnit);
+          const quantityChange = quantitySheets - oldQuantitySheets;
+
           // Check if any changes were made
           const hasChanges = 
             currentMaterial.material_name !== material.material_name ||
@@ -691,8 +862,8 @@ export const updateJobMaterials = async (req, res) => {
               `UPDATE materials_used 
                SET material_name = $1, paper_size = $2, paper_type = $3, 
                    grammage = $4, quantity = $5, unit_cost = $6, total_cost = $7,
-                   updated_at = CURRENT_TIMESTAMP
-               WHERE id = $8 AND job_id = $9`,
+                   quantity_sheets = $8, updated_at = CURRENT_TIMESTAMP
+               WHERE id = $9 AND job_id = $10`,
               [
                 material.material_name,
                 material.paper_size || null,
@@ -701,10 +872,19 @@ export const updateJobMaterials = async (req, res) => {
                 material.quantity,
                 material.unit_cost,
                 material.total_cost || (material.quantity * material.unit_cost),
+                quantitySheets,
                 material.id,
                 jobId
               ]
             );
+
+            // Update inventory if material_id is present
+            if(currentMaterial.material_id) {
+              await client.query(
+                `UPDATE inventory SET current_stock_sheets = current_stock_sheets - $1 WHERE id = $2`,
+                [quantityChange, currentMaterial.material_id]
+              );
+            }
           }
         }
       } else {
@@ -712,8 +892,8 @@ export const updateJobMaterials = async (req, res) => {
         const newMaterialResult = await client.query(
           `INSERT INTO materials_used (
             job_id, material_name, paper_size, paper_type, grammage, 
-            quantity, unit_cost, total_cost
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            quantity, unit_cost, total_cost, quantity_sheets, material_id
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
           RETURNING *`,
           [
             jobId,
@@ -723,7 +903,9 @@ export const updateJobMaterials = async (req, res) => {
             material.grammage || null,
             material.quantity,
             material.unit_cost,
-            material.total_cost || (material.quantity * material.unit_cost)
+            material.total_cost || (material.quantity * material.unit_cost),
+            quantitySheets,
+            material.material_id || null
           ]
         );
 
@@ -747,6 +929,14 @@ export const updateJobMaterials = async (req, res) => {
             `${edit_reason} (New material added)`, userId
           ]
         );
+
+        // Update inventory if material_id is present
+        if (material.material_id) {
+          await client.query(
+            `UPDATE inventory SET current_stock_sheets = current_stock_sheets - $1 WHERE id = $2`,
+            [quantitySheets, material.material_id]
+          );
+        }
       }
     }
 
@@ -784,6 +974,105 @@ export const updateJobMaterials = async (req, res) => {
       );
     }
 
+    // Handle waste if provided
+    if (waste && Array.isArray(waste)) {
+      for (const wasteItem of waste) {
+        let materialId = null;
+        if (wasteItem.material_id) {
+          materialId = wasteItem.material_id;
+        } else if (wasteItem.material_name) {
+          const invResult = await client.query(
+            'SELECT id FROM inventory WHERE material_name = $1 LIMIT 1',
+            [wasteItem.material_name]
+          );
+          if (invResult.rows.length > 0) {
+            materialId = invResult.rows[0].id;
+          }
+        }
+
+        if (wasteItem.id) {
+          // Update existing waste
+          await client.query(
+            `UPDATE waste_expenses 
+             SET material_id = $1, type = $2, description = $3, quantity = $4, 
+                 unit_cost = $5, total_cost = $6, waste_reason = $7
+             WHERE id = $8 AND job_id = $9`,
+            [
+              materialId,
+              wasteItem.type,
+              wasteItem.description,
+              wasteItem.quantity || null,
+              wasteItem.unit_cost || null,
+              wasteItem.total_cost,
+              wasteItem.waste_reason || null,
+              wasteItem.id,
+              jobId
+            ]
+          );
+        } else {
+          // Insert new waste
+          await client.query(
+            `INSERT INTO waste_expenses (job_id, material_id, type, description, quantity, unit_cost, total_cost, waste_reason)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [
+              jobId,
+              materialId,
+              wasteItem.type,
+              wasteItem.description,
+              wasteItem.quantity || null,
+              wasteItem.unit_cost || null,
+              wasteItem.total_cost,
+              wasteItem.waste_reason || null
+            ]
+          );
+        }
+      }
+    }
+
+    // Handle operational expenses if provided
+    if (expenses && Array.isArray(expenses)) {
+      for (const expense of expenses) {
+        if (expense.id) {
+          // Update existing expense
+          await client.query(
+            `UPDATE operational_expenses 
+             SET description = $1, category = $2, amount = $3, expense_date = $4, 
+                 receipt_number = $5, notes = $6
+             WHERE id = $7`,
+            [
+              expense.description,
+              expense.category,
+              expense.amount,
+              expense.expense_date,
+              expense.receipt_number || null,
+              expense.notes || null,
+              expense.id
+            ]
+          );
+        } else {
+          // Insert new expense (link to job via notes or create a job_expenses table)
+          // For now, we'll add job_id to notes or create a separate linking mechanism
+          const notesWithJob = expense.notes 
+            ? `${expense.notes} [Job: ${jobTicketId}]`
+            : `[Job: ${jobTicketId}]`;
+          
+          await client.query(
+            `INSERT INTO operational_expenses (description, category, amount, expense_date, receipt_number, notes, recorded_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              expense.description,
+              expense.category,
+              expense.amount,
+              expense.expense_date,
+              expense.receipt_number || null,
+              notesWithJob,
+              userId
+            ]
+          );
+        }
+      }
+    }
+
     // Update job's updated_at timestamp
     await client.query(
       'UPDATE jobs SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
@@ -794,6 +1083,20 @@ export const updateJobMaterials = async (req, res) => {
     const updatedMaterials = await client.query(
       'SELECT * FROM materials_used WHERE job_id = $1 ORDER BY created_at',
       [jobId]
+    );
+
+    // Get updated waste for response
+    const updatedWaste = await client.query(
+      'SELECT * FROM waste_expenses WHERE job_id = $1 ORDER BY created_at',
+      [jobId]
+    );
+
+    // Get expenses linked to this job (via notes)
+    const updatedExpenses = await client.query(
+      `SELECT * FROM operational_expenses 
+       WHERE notes LIKE $1 
+       ORDER BY expense_date DESC`,
+      [`%[Job: ${jobTicketId}]%`]
     );
 
     // Get edit history for response
@@ -828,6 +1131,8 @@ export const updateJobMaterials = async (req, res) => {
     res.json({
       message: 'Materials updated successfully',
       materials: updatedMaterials.rows,
+      waste: updatedWaste.rows,
+      expenses: updatedExpenses.rows,
       editHistory: editHistory.rows
     });
 

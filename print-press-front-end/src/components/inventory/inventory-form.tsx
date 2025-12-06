@@ -25,12 +25,14 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ itemId, mode }) =>
     paper_type: '',
     grammage: undefined,
     supplier: '',
-    current_stock: 0,
-    unit_of_measure: 'sheets',
+    sheets_per_unit: 500,
+    reams_stock: 0,
+    sheets_stock: 0,
     unit_cost: 0,
-    selling_price: undefined,
-    threshold: 0,
+    threshold_sheets: 100,
     reorder_quantity: undefined,
+    is_active: true,
+    supplier_contact: '',
   });
 
   useEffect(() => {
@@ -40,6 +42,10 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ itemId, mode }) =>
         const response = await api.get<{ item: InventoryItem }>(`/inventory/${itemId}`);
         const item = response.data.item;
         if (item) {
+          const { reams, sheets } = item.display_stock;
+          const threshold_reams = Math.floor(item.threshold_sheets / item.sheets_per_unit);
+          const threshold_sheets_part = item.threshold_sheets % item.sheets_per_unit;
+
           setFormData({
             material_name: item.material_name,
             category: item.category,
@@ -47,19 +53,15 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ itemId, mode }) =>
             paper_type: item.paper_type || '',
             grammage: item.grammage || undefined,
             supplier: item.supplier || '',
-            current_stock: item.current_stock,
-            unit_of_measure: item.unit_of_measure,
+            sheets_per_unit: item.sheets_per_unit,
+            reams_stock: reams,
+            sheets_stock: sheets,
             unit_cost: item.unit_cost,
-            selling_price: item.selling_price || undefined,
-            threshold: item.threshold,
+            threshold_sheets: item.threshold_sheets,
             reorder_quantity: item.reorder_quantity || undefined,
+            is_active: item.is_active !== undefined ? item.is_active : true,
+            supplier_contact: (item as any).supplier_contact || '',
           });
-          
-          // Check if unit is custom
-          const standardUnits = ['sheets', 'reams', 'rolls', 'liters', 'kilograms', 'grams', 'pieces', 'packs', 'boxes'];
-          if (!standardUnits.includes(item.unit_of_measure)) {
-            setCustomUnit(true);
-          }
         }
       } catch (err: unknown) {
         console.error('Failed to fetch item:', err);
@@ -249,60 +251,48 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ itemId, mode }) =>
           {/* Stock Information */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input
-              label="Current Stock *"
-              name="current_stock"
+              label="Sheets per Unit"
+              name="sheets_per_unit"
+              type="number"
+              min="1"
+              required
+              value={formData.sheets_per_unit}
+              onChange={handleChange}
+              placeholder="e.g., 500"
+              disabled={loading}
+            />
+            <Input
+              label="Stock (Reams)"
+              name="reams_stock"
               type="number"
               min="0"
               step="0.01"
-              required
-              value={formData.current_stock}
+              value={formData.reams_stock}
               onChange={handleChange}
               placeholder="0"
               disabled={loading}
             />
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Unit of Measure *
-              </label>
-              <select
-                name="unit_of_measure_select"
-                required
-                value={customUnit ? 'custom' : formData.unit_of_measure}
-                onChange={handleUnitChange}
-                disabled={loading}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-              >
-                <option value="">Select Unit</option>
-                {unitOptions.map(unit => (
-                  <option key={unit} value={unit}>
-                    {unit === 'custom' ? 'Custom Unit...' : unit}
-                  </option>
-                ))}
-              </select>
-              
-              {customUnit && (
-                <Input
-                  name="unit_of_measure"
-                  type="text"
-                  required
-                  value={formData.unit_of_measure}
-                  onChange={handleChange}
-                  placeholder="Enter custom unit (e.g., bottles, tubes, etc.)"
-                  disabled={loading}
-                  className="mt-2"
-                />
-              )}
-            </div>
-            
             <Input
-              label="Low Stock Threshold *"
-              name="threshold"
+              label="Stock (Sheets)"
+              name="sheets_stock"
               type="number"
               min="0"
-              step="0.01"
+              step="1"
+              value={formData.sheets_stock}
+              onChange={handleChange}
+              placeholder="0"
+              disabled={loading}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Input
+              label="Low Stock Threshold (Sheets)"
+              name="threshold_sheets"
+              type="number"
+              min="0"
+              step="1"
               required
-              value={formData.threshold}
+              value={formData.threshold_sheets}
               onChange={handleChange}
               placeholder="0"
               disabled={loading}
@@ -319,18 +309,6 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ itemId, mode }) =>
               step="0.01"
               required
               value={formData.unit_cost}
-              onChange={handleChange}
-              placeholder="0.00"
-              disabled={loading}
-            />
-            
-            <Input
-              label="Selling Price (₦)"
-              name="selling_price"
-              type="number"
-              min="0"
-              step="0.01"
-              value={formData.selling_price || ''}
               onChange={handleChange}
               placeholder="0.00"
               disabled={loading}
@@ -360,28 +338,16 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ itemId, mode }) =>
             disabled={loading}
           />
 
-          {/* stock Value Calculation */}
+          {/* Stock Value Calculation */}
           <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
             <h4 className="font-semibold text-blue-900 mb-2">Stock Value Calculation</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-blue-700">
-                  Current Stock Value: ₦{(formData.current_stock * formData.unit_cost).toLocaleString()}
-                </p>
-                <p className="text-blue-600">
-                  {formData.current_stock} {formData.unit_of_measure} × ₦{formData.unit_cost}
-                </p>
-              </div>
-              {formData.selling_price && (
-                <div>
-                  <p className="text-green-700">
-                    Potential Revenue: ₦{(formData.current_stock * formData.selling_price).toLocaleString()}
-                  </p>
-                  <p className="text-green-600">
-                    {formData.current_stock} {formData.unit_of_measure} × ₦{formData.selling_price}
-                  </p>
-                </div>
-              )}
+            <div className="text-sm">
+              <p className="text-blue-700">
+                Current Stock Value: ₦{(((formData.reams_stock || 0) * (formData.sheets_per_unit || 0) + (formData.sheets_stock || 0)) * (formData.unit_cost / (formData.sheets_per_unit || 1))).toLocaleString()}
+              </p>
+              <p className="text-blue-600">
+                {((formData.reams_stock || 0) * (formData.sheets_per_unit || 0) + (formData.sheets_stock || 0)).toLocaleString()} sheets × ₦{(formData.unit_cost / (formData.sheets_per_unit || 1)).toLocaleString()} per sheet
+              </p>
             </div>
           </div>
         </CardContent>

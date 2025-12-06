@@ -4,11 +4,9 @@ import { materialMonitoringController } from '../controllers/inventoryMaterial.j
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
-
-// Apply admin middleware to all inventory routes
 router.use(authenticateToken, requireAdmin);
 
-// Inventory management routes
+// Basic routes (should all work now)
 router.get('/', inventoryController.getInventory);
 router.get('/categories', inventoryController.getCategories);
 router.get('/alerts/low-stock', inventoryController.getLowStockAlerts);
@@ -17,12 +15,19 @@ router.post('/', inventoryController.createInventory);
 router.put('/:id', inventoryController.updateInventory);
 router.delete('/:id', inventoryController.deleteInventory);
 
-// Material usage and tracking routes
+// Sheets-based routes
+router.post('/:id/add-stock', inventoryController.addStock);
+router.post('/usage/record-sheets', inventoryController.recordUsageSheets);
+router.get('/:id/history', inventoryController.getMaterialHistory);
+router.post('/calculate-sheets', inventoryController.calculateSheets);
+router.get('/:id/stock-check', inventoryController.quickStockCheck);
+
+// Old compatibility routes
 router.post('/usage/record', inventoryController.recordUsage);
 router.post('/waste/record', inventoryController.recordWaste);
 router.post('/stock/adjust', inventoryController.adjustStock);
 
-// Material monitoring routes
+// Monitoring routes
 router.get('/monitoring/usage-trends', materialMonitoringController.getMaterialUsageTrends);
 router.get('/monitoring/waste-analysis', materialMonitoringController.getWasteAnalysis);
 router.get('/monitoring/stock-levels', materialMonitoringController.getStockLevels);

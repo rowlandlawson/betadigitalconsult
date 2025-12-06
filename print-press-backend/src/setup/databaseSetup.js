@@ -324,6 +324,25 @@ await pool.query(`
       ADD COLUMN IF NOT EXISTS material_id UUID REFERENCES inventory(id) ON DELETE SET NULL;
     `);
 
+    // Add material_id column to waste_expenses for better tracking
+    await pool.query(`
+      ALTER TABLE waste_expenses 
+      ADD COLUMN IF NOT EXISTS material_id UUID REFERENCES inventory(id);
+    `);
+
+    // Add timestamp columns for better tracking
+    await pool.query(`
+      ALTER TABLE materials_used 
+      ADD COLUMN IF NOT EXISTS inventory_updated BOOLEAN DEFAULT false,
+      ADD COLUMN IF NOT EXISTS inventory_updated_at TIMESTAMP;
+    `);
+    
+    await pool.query(`
+      ALTER TABLE waste_expenses 
+      ADD COLUMN IF NOT EXISTS inventory_updated BOOLEAN DEFAULT false,
+      ADD COLUMN IF NOT EXISTS inventory_updated_at TIMESTAMP;
+    `);
+
     // 3️⃣ Make job_id optional in waste_expenses (to allow general waste)
     await pool.query(`
       ALTER TABLE waste_expenses
@@ -356,8 +375,7 @@ async function createDefaultAdmin() {
       ON CONFLICT (email) DO NOTHING
     `, ['admin@printpress.com', 'System Administrator', hashedPassword, 'admin']);
     
-    console.log(' Default admin user created: admin@printpress.com / admin!123');
-    console.log(' Please change the default password after first login!');
+    
   } catch (error) {
     console.log(' Admin user already exists or could not be created');
   }

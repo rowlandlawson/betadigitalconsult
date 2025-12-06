@@ -151,47 +151,63 @@ export const getAllPayments = async (req, res) => {
     const { page = 1, limit = 20, start_date, end_date, payment_method } = req.query;
     const offset = (page - 1) * limit;
 
-    let query = `
-      SELECT 
-        p.*,
-        j.ticket_id,
-        c.name as customer_name,
-        u.name as recorded_by_name,
-        COUNT(*) OVER() as total_count
-      FROM payments p
-      LEFT JOIN jobs j ON p.job_id = j.id
-      LEFT JOIN customers c ON j.customer_id = c.id
-      LEFT JOIN users u ON p.recorded_by_id = u.id
-      WHERE 1=1
-    `;
-    const params = [];
+    let whereClause = 'WHERE 1=1';
+    const filterParams = [];
     let paramCount = 0;
 
-    // Apply filters
     if (start_date && end_date) {
       paramCount++;
-      query += ` AND p.date BETWEEN $${paramCount} AND $${paramCount + 1}`;
-      params.push(start_date, end_date);
+      whereClause += ` AND p.date BETWEEN $${paramCount} AND $${paramCount + 1}`;
+      filterParams.push(start_date, end_date);
       paramCount++;
     }
 
     if (payment_method) {
       paramCount++;
-      query += ` AND p.payment_method = $${paramCount}`;
-      params.push(payment_method);
+      whereClause += ` AND p.payment_method = $${paramCount}`;
+      filterParams.push(payment_method);
     }
 
-    query += ` ORDER BY p.date DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
-    params.push(limit, offset);
+    const mainQuery = `
+      SELECT 
+        p.*,
+        j.ticket_id,
+        c.name as customer_name,
+        u.name as recorded_by_name
+      FROM payments p
+      LEFT JOIN jobs j ON p.job_id = j.id
+      LEFT JOIN customers c ON j.customer_id = c.id
+      LEFT JOIN users u ON p.recorded_by_id = u.id
+      ${whereClause}
+      ORDER BY p.date DESC 
+      LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+    `;
+    const mainParams = [...filterParams, limit, offset];
+    
+    const summaryQuery = `
+      SELECT 
+        COUNT(*) as total_count,
+        COALESCE(SUM(p.amount), 0) as total_amount
+      FROM payments p
+      ${whereClause}
+    `;
 
-    const result = await pool.query(query, params);
+    const [mainResult, summaryResult] = await Promise.all([
+      pool.query(mainQuery, mainParams),
+      pool.query(summaryQuery, filterParams)
+    ]);
+
+    const { total_count, total_amount } = summaryResult.rows[0];
 
     res.json({
-      payments: result.rows,
+      payments: mainResult.rows,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: result.rows[0]?.total_count || 0
+        total: parseInt(total_count, 10)
+      },
+      summary: {
+        total_amount: parseFloat(total_amount)
       }
     });
   } catch (error) {

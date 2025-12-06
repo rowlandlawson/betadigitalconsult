@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Receipt as PaymentReceipt } from '@/components/payments/receipt';
 import { JobCompletionModal, MaterialEntry, WasteEntry } from './job-completion-modal'; // Import the new modal
 import { EditMaterialsModal } from './edit-materials-modal'; // Import the new materials modal
+import { EditHistoryDisplay } from './edit-history-display'; // Import edit history component
 import { jobService } from '@/lib/jobService';
 import { isApiError, api } from '@/lib/api'; // Added api import for direct patch call
 import { JobWithDetails, Material, MaterialEditHistory } from '@/types/jobs';
@@ -77,18 +78,19 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
     };
   }, [jobId]);
 
-  // Updated to handle optional materials/waste inputs
-  const updateJobStatus = async (newStatus: JobWithDetails['status'], materials?: MaterialEntry[], waste?: WasteEntry[]) => {
+  // Updated to handle optional materials/waste/expenses inputs
+  const updateJobStatus = async (newStatus: JobWithDetails['status'], materials?: MaterialEntry[], waste?: WasteEntry[], expenses?: any[]) => {
     if (!job) return;
 
     setUpdatingStatus(true);
     try {
-      if (materials || waste) {
-        // If materials/waste are provided (from completion modal), use direct API call to pass the body
+      if (materials || waste || expenses) {
+        // If materials/waste/expenses are provided (from completion modal), use direct API call to pass the body
         await api.patch(`/jobs/${jobId}/status`, { 
           status: newStatus, 
           materials, 
-          waste 
+          waste,
+          expenses
         });
       } else {
         // Standard status update
@@ -124,24 +126,26 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
     }
   };
 
-  const handleCompletionConfirm = async (materials: MaterialEntry[], waste: WasteEntry[]) => {
-    await updateJobStatus('completed', materials, waste);
+  const handleCompletionConfirm = async (materials: MaterialEntry[], waste: WasteEntry[], expenses: any[]) => {
+    await updateJobStatus('completed', materials, waste, expenses);
   };
 
   // Handle materials update
-  const handleMaterialsUpdate = async (updatedMaterials: Material[], editHistory: MaterialEditHistory[]) => {
+  const handleMaterialsUpdate = async (
+    updatedMaterials: Material[], 
+    editHistory: MaterialEditHistory[],
+    waste?: any[],
+    expenses?: any[]
+  ) => {
     if (!job) return;
     
     setUpdatingMaterials(true);
     try {
-      // You'll need to implement updateJobMaterials in your jobService
-      // const result = await jobService.updateJobMaterials(jobId, updatedMaterials, editReason);
-      
-      // For now, just refresh the job data
+      // Refresh the job data to get updated materials, waste, and expenses
       const updatedJob = await jobService.getJobById(jobId);
       setJob(updatedJob);
       setShowEditMaterialsModal(false);
-      toast.success('Materials updated successfully');
+      toast.success('Materials, waste, and expenses updated successfully');
     } catch (error: any) {
       console.error('Failed to update materials:', error);
       toast.error('Failed to update materials');
@@ -484,6 +488,11 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit History - Only visible to admins */}
+      {userRole === 'admin' && (
+        <EditHistoryDisplay jobId={jobId} userRole={userRole} />
+      )}
     </div>
 
     {/* Sidebar - Financial Summary */}
@@ -621,7 +630,9 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
           isOpen={showEditMaterialsModal}
           onClose={() => setShowEditMaterialsModal(false)}
           onSave={handleMaterialsUpdate}
-          initialMaterials={job.materials}
+          initialMaterials={job.materials || []}
+          initialWaste={job.waste || []}
+          initialExpenses={[]} // TODO: Fetch expenses linked to this job
           jobId={jobId}
           userRole={userRole}
         />

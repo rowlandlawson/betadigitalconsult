@@ -255,12 +255,12 @@ export const NotificationBell: React.FC = () => {
       </Button>
 
       {isOpen && (
-        <>
+        <React.Fragment>
           {/* Mobile backdrop */}
-          <div className="fixed inset-0 bg-black/50 bg-opacity-70 z-40 lg:hidden" onClick={() => setIsOpen(false)} />
+          <div key="backdrop" className="fixed inset-0 bg-black/50 bg-opacity-70 z-40 lg:hidden" onClick={() => setIsOpen(false)} />
           
           {/* Dropdown */}
-          <div className="fixed lg:absolute right-0 lg:right-0 mt-2 w-screen lg:w-80 max-w-[calc(100vw-2rem)] lg:max-w-none bg-white rounded-lg shadow-lg border border-gray-200 z-50 lg:z-50 mx-4 lg:mx-0 top-16 lg:top-full">
+          <div key="dropdown" className="fixed lg:absolute right-0 lg:right-0 mt-2 w-screen lg:w-80 max-w-[calc(100vw-2rem)] lg:max-w-none bg-white rounded-lg shadow-lg border border-gray-200 z-50 lg:z-50 mx-4 lg:mx-0 top-16 lg:top-full">
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -345,7 +345,7 @@ export const NotificationBell: React.FC = () => {
               )}
             </div>
           </div>
-        </>
+        </React.Fragment>
       )}
     </div>
   );

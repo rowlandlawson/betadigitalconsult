@@ -30,8 +30,8 @@ export const InventoryList: React.FC = () => {
       if (categoryFilter) params.append('category', categoryFilter);
       if (lowStockOnly) params.append('low_stock', 'true');
       
-      const response = await api.get<PaginatedResponse<InventoryItem>>(`/inventory?${params.toString()}`);
-      setInventory(response.data.data);
+      const response = await api.get<{ inventory: InventoryItem[]; pagination: any }>(`/inventory?${params.toString()}`);
+      setInventory(response.data.inventory || []);
     } catch (err: unknown) {
       console.error('Failed to fetch inventory:', err);
       if (isApiError(err)) {
@@ -53,18 +53,16 @@ export const InventoryList: React.FC = () => {
     }
   };
 
-  const filteredInventory = inventory.filter(item =>
+  const filteredInventory = (inventory || []).filter(item =>
     item.material_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.supplier?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStockStatusColor = (item: InventoryItem) => {
-    const stockPercentage = (item.current_stock / item.threshold) * 100;
-    
-    if (item.current_stock <= item.threshold) {
+    if (item.stock_status === 'CRITICAL') {
       return 'bg-red-100 text-red-800';
-    } else if (stockPercentage <= 150) {
+    } else if (item.stock_status === 'LOW') {
       return 'bg-yellow-100 text-yellow-800';
     } else {
       return 'bg-green-100 text-green-800';
@@ -72,19 +70,11 @@ export const InventoryList: React.FC = () => {
   };
 
   const getStockStatusText = (item: InventoryItem) => {
-    const stockPercentage = (item.current_stock / item.threshold) * 100;
-    
-    if (item.current_stock <= item.threshold) {
-      return 'CRITICAL';
-    } else if (stockPercentage <= 150) {
-      return 'LOW';
-    } else {
-      return 'HEALTHY';
-    }
+    return item.stock_status || 'HEALTHY';
   };
 
   const calculateStockValue = (item: InventoryItem) => {
-    return item.current_stock * item.unit_cost;
+    return item.stock_value || 0;
   };
 
   if (loading) {
@@ -126,7 +116,7 @@ export const InventoryList: React.FC = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Items</p>
-                <p className="text-2xl font-bold text-gray-900">{inventory.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{(inventory || []).length}</p>
               </div>
             </div>
           </CardContent>
@@ -141,7 +131,7 @@ export const InventoryList: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Active Items</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {inventory.filter(item => item.is_active).length}
+                  {(inventory || []).filter(item => item.is_active).length}
                 </p>
               </div>
             </div>
@@ -157,7 +147,7 @@ export const InventoryList: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Low Stock</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {inventory.filter(item => item.current_stock <= item.threshold).length}
+                  {(inventory || []).filter(item => item.stock_status === 'LOW' || item.stock_status === 'CRITICAL').length}
                 </p>
               </div>
             </div>
@@ -173,7 +163,7 @@ export const InventoryList: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Value</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(inventory.reduce((sum, item) => sum + calculateStockValue(item), 0))}
+                  {formatCurrency((inventory || []).reduce((sum, item) => sum + calculateStockValue(item), 0))}
                 </p>
               </div>
             </div>
@@ -260,10 +250,10 @@ export const InventoryList: React.FC = () => {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
                       <div>
-                        <span className="font-medium">Stock:</span> {item.current_stock} {item.unit_of_measure}
+                        <span className="font-medium">Stock:</span> {item.display_stock.display}
                       </div>
                       <div>
-                        <span className="font-medium">Threshold:</span> {item.threshold} {item.unit_of_measure}
+                        <span className="font-medium">Threshold:</span> {item.display_threshold.display}
                       </div>
                       <div>
                         <span className="font-medium">Unit Cost:</span> {formatCurrency(item.unit_cost)}
@@ -293,11 +283,6 @@ export const InventoryList: React.FC = () => {
                       <p className="text-sm text-gray-500">
                         Stock Value
                       </p>
-                      {item.selling_price && (
-                        <p className="text-sm text-green-600">
-                          Sell: {formatCurrency(item.selling_price)}
-                        </p>
-                      )}
                     </div>
                     <Link href={`/admin/inventory/${item.id}/edit`}>
                       <Button variant="outline" size="sm">

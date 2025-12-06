@@ -141,3 +141,146 @@ export const apiCall = async <T>(
     throw error;
   }
 };
+
+// Dashboard statistics types
+export interface DashboardStats {
+  summary: {
+    timestamp: string;
+    period: string;
+    updated_at: string;
+  };
+  customers: {
+    total: number;
+    new_this_month: number;
+    growth_rate: number;
+  };
+  jobs: {
+    total: number;
+    pending: number;
+    active: number;
+    completed: number;
+    delivered: number;
+    completion_rate: number;
+  };
+  payments: {
+    total_revenue: number;
+    total_collected: number;
+    total_outstanding: number;
+    collection_rate: number;
+  };
+  inventory: {
+    total_items: number;
+    low_stock: number;
+    critical_stock: number;
+    total_value: number;
+    alert_level: string;
+  };
+  recent_activities: Array<{
+    ticket_id: string;
+    description: string;
+    status: string;
+    total_cost: number;
+    amount_paid: number;
+    balance: number;
+    created_at: string;
+    customer_name: string;
+  }>;
+  revenue_trend: Array<{
+    month: string;
+    job_count: number;
+    revenue: number;
+    collected: number;
+  }>;
+  top_customers: Array<{
+    id: number;
+    name: string;
+    contact_person: string;
+    phone: string;
+    email: string; // Added this
+    total_jobs: number;
+    total_spent: number;
+    total_paid: number;
+    outstanding_balance: number;
+  }>;
+  performance_metrics: {
+    monthly_revenue_growth: number;
+    job_completion_rate: number;
+    payment_collection_rate: number;
+    inventory_health: number;
+  };
+}
+
+// Quick stats type for the simplified version
+export interface QuickStats {
+  total_revenue: number;
+  total_jobs: number;
+  active_customers: number;
+  low_stock_items: number;
+  completed_jobs: number;
+  pending_payments: number;
+  monthly_growth: number;
+}
+
+// Dashboard API methods
+export const dashboardApi = {
+  // Get comprehensive dashboard statistics
+  getDashboardStats: async (period: string = 'month'): Promise<DashboardStats> => {
+    try {
+      // Use the apiCall helper to fetch stats for the given period
+      return await apiCall<DashboardStats>('GET', `/reports/dashboard-stats?period=${period}`);
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error);
+      
+      // Throw a more specific error if needed
+      if (axios.isAxiosError(error)) {
+        throw new Error(`Dashboard stats failed: ${error.response?.data?.message || error.message}`);
+      }
+      throw error;
+    }
+  },
+  
+  // Get simplified stats for quick loading
+  getQuickStats: async (): Promise<QuickStats> => {
+    try {
+      // Use the apiCall helper for consistent error handling
+      const data = await apiCall<DashboardStats>('GET', '/reports/dashboard-stats');
+      
+      return {
+        total_revenue: data.payments.total_revenue,
+        total_jobs: data.jobs.total,
+        active_customers: data.customers.total,
+        low_stock_items: data.inventory.low_stock + data.inventory.critical_stock,
+        completed_jobs: data.jobs.completed,
+        pending_payments: data.payments.total_outstanding,
+        monthly_growth: data.performance_metrics.monthly_revenue_growth
+      };
+    } catch (error) {
+      console.error('Failed to fetch quick stats:', error);
+      
+      // Provide fallback or rethrow
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        // If endpoint doesn't exist, return empty stats
+        console.warn('Dashboard stats endpoint not found, returning empty stats');
+        return {
+          total_revenue: 0,
+          total_jobs: 0,
+          active_customers: 0,
+          low_stock_items: 0,
+          completed_jobs: 0,
+          pending_payments: 0,
+          monthly_growth: 0
+        };
+      }
+      throw error;
+    }
+  },
+  
+  // Optional: Add a method to refresh specific parts of dashboard data
+  refreshDashboardData: async (forceRefresh: boolean = false): Promise<DashboardStats> => {
+    const url = forceRefresh 
+      ? '/reports/dashboard-stats?refresh=true' 
+      : '/reports/dashboard-stats';
+    
+    return await apiCall<DashboardStats>('GET', url);
+  }
+};

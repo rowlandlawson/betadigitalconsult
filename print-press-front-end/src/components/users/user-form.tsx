@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { userService, CreateUserData, UpdateUserData, User } from '@/lib/userService';
+import { passwordService } from '@/lib/passwordService';
+import { isApiError } from '@/lib/api';
+import { Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { isApiError } from '@/lib/api';
 
 interface UserFormProps {
@@ -19,6 +22,13 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [generatedPassword, setGeneratedPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordChangeData, setPasswordChangeData] = useState({
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
   const [formData, setFormData] = useState<CreateUserData & { isActive?: boolean }>({
     email: '',
     name: '',
@@ -73,6 +83,53 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
 
     fetchUser();
   }, [mode, userId]);
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+    let password = '';
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setGeneratedPassword(password);
+  };
+
+  const handlePasswordChange = async () => {
+    if (!passwordChangeData.newPassword || !passwordChangeData.confirmPassword) {
+      setError('Please fill in both password fields');
+      return;
+    }
+
+    if (passwordChangeData.newPassword !== passwordChangeData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (passwordChangeData.newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (!userId) return;
+
+    setChangingPassword(true);
+    setError('');
+
+    try {
+      await userService.resetUserPassword(userId, passwordChangeData.newPassword);
+      setPasswordChangeData({ newPassword: '', confirmPassword: '' });
+      setError('');
+      alert('Password changed successfully');
+    } catch (err: unknown) {
+      console.error('Failed to change password:', err);
+      if (isApiError(err)) {
+        setError(err.error);
+      } else {
+        setError('Failed to change password');
+      }
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,6 +209,39 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                   disabled={mode === 'edit'}
                 />
               </div>
+
+              {mode === 'create' && (
+                <div className="md:col-span-2">
+                  <Label>Generated Password (will be sent to admin email)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={generatedPassword}
+                      readOnly
+                      placeholder="Click 'Generate Password' to create a secure password"
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={generatePassword}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Generate Password
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    A password will be auto-generated when creating the user. You can generate one here to preview.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="userName">Username</Label>
@@ -292,6 +382,45 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                   />
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Password Change Section (for edit mode, workers only) */}
+          {mode === 'edit' && formData.role === 'worker' && userId && (
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-lg font-semibold">Change Password</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={passwordChangeData.newPassword}
+                    onChange={(e) => setPasswordChangeData({ ...passwordChangeData, newPassword: e.target.value })}
+                    placeholder="Enter new password"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={passwordChangeData.confirmPassword}
+                    onChange={(e) => setPasswordChangeData({ ...passwordChangeData, confirmPassword: e.target.value })}
+                    placeholder="Confirm new password"
+                  />
+                </div>
+              </div>
+              
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePasswordChange}
+                disabled={changingPassword || !passwordChangeData.newPassword || !passwordChangeData.confirmPassword}
+              >
+                {changingPassword ? 'Changing...' : 'Change Password'}
+              </Button>
             </div>
           )}
 

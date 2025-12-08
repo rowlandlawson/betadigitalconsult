@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { pool } from '../config/database.js';
 import { syncCompanyContactInfo } from '../utils/companyContactSync.js';
+import emailService from '../services/emailService.js';
 
 /**
  * @desc Admin login (email or username)
@@ -404,9 +405,24 @@ export const forgotPassword = async (req, res) => {
 
     const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
 
-    console.log(`📩 Password reset link for ${user.email}: ${resetLink}`);
+    // Get admin email to send reset link
+    const adminResult = await pool.query(
+      'SELECT email FROM users WHERE role = $1 LIMIT 1',
+      ['admin']
+    );
+    
+    const adminEmail = adminResult.rows[0]?.email || process.env.ADMIN_EMAIL || 'admin@printpress.com';
+    
+    // Send email to admin with reset link
+    try {
+      await emailService.sendPasswordResetRequest(adminEmail, user.email, token);
+      console.log(`📩 Password reset link sent to admin for ${user.email}`);
+    } catch (emailError) {
+      console.error('Failed to send password reset email:', emailError);
+      // Still return success but log the error
+    }
 
-    res.json({ message: 'Password reset link sent successfully' });
+    res.json({ message: 'Password reset link sent successfully to admin email' });
   } catch (error) {
     console.error('Forgot password error:', error);
     res.status(500).json({ error: 'Internal server error' });

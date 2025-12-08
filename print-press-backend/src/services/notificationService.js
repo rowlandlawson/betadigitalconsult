@@ -224,20 +224,6 @@ export class NotificationService {
       );
     }
   }
-
-async notifyLowStock(inventory) {
-  const title = 'Low Stock Alert';
-  const message = `${inventory.material_name} is running low. Current stock: ${inventory.current_stock} ${inventory.unit_of_measure}`;
-
-  await this.createNotification({
-    title,
-    message,
-    type: 'low_stock',
-    relatedEntityType: 'inventory',
-    relatedEntityId: inventory.id,
-    priority: 'high'
-  });
-}
 }
 
 // Export a default instance

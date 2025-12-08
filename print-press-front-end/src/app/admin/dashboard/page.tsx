@@ -265,7 +265,7 @@ export default function AdminDashboard() {
             Refresh
           </Button>
            <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[120px] h-9 rounded-md border bg-transparent hover:bg-gray-900 px-3">
+            <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Select period" />
             </SelectTrigger>
             <SelectContent>

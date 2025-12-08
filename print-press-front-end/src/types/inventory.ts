@@ -10,61 +10,78 @@ export interface InventoryItem {
   id: string;
   material_name: string;
   category: string;
-  paper_size?: string;
-  paper_type?: string;
-  grammage?: number;
-  supplier?: string;
-  current_stock: number; // This can be deprecated or used as a fallback
-  current_stock_sheets: number;
-  sheets_per_unit: number;
+  current_stock: number;
   unit_of_measure: string;
   unit_cost: number;
-  cost_per_sheet: number;
+  threshold: number;
+  attributes: Record<string, any>; // New: JSONB attributes
+  supplier?: string;
   selling_price?: number;
-  threshold: number; // This can be deprecated
-  threshold_sheets: number;
   reorder_quantity?: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  
+  // Calculated fields (from queries)
   stock_value?: number;
   stock_status?: 'CRITICAL' | 'LOW' | 'HEALTHY';
   stock_percentage?: number;
-  display_stock: StockDisplay;
-  display_threshold: StockDisplay;
+  total_count?: number;
+  
+  // Helper fields for display
+  display_stock: string;
+  
+  // Common attribute shortcuts (for convenience)
+  paper_size?: string;
+  paper_type?: string;
+  grammage?: number;
+  sheets_per_unit?: number;
+  color?: string;
+  volume_ml?: number;
+  plate_size?: string;
+  chemical_type?: string;
+  concentration?: string;
+  volume_l?: number;
+}
+
+export interface AttributeTemplate {
+  name: string;
+  label: string;
+  type: 'text' | 'number' | 'select';
+  placeholder?: string;
+  default?: any;
+  options?: string[];
+  required?: boolean;
+}
+
+export interface CategoryTemplates {
+  [key: string]: AttributeTemplate[];
 }
 
 export interface InventoryFormData {
   material_name: string;
   category: string;
-  paper_size?: string;
-  paper_type?: string;
-  grammage?: number;
-  supplier?: string;
-  sheets_per_unit?: number;
-  reams_stock?: number;
-  sheets_stock?: number;
-  total_sheets_stock?: number;
+  current_stock?: number;
+  unit_of_measure: string;
   unit_cost: number;
-  threshold_sheets?: number;
-  threshold_reams?: number;
+  threshold: number;
+  attributes: Record<string, any>;
+  supplier?: string;
+  selling_price?: number;
   reorder_quantity?: number;
   is_active?: boolean;
-  supplier_contact?: string;
 }
 
 export interface LowStockAlert {
   id: string;
   material_name: string;
-  current_stock_sheets: number;
-  threshold_sheets: number;
-  sheets_per_unit: number;
+  current_stock: number;
+  threshold: number;
+  unit_of_measure: string;
   unit_cost: number;
-  cost_per_sheet: number;
   stock_percentage: number;
   stock_status: 'CRITICAL' | 'LOW' | 'HEALTHY';
-  display_stock: StockDisplay;
-  display_threshold: StockDisplay;
+  display_stock: string;
 }
 
 export interface MaterialUsageTrend {

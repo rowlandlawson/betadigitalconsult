@@ -1,8 +1,85 @@
+'use client';
+
 import { pool } from '../config/database.js';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+/**
+ * Setup Company Settings Table
+ * Creates the company_settings table with default values
+ * 
+ * Table Schema:
+ * - id: UUID primary key
+ * - name: Company name
+ * - tagline: Company tagline/motto
+ * - address: Physical address
+ * - phone: Contact phone number
+ * - email: Contact email
+ * - logo: Logo URL
+ * - logo_file_path: File system path to logo
+ * - created_at: Timestamp when record created
+ * - updated_at: Timestamp when record last updated
+ */
+async function setupCompanySettingsTable() {
+  try {
+    // Create company_settings table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS company_settings (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        name VARCHAR(255) NOT NULL DEFAULT 'YOUR COMPANY NAME HERE',
+        tagline VARCHAR(255) DEFAULT 'Your Business Tagline',
+        address TEXT DEFAULT 'Your Address, City, Country',
+        phone VARCHAR(50) DEFAULT '+234 (0) Your Phone Number',
+        email VARCHAR(255) DEFAULT 'your-email@company.com',
+        logo VARCHAR(500),
+        logo_file_path VARCHAR(500),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Insert default settings if none exist
+    await pool.query(`
+      INSERT INTO company_settings (name, tagline, address, phone, email)
+      SELECT 'YOUR COMPANY NAME HERE', 'Your Business Tagline', 'Your Address, City, Country', '+234 (0) Your Phone Number', 'your-email@company.com'
+      WHERE NOT EXISTS (SELECT 1 FROM company_settings LIMIT 1);
+    `);
+
+    console.log('✅ Company settings table created successfully!');
+  } catch (error) {
+    console.error('❌ Error creating company settings table:', error);
+    throw error;
+  }
+}
+
+async function createDefaultAdmin() {
+  // Check if admin already exists
+  const adminCheck = await pool.query(
+    'SELECT id FROM users WHERE role = $1 LIMIT 1',
+    ['admin']
+  );
+  
+  if (adminCheck.rows.length > 0) {
+    console.log('ℹ️ Admin user already exists, skipping creation');
+    return;
+  }
+  
+  const hashedPassword = await bcrypt.hash('admin!123', 12);
+  
+  try {
+    await pool.query(`
+      INSERT INTO users (email, name, password_hash, role) 
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (email) DO NOTHING
+    `, ['admin@printpress.com', 'System Administrator', hashedPassword, 'admin']);
+    
+    console.log('✅ Default admin user created');
+  } catch (error) {
+    console.log('ℹ️ Admin user could not be created:', error.message);
+  }
+}
 
 async function setupDatabase() {
   try {
@@ -139,76 +216,91 @@ async function setupDatabase() {
       );
     `);
 
-    // Inventory table
-        // Inventory table
-        await pool.query(`
-          CREATE TABLE IF NOT EXISTS inventory (
-            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-            material_name VARCHAR(255) NOT NULL,
-            category VARCHAR(100) NOT NULL,
-            paper_size VARCHAR(50),
-            paper_type VARCHAR(100),
-            grammage INTEGER,
-            supplier VARCHAR(255),
-            current_stock DECIMAL(15,2) NOT NULL,
-            unit_of_measure VARCHAR(50) NOT NULL,
-            unit_cost DECIMAL(15,2) NOT NULL,
-            selling_price DECIMAL(15,2),
-            threshold DECIMAL(15,2) NOT NULL,
-            reorder_quantity DECIMAL(15,2),
-            is_active BOOLEAN DEFAULT true,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          );
-        `);
-    
-        // Additional tables for material monitoring
-        await pool.query(`
-          CREATE TABLE IF NOT EXISTS material_usage (
-            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-            material_id UUID REFERENCES inventory(id) ON DELETE CASCADE,
-            job_id UUID REFERENCES jobs(id) ON DELETE SET NULL,
-            quantity_used DECIMAL(15,2) NOT NULL,
-            unit_cost DECIMAL(15,2) NOT NULL,
-            total_cost DECIMAL(15,2) NOT NULL,
-            usage_date DATE NOT NULL DEFAULT CURRENT_DATE,
-            usage_type VARCHAR(50) CHECK (usage_type IN ('production', 'waste', 'adjustment', 'other')),
-            notes TEXT,
-            recorded_by UUID REFERENCES users(id),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          );
-        `);
-    
-        await pool.query(`
-          CREATE TABLE IF NOT EXISTS material_waste (
-            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-            material_id UUID REFERENCES inventory(id) ON DELETE CASCADE,
-            job_id UUID REFERENCES jobs(id) ON DELETE SET NULL,
-            quantity_wasted DECIMAL(15,2) NOT NULL,
-            unit_cost DECIMAL(15,2) NOT NULL,
-            total_cost DECIMAL(15,2) NOT NULL,
-            waste_date DATE NOT NULL DEFAULT CURRENT_DATE,
-            reason VARCHAR(100),
-            notes TEXT,
-            recorded_by UUID REFERENCES users(id),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          );
-        `);
-    
-        await pool.query(`
-          CREATE TABLE IF NOT EXISTS stock_adjustments (
-            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-            material_id UUID REFERENCES inventory(id) ON DELETE CASCADE,
-            adjustment_type VARCHAR(50) CHECK (adjustment_type IN ('add', 'remove', 'correction')),
-            quantity DECIMAL(15,2) NOT NULL,
-            previous_stock DECIMAL(15,2) NOT NULL,
-            new_stock DECIMAL(15,2) NOT NULL,
-            reason VARCHAR(100),
-            notes TEXT,
-            adjusted_by UUID REFERENCES users(id),
-            adjustment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          );
-        `);
+    // Inventory table - new flexible version
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS inventory (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        material_name VARCHAR(255) NOT NULL,
+        category VARCHAR(100) NOT NULL,
+        current_stock DECIMAL(15,2) NOT NULL DEFAULT 0,
+        unit_of_measure VARCHAR(50) NOT NULL,
+        unit_cost DECIMAL(15,2) NOT NULL DEFAULT 0,
+        threshold DECIMAL(15,2) NOT NULL DEFAULT 0,
+        reorder_quantity DECIMAL(15,2),
+        selling_price DECIMAL(15,2),
+        supplier VARCHAR(255),
+        attributes JSONB DEFAULT '{}',
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Try to migrate existing data if the table already exists
+    try {
+      await pool.query(`
+        -- Migrate existing paper-specific columns to attributes
+        UPDATE inventory 
+        SET attributes = jsonb_build_object(
+          'paper_size', COALESCE(paper_size, ''),
+          'paper_type', COALESCE(paper_type, ''),
+          'grammage', COALESCE(grammage, 0),
+          'sheets_per_unit', COALESCE(sheets_per_unit, 500)
+        )
+        WHERE attributes IS NULL;
+      `);
+      console.log('✅ Inventory data migration completed');
+    } catch (error) {
+      console.log('ℹ️ No existing inventory data to migrate or migration not needed');
+    }
+
+    // Additional tables for material monitoring
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS material_usage (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        material_id UUID REFERENCES inventory(id) ON DELETE CASCADE,
+        job_id UUID REFERENCES jobs(id) ON DELETE SET NULL,
+        quantity_used DECIMAL(15,2) NOT NULL,
+        unit_cost DECIMAL(15,2) NOT NULL,
+        total_cost DECIMAL(15,2) NOT NULL,
+        usage_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        usage_type VARCHAR(50) CHECK (usage_type IN ('production', 'waste', 'adjustment', 'other')),
+        notes TEXT,
+        recorded_by UUID REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS material_waste (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        material_id UUID REFERENCES inventory(id) ON DELETE CASCADE,
+        job_id UUID REFERENCES jobs(id) ON DELETE SET NULL,
+        quantity_wasted DECIMAL(15,2) NOT NULL,
+        unit_cost DECIMAL(15,2) NOT NULL,
+        total_cost DECIMAL(15,2) NOT NULL,
+        waste_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        reason VARCHAR(100),
+        notes TEXT,
+        recorded_by UUID REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS stock_adjustments (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        material_id UUID REFERENCES inventory(id) ON DELETE CASCADE,
+        adjustment_type VARCHAR(50) CHECK (adjustment_type IN ('add', 'remove', 'correction')),
+        quantity DECIMAL(15,2) NOT NULL,
+        previous_stock DECIMAL(15,2) NOT NULL,
+        new_stock DECIMAL(15,2) NOT NULL,
+        reason VARCHAR(100),
+        notes TEXT,
+        adjusted_by UUID REFERENCES users(id),
+        adjustment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
     // Operational expenses table
     await pool.query(`
@@ -225,86 +317,87 @@ async function setupDatabase() {
       );
     `);
 
+    // Material edit history table
     await pool.query(`
-      -- Add this to your database setup
-CREATE TABLE IF NOT EXISTS material_edit_history (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    material_used_id UUID NOT NULL REFERENCES materials_used(id) ON DELETE CASCADE,
-    job_id UUID NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
-    
-    -- Previous values
-    previous_material_name TEXT,
-    previous_paper_size TEXT,
-    previous_paper_type TEXT,
-    previous_grammage TEXT,
-    previous_quantity DECIMAL(10,2),
-    previous_unit_cost DECIMAL(10,2),
-    previous_total_cost DECIMAL(10,2),
-    
-    -- New values
-    new_material_name TEXT,
-    new_paper_size TEXT,
-    new_paper_type TEXT,
-    new_grammage TEXT,
-    new_quantity DECIMAL(10,2),
-    new_unit_cost DECIMAL(10,2),
-    new_total_cost DECIMAL(10,2),
-    
-    -- Edit metadata
-    edit_reason TEXT NOT NULL,
-    edited_by UUID NOT NULL REFERENCES users(id),
-    edited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+      CREATE TABLE IF NOT EXISTS material_edit_history (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        material_used_id UUID NOT NULL REFERENCES materials_used(id) ON DELETE CASCADE,
+        job_id UUID NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+        
+        -- Previous values
+        previous_material_name TEXT,
+        previous_paper_size TEXT,
+        previous_paper_type TEXT,
+        previous_grammage TEXT,
+        previous_quantity DECIMAL(10,2),
+        previous_unit_cost DECIMAL(10,2),
+        previous_total_cost DECIMAL(10,2),
+        
+        -- New values
+        new_material_name TEXT,
+        new_paper_size TEXT,
+        new_paper_type TEXT,
+        new_grammage TEXT,
+        new_quantity DECIMAL(10,2),
+        new_unit_cost DECIMAL(10,2),
+        new_total_cost DECIMAL(10,2),
+        
+        -- Edit metadata
+        edit_reason TEXT NOT NULL,
+        edited_by UUID NOT NULL REFERENCES users(id),
+        edited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
--- Indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_material_edit_history_job_id ON material_edit_history(job_id);
-CREATE INDEX IF NOT EXISTS idx_material_edit_history_material_id ON material_edit_history(material_used_id);
-CREATE INDEX IF NOT EXISTS idx_material_edit_history_edited_at ON material_edit_history(edited_at DESC);
+    // Create indexes for material_edit_history
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_material_edit_history_job_id ON material_edit_history(job_id);
+      CREATE INDEX IF NOT EXISTS idx_material_edit_history_material_id ON material_edit_history(material_used_id);
+      CREATE INDEX IF NOT EXISTS idx_material_edit_history_edited_at ON material_edit_history(edited_at DESC);
     `);
 
     // Notifications table
-    // Update notifications table for push notifications
-await pool.query(`
-  CREATE TABLE IF NOT EXISTS notifications (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    message TEXT NOT NULL,
-    type VARCHAR(50) CHECK (type IN ('new_job', 'payment_update', 'status_change', 'low_stock', 'system', 'alert')) NOT NULL,
-    related_entity_type VARCHAR(50) CHECK (related_entity_type IN ('job', 'payment', 'inventory', 'customer', 'user')),
-    related_entity_id UUID,
-    is_read BOOLEAN DEFAULT false,
-    priority VARCHAR(20) CHECK (priority IN ('low', 'medium', 'high', 'urgent')) DEFAULT 'medium',
-    action_url VARCHAR(500),
-    image_url VARCHAR(500),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP
-  );
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        type VARCHAR(50) CHECK (type IN ('new_job', 'payment_update', 'status_change', 'low_stock', 'system', 'alert')) NOT NULL,
+        related_entity_type VARCHAR(50) CHECK (related_entity_type IN ('job', 'payment', 'inventory', 'customer', 'user')),
+        related_entity_id UUID,
+        is_read BOOLEAN DEFAULT false,
+        priority VARCHAR(20) CHECK (priority IN ('low', 'medium', 'high', 'urgent')) DEFAULT 'medium',
+        action_url VARCHAR(500),
+        image_url VARCHAR(500),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP
+      );
 
-  CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
-  CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
-  CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
-  CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
-`);
+      CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+      CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+      CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
+      CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
+    `);
 
-// Push subscriptions table for PWA
-await pool.query(`
-  CREATE TABLE IF NOT EXISTS push_subscriptions (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    endpoint TEXT NOT NULL,
-    p256dh_key TEXT NOT NULL,
-    auth_key TEXT NOT NULL,
-    user_agent TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
+    // Push subscriptions table for PWA
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL,
+        p256dh_key TEXT NOT NULL,
+        auth_key TEXT NOT NULL,
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
 
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_push_subscriptions_endpoint ON push_subscriptions(endpoint);
-  CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id ON push_subscriptions(user_id);
-`);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_push_subscriptions_endpoint ON push_subscriptions(endpoint);
+      CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id ON push_subscriptions(user_id);
+    `);
 
-        // =========================
+    // =========================
     // 🔁 Schema Updates / Alterations
     // =========================
 
@@ -349,7 +442,7 @@ await pool.query(`
       ALTER COLUMN job_id DROP NOT NULL;
     `);
 
-    // 4️⃣ Setup company settings table
+    // Setup company settings table
     await setupCompanySettingsTable();
 
     console.log('✅ Database tables created successfully!');
@@ -365,68 +458,5 @@ await pool.query(`
   }
 }
 
-async function createDefaultAdmin() {
-  const hashedPassword = await bcrypt.hash('admin!123', 12);
-  
-  try {
-    await pool.query(`
-      INSERT INTO users (email, name, password_hash, role) 
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (email) DO NOTHING
-    `, ['admin@printpress.com', 'System Administrator', hashedPassword, 'admin']);
-    
-    
-  } catch (error) {
-    console.log(' Admin user already exists or could not be created');
-  }
-}
-
-/**
- * Setup Company Settings Table
- * Creates the company_settings table with default values
- * 
- * Table Schema:
- * - id: UUID primary key
- * - name: Company name
- * - tagline: Company tagline/motto
- * - address: Physical address
- * - phone: Contact phone number
- * - email: Contact email
- * - logo: Logo URL
- * - logo_file_path: File system path to logo
- * - created_at: Timestamp when record created
- * - updated_at: Timestamp when record last updated
- */
-async function setupCompanySettingsTable() {
-  try {
-    // Create company_settings table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS company_settings (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        name VARCHAR(255) NOT NULL DEFAULT 'YOUR COMPANY NAME HERE',
-        tagline VARCHAR(255) DEFAULT 'Your Business Tagline',
-        address TEXT DEFAULT 'Your Address, City, Country',
-        phone VARCHAR(50) DEFAULT '+234 (0) Your Phone Number',
-        email VARCHAR(255) DEFAULT 'your-email@company.com',
-        logo VARCHAR(500),
-        logo_file_path VARCHAR(500),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    // Insert default settings if none exist
-    await pool.query(`
-      INSERT INTO company_settings (name, tagline, address, phone, email)
-      SELECT 'YOUR COMPANY NAME HERE', 'Your Business Tagline', 'Your Address, City, Country', '+234 (0) Your Phone Number', 'your-email@company.com'
-      WHERE NOT EXISTS (SELECT 1 FROM company_settings LIMIT 1);
-    `);
-
-    console.log('✅ Company settings table created successfully!');
-  } catch (error) {
-    console.error('❌ Error creating company settings table:', error);
-    throw error;
-  }
-}
-
+// Execute database setup
 setupDatabase();

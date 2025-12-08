@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { userService, User } from '@/lib/userService';
 import { formatDate } from '@/lib/utils';
 import { isApiError } from '@/lib/api';
-import { Search, Users, UserPlus, Shield, UserCheck, UserX, Edit, Trash2 } from 'lucide-react';
+import { Search, Users, UserPlus, Shield, UserCheck, UserX, Edit, Trash2, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { UserDetailModal } from './user-detail-modal';
 
 export const UserList: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -17,6 +18,8 @@ export const UserList: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'worker'>('all');
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -209,8 +212,19 @@ export const UserList: React.FC = () => {
                       <td className="p-3">{user.date_joined ? formatDate(user.date_joined) : 'N/A'}</td>
                       <td className="p-3">
                         <div className="flex items-center justify-end gap-2">
-                          <Link href={`/admin/users/${user.id}`}>
-                            <Button variant="outline" size="sm">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowDetailModal(true);
+                            }}
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Link href={`/admin/users/${user.id}/edit`}>
+                            <Button variant="outline" size="sm" title="Edit User">
                               <Edit className="h-4 w-4" />
                             </Button>
                           </Link>
@@ -219,6 +233,7 @@ export const UserList: React.FC = () => {
                             size="sm"
                             onClick={() => handleDelete(user.id, user.name)}
                             className="text-red-600 hover:text-red-700"
+                            title="Delete User"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -232,6 +247,16 @@ export const UserList: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* User Detail Modal */}
+      <UserDetailModal
+        isOpen={showDetailModal}
+        onClose={() => {
+          setShowDetailModal(false);
+          setSelectedUser(null);
+        }}
+        user={selectedUser}
+      />
     </div>
   );
 };

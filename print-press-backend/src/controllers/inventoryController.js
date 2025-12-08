@@ -1,12 +1,41 @@
+// print-press-backend/src/controllers/inventoryController.js
 import { pool } from '../config/database.js';
 import { NotificationService } from '../services/notificationService.js';
 import { broadcastToAdmins } from '../websocket/notificationServer.js';
-import { SheetCalculator } from '../utils/sheetCalculator.js';
 
 const notificationService = new NotificationService();
 
+// Helper to get display stock based on attributes
+const getDisplayStock = (item) => {
+  const attributes = item.attributes || {};
+  const currentStock = parseFloat(item.current_stock) || 0;
+  
+  if (item.category === 'Paper' && attributes.sheets_per_unit) {
+    const sheetsPerUnit = parseInt(attributes.sheets_per_unit) || 500;
+    const reams = Math.floor(currentStock / sheetsPerUnit);
+    const sheets = currentStock % sheetsPerUnit;
+    return `${reams} reams, ${sheets} sheets`;
+  }
+  
+  return `${currentStock} ${item.unit_of_measure || 'units'}`;
+};
+
+// Helper to get attribute with fallback
+const getAttribute = (attributes, key, defaultValue = '') => {
+  return attributes?.[key] || defaultValue;
+};
+
+// Helper to get stock status
+const getStockStatus = (currentStock, threshold) => {
+  if (currentStock <= threshold) return 'CRITICAL';
+  if (currentStock <= threshold * 1.5) return 'LOW';
+  return 'HEALTHY';
+};
+
 export class InventoryController {
-  // Get all inventory items with sheet-based display
+  // ============ BASIC CRUD OPERATIONS ============
+  
+  // Get all inventory items
   async getInventory(req, res) {
     try {
       const { page = 1, limit = 50, category, low_stock, search } = req.query;
@@ -14,7 +43,20 @@ export class InventoryController {
 
       let query = `
         SELECT 
-          *,
+          id,
+          material_name,
+          category,
+          current_stock,
+          unit_of_measure,
+          unit_cost,
+          threshold,
+          attributes,
+          supplier,
+          selling_price,
+          reorder_quantity,
+          is_active,
+          created_at,
+          updated_at,
           COUNT(*) OVER() as total_count,
           (current_stock * unit_cost) as stock_value,
           CASE 
@@ -41,24 +83,34 @@ export class InventoryController {
 
       if (search) {
         paramCount++;
-        query += ` AND (material_name ILIKE $${paramCount} OR category ILIKE $${paramCount} OR supplier ILIKE $${paramCount})`;
+        query += ` AND (
+          material_name ILIKE $${paramCount} OR 
+          category ILIKE $${paramCount} OR
+          supplier ILIKE $${paramCount} OR
+          attributes::text ILIKE $${paramCount}
+        )`;
         params.push(`%${search}%`);
       }
 
       query += ` ORDER BY stock_percentage ASC, material_name LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
       params.push(limit, offset);
 
-      console.log('Executing query:', query);
-      console.log('Query parameters:', params);
-
       const result = await pool.query(query, params);
-      console.log('Query result:', result);
 
-      // Format display for each item
       const inventory = result.rows.map(item => ({
         ...item,
-        display_stock: SheetCalculator.toDisplay(item.current_stock, item.sheets_per_unit),
-        display_threshold: SheetCalculator.toDisplay(item.threshold, item.sheets_per_unit)
+        display_stock: getDisplayStock(item),
+        // Extract common attributes for easy access
+        paper_size: getAttribute(item.attributes, 'paper_size'),
+        paper_type: getAttribute(item.attributes, 'paper_type'),
+        grammage: getAttribute(item.attributes, 'grammage'),
+        sheets_per_unit: getAttribute(item.attributes, 'sheets_per_unit', 500),
+        color: getAttribute(item.attributes, 'color'),
+        volume_ml: getAttribute(item.attributes, 'volume_ml'),
+        plate_size: getAttribute(item.attributes, 'plate_size'),
+        chemical_type: getAttribute(item.attributes, 'chemical_type'),
+        concentration: getAttribute(item.attributes, 'concentration'),
+        volume_l: getAttribute(item.attributes, 'volume_l'),
       }));
 
       res.json({
@@ -66,8 +118,8 @@ export class InventoryController {
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total: result.rows[0]?.total_count || 0
-        }
+          total: result.rows[0]?.total_count || 0,
+        },
       });
     } catch (error) {
       console.error('Get inventory error:', error);
@@ -88,48 +140,59 @@ export class InventoryController {
     }
   }
 
-  // Get low stock alerts
-  async getLowStockAlerts(req, res) {
+  // Get category-specific attribute templates
+  async getAttributeTemplates(req, res) {
     try {
-      const result = await pool.query(
-        `SELECT 
-          id,
-          material_name,
-          current_stock_sheets,
-          threshold_sheets,
-          sheets_per_unit,
-          unit_cost,
-          cost_per_sheet,
-          ROUND((current_stock_sheets / NULLIF(threshold_sheets, 0)) * 100, 2) as stock_percentage,
-          CASE 
-            WHEN current_stock_sheets <= threshold_sheets THEN 'CRITICAL'
-            WHEN current_stock_sheets <= threshold_sheets * 1.5 THEN 'LOW'
-            ELSE 'HEALTHY'
-          END as stock_status
-         FROM inventory 
-         WHERE is_active = true AND current_stock_sheets <= threshold_sheets * 1.5
-         ORDER BY current_stock_sheets ASC`
-      );
-
-      const alerts = result.rows.map(item => ({
-        ...item,
-        display_stock: SheetCalculator.toDisplay(item.current_stock_sheets, item.sheets_per_unit),
-        display_threshold: SheetCalculator.toDisplay(item.threshold_sheets, item.sheets_per_unit)
-      }));
-
-      res.json({ low_stock_items: alerts });
+      const templates = {
+        'Paper': [
+          { name: 'paper_size', label: 'Paper Size', type: 'text', placeholder: 'A4, A3, etc.' },
+          { name: 'paper_type', label: 'Paper Type', type: 'text', placeholder: 'Glossy, Matte, etc.' },
+          { name: 'grammage', label: 'Grammage (g)', type: 'number', placeholder: '120' },
+          { name: 'sheets_per_unit', label: 'Sheets per Unit', type: 'number', placeholder: '500', default: 500 }
+        ],
+        'Ink': [
+          { name: 'color', label: 'Color', type: 'text', placeholder: 'Cyan, Magenta, etc.' },
+          { name: 'volume_ml', label: 'Volume (ml)', type: 'number', placeholder: '1000' },
+          { name: 'type', label: 'Ink Type', type: 'text', placeholder: 'Dye-based, Pigment, etc.' }
+        ],
+        'Plates': [
+          { name: 'plate_size', label: 'Plate Size', type: 'text', placeholder: '10x15, 20x30, etc.' },
+          { name: 'material', label: 'Material', type: 'text', placeholder: 'Aluminum, Polyester, etc.' }
+        ],
+        'Chemicals': [
+          { name: 'chemical_type', label: 'Chemical Type', type: 'text', placeholder: 'Developer, Fixer, etc.' },
+          { name: 'concentration', label: 'Concentration', type: 'text', placeholder: '1:10, 1:20, etc.' },
+          { name: 'volume_l', label: 'Volume (L)', type: 'number', placeholder: '5' }
+        ],
+        'Consumables': [
+          { name: 'description', label: 'Description', type: 'text', placeholder: 'Additional details' }
+        ],
+        'Tools': [
+          { name: 'tool_type', label: 'Tool Type', type: 'text', placeholder: 'Cutting, Measuring, etc.' },
+          { name: 'size', label: 'Size', type: 'text', placeholder: 'Small, Medium, Large' }
+        ],
+        'Packaging': [
+          { name: 'packaging_type', label: 'Packaging Type', type: 'text', placeholder: 'Box, Envelope, etc.' },
+          { name: 'dimensions', label: 'Dimensions', type: 'text', placeholder: '10x15x5 cm' }
+        ],
+        'General': [
+          { name: 'description', label: 'Description', type: 'text', placeholder: 'Additional details' }
+        ]
+      };
+      
+      res.json({ templates });
     } catch (error) {
-      console.error('Get low stock error:', error);
+      console.error('Get attribute templates error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   }
 
-  // Get inventory item by ID
+  // Get an inventory item by ID
   async getInventoryItem(req, res) {
     try {
       const { id } = req.params;
       const result = await pool.query(
-        'SELECT * FROM inventory WHERE id = $1 AND is_active = true',
+        'SELECT * FROM inventory WHERE id = $1 AND is_active = true', 
         [id]
       );
 
@@ -141,9 +204,9 @@ export class InventoryController {
       res.json({
         item: {
           ...item,
-          display_stock: SheetCalculator.toDisplay(item.current_stock_sheets, item.sheets_per_unit),
-          display_threshold: SheetCalculator.toDisplay(item.threshold_sheets, item.sheets_per_unit)
-        }
+          display_stock: getDisplayStock(item),
+          attributes: item.attributes || {}
+        },
       });
     } catch (error) {
       console.error('Get inventory item error:', error);
@@ -151,95 +214,66 @@ export class InventoryController {
     }
   }
 
-  // Create inventory item
+  // Create a new inventory item
   async createInventory(req, res) {
     const client = await pool.connect();
-    
     try {
       await client.query('BEGIN');
 
       const {
         material_name,
         category,
-        paper_size,
-        paper_type,
-        grammage,
+        current_stock = 0,
+        unit_of_measure,
+        unit_cost = 0,
+        threshold = 0,
+        attributes = {},
         supplier,
-        unit_of_measure = 'sheet',
-        unit_cost,
         selling_price,
-        sheets_per_unit = 500,
-        reams_stock = 0,
-        sheets_stock = 0,
-        total_sheets_stock,
-        threshold_reams = 0.5,
-        threshold_sheets = 100,
-        reorder_quantity = 1,
-        supplier_contact
+        reorder_quantity,
       } = req.body;
 
-      if (!material_name || !category || !unit_cost) {
+      if (!material_name || !category || !unit_of_measure) {
         await client.query('ROLLBACK');
-        return res.status(400).json({ error: 'Missing required fields' });
+        return res.status(400).json({ 
+          error: 'Material name, category, and unit of measure are required.' 
+        });
       }
 
-      let totalSheets;
-      if (total_sheets_stock !== undefined) {
-        totalSheets = parseInt(total_sheets_stock);
-      } else {
-        totalSheets = SheetCalculator.toSheets(
-          parseFloat(reams_stock),
-          parseInt(sheets_stock),
-          parseInt(sheets_per_unit)
-        );
-      }
-
-      const finalThresholdSheets = threshold_sheets || 
-        SheetCalculator.toSheets(threshold_reams, 0, sheets_per_unit);
-      const costPerSheet = unit_cost / sheets_per_unit;
+      // Validate attributes based on category
+      const validatedAttributes = this.validateAttributes(category, attributes);
 
       const result = await client.query(
         `INSERT INTO inventory (
-          material_name, category, paper_size, paper_type, grammage, supplier,
-          unit_of_measure, unit_cost, selling_price, sheets_per_unit,
-          current_stock_sheets, threshold_sheets, reorder_quantity,
-          supplier_contact, cost_per_sheet
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          material_name, category, current_stock, unit_of_measure, unit_cost, 
+          threshold, attributes, supplier, selling_price, reorder_quantity, is_active
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
         RETURNING *`,
         [
           material_name,
           category,
-          paper_size,
-          paper_type,
-          grammage,
-          supplier,
+          current_stock,
           unit_of_measure,
           unit_cost,
-          selling_price,
-          sheets_per_unit,
-          totalSheets,
-          finalThresholdSheets,
-          reorder_quantity,
-          supplier_contact,
-          costPerSheet
+          threshold,
+          JSON.stringify(validatedAttributes),
+          supplier || null,
+          selling_price || null,
+          reorder_quantity || null,
         ]
       );
 
       const newItem = result.rows[0];
-      const display = SheetCalculator.toDisplay(newItem.current_stock_sheets, newItem.sheets_per_unit);
-      const stockStatus = SheetCalculator.checkStockStatus(
-        newItem.current_stock_sheets, 
-        newItem.threshold_sheets
-      );
 
-      if (stockStatus.isLow) {
+      // Check stock level and send notification if low
+      if (newItem.current_stock <= newItem.threshold) {
         await notificationService.createNotification({
           title: 'Low Stock Alert',
-          message: `${newItem.material_name} is below threshold. ${display.display}`,
+          message: `${newItem.material_name} is below threshold. Current stock: ${getDisplayStock(newItem)}`,
           type: 'low_stock',
           relatedEntityType: 'inventory',
           relatedEntityId: newItem.id,
-          priority: stockStatus.priority
+          priority: 'high',
         });
       }
 
@@ -249,9 +283,9 @@ export class InventoryController {
         message: 'Inventory item created successfully',
         item: {
           ...newItem,
-          display_stock: display,
-          stock_status: stockStatus
-        }
+          display_stock: getDisplayStock(newItem),
+          attributes: newItem.attributes || {}
+        },
       });
     } catch (error) {
       await client.query('ROLLBACK');
@@ -262,96 +296,87 @@ export class InventoryController {
     }
   }
 
-  // Update inventory item
+  // Update an inventory item
   async updateInventory(req, res) {
+    const client = await pool.connect();
     try {
+      await client.query('BEGIN');
       const { id } = req.params;
       const {
         material_name,
         category,
-        paper_size,
-        paper_type,
-        grammage,
-        supplier,
-        sheets_per_unit,
         unit_of_measure,
-        unit_cost,
-        threshold_sheets,
+        threshold,
+        attributes,
+        supplier,
+        selling_price,
         reorder_quantity,
-        is_active
+        is_active,
       } = req.body;
 
-      const currentItemResult = await pool.query(
-        'SELECT is_active, unit_cost, sheets_per_unit FROM inventory WHERE id = $1',
+      // Get current item to merge attributes
+      const currentItem = await client.query(
+        'SELECT attributes FROM inventory WHERE id = $1',
         [id]
       );
 
-      if (currentItemResult.rows.length === 0) {
-        return res.status(404).json({ error: 'Inventory item not found' });
+      let updatedAttributes = attributes;
+      if (currentItem.rows.length > 0 && attributes) {
+        // Merge new attributes with existing ones
+        const currentAttributes = currentItem.rows[0].attributes || {};
+        updatedAttributes = { ...currentAttributes, ...attributes };
       }
 
-      const currentItem = currentItemResult.rows[0];
-      const activeStatus = is_active !== undefined ? is_active : currentItem.is_active;
+      // Validate attributes if category is being updated
+      if (category && updatedAttributes) {
+        updatedAttributes = this.validateAttributes(category, updatedAttributes);
+      }
 
-      const new_sheets_per_unit = sheets_per_unit || currentItem.sheets_per_unit;
-      const new_unit_cost = unit_cost || currentItem.unit_cost;
-      const costPerSheet = new_unit_cost / new_sheets_per_unit;
-
-      const result = await pool.query(
+      const result = await client.query(
         `UPDATE inventory 
-         SET material_name = $1, category = $2, paper_size = $3, paper_type = $4, 
-             grammage = $5, supplier = $6, sheets_per_unit = $7, unit_of_measure = $8,
-             unit_cost = $9, threshold_sheets = $10, reorder_quantity = $11,
-             is_active = $12, cost_per_sheet = $13, updated_at = CURRENT_TIMESTAMP
-         WHERE id = $14
+         SET 
+           material_name = COALESCE($1, material_name),
+           category = COALESCE($2, category),
+           unit_of_measure = COALESCE($3, unit_of_measure),
+           threshold = COALESCE($4, threshold),
+           attributes = COALESCE($5, attributes),
+           supplier = COALESCE($6, supplier),
+           selling_price = COALESCE($7, selling_price),
+           reorder_quantity = COALESCE($8, reorder_quantity),
+           is_active = COALESCE($9, is_active),
+           updated_at = CURRENT_TIMESTAMP
+         WHERE id = $10
          RETURNING *`,
         [
           material_name,
           category,
-          paper_size,
-          paper_type,
-          grammage,
-          supplier,
-          new_sheets_per_unit,
           unit_of_measure,
-          new_unit_cost,
-          threshold_sheets,
+          threshold,
+          updatedAttributes ? JSON.stringify(updatedAttributes) : null,
+          supplier,
+          selling_price,
           reorder_quantity,
-          activeStatus,
-          costPerSheet,
-          id
+          is_active,
+          id,
         ]
       );
-
-      const updatedItem = result.rows[0];
-      const stockStatus = SheetCalculator.checkStockStatus(updatedItem.current_stock_sheets, updatedItem.threshold_sheets);
-
-      if (stockStatus.isLow) {
-        const display = SheetCalculator.toDisplay(updatedItem.current_stock_sheets, updatedItem.sheets_per_unit);
-        await notificationService.notifyLowStock({
-          ...updatedItem,
-          display_stock: display,
-          stock_status: stockStatus
-        });
-        broadcastToAdmins({
-          type: 'new_notification',
-          notification: {
-            title: 'Low Stock Alert',
-            message: `${updatedItem.material_name} is running low. Current stock: ${display.display}`,
-            type: 'low_stock',
-            relatedEntityId: updatedItem.id,
-            createdAt: new Date()
-          }
-        });
+      
+      if (result.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Inventory item not found' });
       }
 
+      await client.query('COMMIT');
       res.json({
         message: 'Inventory item updated successfully',
-        item: updatedItem
+        item: result.rows[0],
       });
     } catch (error) {
+      await client.query('ROLLBACK');
       console.error('Update inventory error:', error);
       res.status(500).json({ error: 'Internal server error' });
+    } finally {
+      client.release();
     }
   }
 
@@ -375,417 +400,171 @@ export class InventoryController {
     }
   }
 
-  // Record material usage (old method for compatibility)
-  async recordUsage(req, res) {
-    try {
-      const {
-        material_id,
-        job_id,
-        quantity_used,
-        unit_cost,
-        usage_type = 'production',
-        notes
-      } = req.body;
-
-      if (!material_id || !quantity_used || unit_cost === undefined) {
-        return res.status(400).json({ error: 'Missing required fields' });
-      }
-
-      const client = await pool.connect();
-      
-      try {
-        await client.query('BEGIN');
-
-        const usageResult = await client.query(
-          `INSERT INTO material_usage (
-            material_id, job_id, quantity_used, unit_cost, total_cost, usage_type, notes, recorded_by
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-          RETURNING *`,
-          [
-            material_id,
-            job_id,
-            quantity_used,
-            unit_cost,
-            quantity_used * unit_cost,
-            usage_type,
-            notes,
-            req.user.id
-          ]
-        );
-
-        await client.query(
-          'UPDATE inventory SET current_stock = current_stock - $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-          [quantity_used, material_id]
-        );
-
-        await client.query('COMMIT');
-
-        res.status(201).json({
-          message: 'Material usage recorded successfully',
-          usage: usageResult.rows[0]
-        });
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      } finally {
-        client.release();
-      }
-    } catch (error) {
-      console.error('Record usage error:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-
-  // Record waste (old method for compatibility)
-  async recordWaste(req, res) {
-    try {
-      const {
-        material_id,
-        job_id,
-        quantity_wasted,
-        unit_cost,
-        reason,
-        notes
-      } = req.body;
-
-      if (!material_id || !quantity_wasted || unit_cost === undefined) {
-        return res.status(400).json({ error: 'Missing required fields' });
-      }
-
-      const client = await pool.connect();
-      
-      try {
-        await client.query('BEGIN');
-
-        const wasteResult = await client.query(
-          `INSERT INTO material_waste (
-            material_id, job_id, quantity_wasted, unit_cost, total_cost, reason, notes, recorded_by
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-          RETURNING *`,
-          [
-            material_id,
-            job_id,
-            quantity_wasted,
-            unit_cost,
-            quantity_wasted * unit_cost,
-            reason,
-            notes,
-            req.user.id
-          ]
-        );
-
-        await client.query(
-          'UPDATE inventory SET current_stock = current_stock - $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-          [quantity_wasted, material_id]
-        );
-
-        await client.query('COMMIT');
-
-        res.status(201).json({
-          message: 'Material waste recorded successfully',
-          waste: wasteResult.rows[0]
-        });
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      } finally {
-        client.release();
-      }
-    } catch (error) {
-      console.error('Record waste error:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-
-  // Adjust stock (old method for compatibility)
+  // ============ STOCK MANAGEMENT ============
+  
+  // Adjust stock (add, remove, or set)
   async adjustStock(req, res) {
-    try {
-      const {
-        material_id,
-        adjustment_type,
-        quantity,
-        reason,
-        notes
-      } = req.body;
-
-      if (!material_id || !adjustment_type || !quantity) {
-        return res.status(400).json({ error: 'Missing required fields' });
-      }
-
-      const client = await pool.connect();
-      
-      try {
-        await client.query('BEGIN');
-
-        const currentStockResult = await client.query(
-          'SELECT current_stock FROM inventory WHERE id = $1',
-          [material_id]
-        );
-
-        if (currentStockResult.rows.length === 0) {
-          throw new Error('Material not found');
-        }
-
-        const currentStock = currentStockResult.rows[0].current_stock;
-        let newStock;
-
-        if (adjustment_type === 'add') {
-          newStock = currentStock + quantity;
-        } else if (adjustment_type === 'remove') {
-          newStock = currentStock - quantity;
-        } else {
-          newStock = quantity;
-        }
-
-        const adjustmentResult = await client.query(
-          `INSERT INTO stock_adjustments (
-            material_id, adjustment_type, quantity, previous_stock, new_stock, reason, notes, adjusted_by
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-          RETURNING *`,
-          [
-            material_id,
-            adjustment_type,
-            quantity,
-            currentStock,
-            newStock,
-            reason,
-            notes,
-            req.user.id
-          ]
-        );
-
-        await client.query(
-          'UPDATE inventory SET current_stock = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-          [newStock, material_id]
-        );
-
-        await client.query('COMMIT');
-
-        res.status(201).json({
-          message: 'Stock adjusted successfully',
-          adjustment: adjustmentResult.rows[0]
-        });
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      } finally {
-        client.release();
-      }
-    } catch (error) {
-      console.error('Adjust stock error:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-
-  // Add stock with sheets (new method)
-  async addStock(req, res) {
     const client = await pool.connect();
-    
     try {
       await client.query('BEGIN');
 
       const { id } = req.params;
-      const {
-        reams = 0,
-        sheets = 0,
-        total_sheets,
-        reason = 'Stock addition',
-        notes
+      const { 
+        adjustment_type, // 'add', 'remove', 'set'
+        quantity, 
+        purchase_cost, // optional: cost of the new stock
+        reason, 
+        notes 
       } = req.body;
 
+      if (!adjustment_type || !quantity) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Adjustment type and quantity are required.' });
+      }
+
       const inventoryResult = await client.query(
-        'SELECT * FROM inventory WHERE id = $1 AND is_active = true',
+        'SELECT * FROM inventory WHERE id = $1 FOR UPDATE', 
         [id]
       );
-
+      
       if (inventoryResult.rows.length === 0) {
         await client.query('ROLLBACK');
         return res.status(404).json({ error: 'Inventory item not found' });
       }
 
-      const inventoryItem = inventoryResult.rows[0];
-      const sheetsPerUnit = inventoryItem.sheets_per_unit;
+      const item = inventoryResult.rows[0];
+      const previousStock = parseFloat(item.current_stock);
+      let newStock;
 
-      let sheetsToAdd;
-      if (total_sheets !== undefined) {
-        sheetsToAdd = parseInt(total_sheets);
+      if (adjustment_type === 'add') {
+        newStock = previousStock + parseFloat(quantity);
+      } else if (adjustment_type === 'remove') {
+        newStock = previousStock - parseFloat(quantity);
+        if (newStock < 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'Insufficient stock for removal.' });
+        }
+      } else if (adjustment_type === 'set') {
+        newStock = parseFloat(quantity);
       } else {
-        sheetsToAdd = SheetCalculator.toSheets(
-          parseFloat(reams),
-          parseInt(sheets),
-          sheetsPerUnit
-        );
-      }
-
-      if (sheetsToAdd <= 0) {
         await client.query('ROLLBACK');
-        return res.status(400).json({ error: 'Invalid quantity' });
+        return res.status(400).json({ error: 'Invalid adjustment type.' });
       }
-
-      const previousSheets = inventoryItem.current_stock_sheets;
-      const newSheets = previousSheets + sheetsToAdd;
+      
+      let newUnitCost = parseFloat(item.unit_cost);
+      // If adding stock with a purchase cost, update the average unit cost
+      if (adjustment_type === 'add' && purchase_cost && quantity > 0) {
+        const existingValue = previousStock * item.unit_cost;
+        const additionValue = parseFloat(purchase_cost);
+        newUnitCost = (existingValue + additionValue) / newStock;
+      }
 
       await client.query(
-        'UPDATE inventory SET current_stock_sheets = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-        [newSheets, id]
+        'UPDATE inventory SET current_stock = $1, unit_cost = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+        [newStock, newUnitCost, id]
       );
 
       await client.query(
         `INSERT INTO stock_adjustments (
-          material_id, adjustment_type, quantity, 
-          previous_stock, new_stock, reason, notes, adjusted_by
+          material_id, adjustment_type, quantity, previous_stock, new_stock, reason, notes, adjusted_by
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [
-          id,
-          'add',
-          sheetsToAdd,
-          previousSheets,
-          newSheets,
-          reason,
-          notes || `Added ${sheetsToAdd} sheets (${reams} reams, ${sheets} sheets)`,
-          req.user.id
-        ]
+        [id, adjustment_type, quantity, previousStock, newStock, reason, notes, req.user.userId]
       );
 
       const updatedResult = await client.query(
-        'SELECT * FROM inventory WHERE id = $1',
+        'SELECT * FROM inventory WHERE id = $1', 
         [id]
       );
-
+      
       const updatedItem = updatedResult.rows[0];
-      const display = SheetCalculator.toDisplay(updatedItem.current_stock_sheets, sheetsPerUnit);
-      const addedDisplay = SheetCalculator.toDisplay(sheetsToAdd, sheetsPerUnit);
+
+      // Check stock level after adjustment
+      if (updatedItem.current_stock <= updatedItem.threshold) {
+        await notificationService.createNotification({
+          title: 'Low Stock Alert',
+          message: `${updatedItem.material_name} is below threshold. Current stock: ${getDisplayStock(updatedItem)}`,
+          type: 'low_stock',
+          relatedEntityType: 'inventory',
+          relatedEntityId: updatedItem.id,
+          priority: 'high',
+        });
+      }
 
       await client.query('COMMIT');
-
+      
       res.json({
-        message: 'Stock added successfully',
-        added: {
-          sheets: sheetsToAdd,
-          display: addedDisplay
-        },
-        inventory: {
-          ...updatedItem,
-          display_stock: display
-        }
+        message: 'Stock adjusted successfully',
+        item: updatedItem,
       });
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('Add stock error:', error);
+      console.error('Adjust stock error:', error);
       res.status(500).json({ error: 'Internal server error' });
     } finally {
       client.release();
     }
   }
 
-  // Record usage with sheets (new method)
-  async recordUsageSheets(req, res) {
+  // Record material usage
+  async recordUsage(req, res) {
     const client = await pool.connect();
-    
     try {
       await client.query('BEGIN');
+      const { material_id, job_id, quantity_used, notes } = req.body;
 
-      const {
-        material_id,
-        job_id,
-        sheets_used,
-        unit_cost,
-        usage_type = 'production',
-        notes
-      } = req.body;
-
-      if (!material_id || !sheets_used || sheets_used <= 0) {
+      if (!material_id || !quantity_used || quantity_used <= 0) {
         await client.query('ROLLBACK');
         return res.status(400).json({ error: 'Invalid usage data' });
       }
 
       const inventoryResult = await client.query(
-        'SELECT * FROM inventory WHERE id = $1',
+        'SELECT * FROM inventory WHERE id = $1 FOR UPDATE', 
         [material_id]
       );
-
+      
       if (inventoryResult.rows.length === 0) {
         await client.query('ROLLBACK');
         return res.status(404).json({ error: 'Material not found' });
       }
 
-      const inventoryItem = inventoryResult.rows[0];
+      const item = inventoryResult.rows[0];
 
-      if (sheets_used > inventoryItem.current_stock_sheets) {
+      if (quantity_used > item.current_stock) {
         await client.query('ROLLBACK');
-        return res.status(400).json({ 
-          error: 'Insufficient stock',
-          available: inventoryItem.current_stock_sheets,
-          needed: sheets_used
-        });
+        return res.status(400).json({ error: 'Insufficient stock' });
       }
 
-      const newSheets = inventoryItem.current_stock_sheets - sheets_used;
-      const totalCost = sheets_used * inventoryItem.cost_per_sheet;
+      const newStock = item.current_stock - quantity_used;
+      const totalCost = quantity_used * item.unit_cost;
 
       await client.query(
-        'UPDATE inventory SET current_stock_sheets = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-        [newSheets, material_id]
+        'UPDATE inventory SET current_stock = $1 WHERE id = $2',
+        [newStock, material_id]
       );
 
       const usageResult = await client.query(
         `INSERT INTO material_usage (
-          material_id, job_id, quantity_used, quantity_sheets, unit_cost, total_cost, 
-          usage_type, notes, recorded_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          material_id, job_id, quantity_used, unit_cost, total_cost, usage_type, notes, recorded_by
+        ) VALUES ($1, $2, $3, $4, $5, 'production', $6, $7)
         RETURNING *`,
-        [
-          material_id,
-          job_id,
-          sheets_used / inventoryItem.sheets_per_unit,
-          sheets_used,
-          unit_cost || inventoryItem.unit_cost,
-          totalCost,
-          usage_type,
-          notes,
-          req.user.id
-        ]
+        [material_id, job_id, quantity_used, item.unit_cost, totalCost, notes, req.user.id]
       );
-
-      const stockStatus = SheetCalculator.checkStockStatus(newSheets, inventoryItem.threshold_sheets);
       
-      if (stockStatus.isLow) {
-        const display = SheetCalculator.toDisplay(newSheets, inventoryItem.sheets_per_unit);
-        
+      if (newStock <= item.threshold) {
         await notificationService.createNotification({
           title: 'Low Stock Alert',
-          message: `${inventoryItem.material_name} is below threshold. ${display.display}`,
+          message: `${item.material_name} is below threshold. Current stock: ${getDisplayStock({...item, current_stock: newStock})}`,
           type: 'low_stock',
           relatedEntityType: 'inventory',
-          relatedEntityId: material_id,
-          priority: stockStatus.priority
-        });
-
-        broadcastToAdmins({
-          type: 'new_notification',
-          notification: {
-            title: 'Low Stock Alert',
-            message: `${inventoryItem.material_name} needs restocking. ${display.display}`,
-            type: 'low_stock',
-            relatedEntityId: material_id,
-            createdAt: new Date()
-          }
+          relatedEntityId: item.id,
+          priority: 'high',
         });
       }
 
       await client.query('COMMIT');
-
-      const display = SheetCalculator.toDisplay(newSheets, inventoryItem.sheets_per_unit);
-
       res.status(201).json({
         message: 'Material usage recorded successfully',
         usage: usageResult.rows[0],
-        inventory: {
-          ...inventoryItem,
-          current_stock_sheets: newSheets,
-          display_stock: display,
-          stock_status: stockStatus
-        }
       });
     } catch (error) {
       await client.query('ROLLBACK');
@@ -796,7 +575,392 @@ export class InventoryController {
     }
   }
 
-  // Get material history (new method)
+  // ============ SEARCH & UTILITIES ============
+  
+  // Search inventory by material name or attributes
+  async searchInventory(req, res) {
+    try {
+      const { query, category } = req.query;
+      
+      if (!query) {
+        return res.status(400).json({ error: 'Search query is required' });
+      }
+
+      let sql = `
+        SELECT 
+          id,
+          material_name,
+          category,
+          current_stock,
+          unit_of_measure,
+          attributes,
+          (current_stock * unit_cost) as stock_value
+        FROM inventory 
+        WHERE is_active = true 
+          AND (material_name ILIKE $1 OR attributes::text ILIKE $1)
+      `;
+      
+      const params = [`%${query}%`];
+      
+      if (category) {
+        sql += ` AND category = $2`;
+        params.push(category);
+      }
+      
+      sql += ` LIMIT 20`;
+      
+      const result = await pool.query(sql, params);
+      
+      res.json({
+        results: result.rows.map(item => ({
+          ...item,
+          display_stock: getDisplayStock(item),
+          attributes: item.attributes || {}
+        }))
+      });
+    } catch (error) {
+      console.error('Search inventory error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Quick stock check
+  async quickStockCheck(req, res) {
+    try {
+      const { id } = req.params;
+      
+      const result = await pool.query(
+        'SELECT * FROM inventory WHERE id = $1',
+        [id]
+      );
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Item not found' });
+      }
+      
+      const item = result.rows[0];
+      const stockStatus = getStockStatus(item.current_stock, item.threshold);
+      
+      res.json({
+        material: item.material_name,
+        currentStock: getDisplayStock(item),
+        threshold: `${item.threshold} ${item.unit_of_measure}`,
+        status: stockStatus
+      });
+    } catch (error) {
+      console.error('Stock check error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Calculate sheets (for paper category)
+  async calculateSheets(req, res) {
+    try {
+      const { reams = 0, sheets = 0, sheets_per_unit = 500 } = req.body;
+      
+      const totalSheets = (reams * sheets_per_unit) + sheets;
+      const displayReams = Math.floor(totalSheets / sheets_per_unit);
+      const displaySheets = totalSheets % sheets_per_unit;
+      
+      res.json({
+        totalSheets,
+        display: `${displayReams} reams, ${displaySheets} sheets`,
+        reams: displayReams,
+        sheets: displaySheets
+      });
+    } catch (error) {
+      console.error('Calculate sheets error:', error);
+      res.status(500).json({ error: 'Calculation error' });
+    }
+  }
+
+  // Update job materials
+  async updateJobMaterials(req, res) {
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+
+      const { jobId } = req.params;
+      const { materials } = req.body;
+
+      for (const material of materials) {
+        if (material.material_id) {
+          const invResult = await client.query(
+            'SELECT * FROM inventory WHERE id = $1',
+            [material.material_id]
+          );
+
+          if (invResult.rows.length > 0) {
+            const inventoryItem = invResult.rows[0];
+            const sheetsUsed = material.quantity;
+            const newStock = inventoryItem.current_stock - sheetsUsed;
+            
+            await client.query(
+              'UPDATE inventory SET current_stock = $1 WHERE id = $2',
+              [newStock, material.material_id]
+            );
+
+            await client.query(
+              `INSERT INTO materials_used (
+                job_id, material_id, material_name, quantity, unit_cost, total_cost
+              ) VALUES ($1, $2, $3, $4, $5, $6)`,
+              [
+                jobId,
+                material.material_id,
+                material.material_name,
+                material.quantity,
+                material.unit_cost || inventoryItem.unit_cost,
+                material.total_cost || (material.quantity * inventoryItem.unit_cost)
+              ]
+            );
+          }
+        }
+      }
+
+      await client.query('COMMIT');
+      res.json({ message: 'Job materials updated successfully' });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Update job materials error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    } finally {
+      client.release();
+    }
+  }
+
+  // ============ MATERIAL MONITORING METHODS ============
+  
+  // Get material usage trends
+  async getMaterialUsageTrends(req, res) {
+    try {
+      const { period = 'month', months = 6 } = req.query;
+
+      const query = `
+        SELECT 
+          DATE_TRUNC($1, j.date_requested) as period,
+          mu.material_name,
+          SUM(mu.quantity) as total_quantity,
+          SUM(mu.total_cost) as total_cost,
+          AVG(mu.unit_cost) as average_unit_cost
+        FROM materials_used mu
+        JOIN jobs j ON mu.job_id = j.id
+        WHERE j.date_requested >= CURRENT_DATE - INTERVAL '${months} months'
+        GROUP BY period, mu.material_name
+        ORDER BY period DESC, total_cost DESC
+      `;
+
+      const result = await pool.query(query, [period]);
+      res.json({ material_usage_trends: result.rows });
+    } catch (error) {
+      console.error('Get material usage trends error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Get waste analysis
+  async getWasteAnalysis(req, res) {
+    try {
+      const { months = 3 } = req.query;
+
+      const query = `
+        SELECT 
+          type,
+          waste_reason,
+          COUNT(*) as occurrence_count,
+          SUM(total_cost) as total_cost,
+          AVG(total_cost) as average_cost
+        FROM waste_expenses 
+        WHERE created_at >= CURRENT_DATE - INTERVAL '${months} months'
+        GROUP BY type, waste_reason
+        ORDER BY total_cost DESC
+      `;
+
+      const result = await pool.query(query);
+      res.json({ waste_analysis: result.rows });
+    } catch (error) {
+      console.error('Get waste analysis error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Get stock levels
+  async getStockLevels(req, res) {
+    try {
+      const query = `
+        SELECT 
+          material_name,
+          category,
+          current_stock,
+          threshold,
+          unit_of_measure,
+          unit_cost,
+          (current_stock * unit_cost) as stock_value,
+          ROUND((current_stock / threshold) * 100, 2) as stock_percentage,
+          CASE 
+            WHEN current_stock <= threshold THEN 'CRITICAL'
+            WHEN current_stock <= threshold * 1.5 THEN 'LOW'
+            ELSE 'HEALTHY'
+          END as stock_status
+        FROM inventory 
+        WHERE is_active = true 
+        ORDER BY stock_percentage ASC, stock_value DESC
+      `;
+
+      const result = await pool.query(query);
+      res.json({ stock_levels: result.rows });
+    } catch (error) {
+      console.error('Get stock levels error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Get cost analysis
+  async getCostAnalysis(req, res) {
+    try {
+      const { months = 6 } = req.query;
+
+      // Get usage costs
+      const usageQuery = `
+        SELECT 
+          DATE_TRUNC('month', j.date_requested) as period,
+          SUM(mu.total_cost) as usage_cost,
+          COUNT(DISTINCT j.id) as usage_count
+        FROM materials_used mu
+        JOIN jobs j ON mu.job_id = j.id
+        WHERE j.date_requested >= CURRENT_DATE - INTERVAL '${months} months'
+        GROUP BY period
+        ORDER BY period DESC
+      `;
+
+      // Get waste costs
+      const wasteQuery = `
+        SELECT 
+          DATE_TRUNC('month', created_at) as period,
+          SUM(total_cost) as waste_cost,
+          COUNT(*) as waste_count
+        FROM waste_expenses 
+        WHERE created_at >= CURRENT_DATE - INTERVAL '${months} months'
+        GROUP BY period
+        ORDER BY period DESC
+      `;
+
+      // Get total inventory value
+      const totalValueQuery = `
+        SELECT COALESCE(SUM(current_stock * unit_cost), 0) as total_inventory_value
+        FROM inventory WHERE is_active = true
+      `;
+
+      const [usageResult, wasteResult, totalValueResult] = await Promise.all([
+        pool.query(usageQuery),
+        pool.query(wasteQuery),
+        pool.query(totalValueQuery)
+      ]);
+
+      res.json({
+        usage_costs: usageResult.rows,
+        waste_costs: wasteResult.rows,
+        total_inventory_value: parseFloat(totalValueResult.rows[0].total_inventory_value)
+      });
+    } catch (error) {
+      console.error('Get cost analysis error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Get automatic stock updates
+  async getAutomaticStockUpdates(req, res) {
+    try {
+      const { days = 30 } = req.query;
+
+      const query = `
+        SELECT 
+          mu.material_name,
+          i.current_stock as current_inventory,
+          SUM(mu.quantity) as materials_used,
+          i.threshold,
+          (i.current_stock - SUM(mu.quantity)) as projected_stock,
+          CASE 
+            WHEN (i.current_stock - SUM(mu.quantity)) <= i.threshold THEN 'NEEDS_REORDER'
+            WHEN (i.current_stock - SUM(mu.quantity)) <= i.threshold * 1.5 THEN 'MONITOR'
+            ELSE 'HEALTHY'
+          END as stock_health
+        FROM materials_used mu
+        JOIN jobs j ON mu.job_id = j.id
+        JOIN inventory i ON mu.material_name = i.material_name
+        WHERE j.date_requested >= CURRENT_DATE - INTERVAL '${days} days'
+        AND j.status IN ('in_progress', 'completed')
+        AND i.is_active = true
+        GROUP BY mu.material_name, i.current_stock, i.threshold
+        ORDER BY stock_health, projected_stock ASC
+      `;
+
+      const result = await pool.query(query);
+      res.json({ automatic_updates: result.rows });
+    } catch (error) {
+      console.error('Get automatic stock updates error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Get material cost analysis
+  async getMaterialCostAnalysis(req, res) {
+    try {
+      const { months = 6 } = req.query;
+
+      const query = `
+        SELECT 
+          mu.material_name,
+          COUNT(DISTINCT j.id) as jobs_count,
+          SUM(mu.quantity) as total_quantity,
+          SUM(mu.total_cost) as total_cost,
+          AVG(mu.unit_cost) as avg_unit_cost,
+          MAX(mu.unit_cost) as max_unit_cost,
+          MIN(mu.unit_cost) as min_unit_cost
+        FROM materials_used mu
+        JOIN jobs j ON mu.job_id = j.id
+        WHERE j.date_requested >= CURRENT_DATE - INTERVAL '${months} months'
+        GROUP BY mu.material_name
+        ORDER BY total_cost DESC
+      `;
+
+      const result = await pool.query(query);
+      res.json({ material_cost_analysis: result.rows });
+    } catch (error) {
+      console.error('Get material cost analysis error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // ============ HELPER METHODS ============
+  
+  // Helper to validate attributes based on category
+  validateAttributes(category, attributes) {
+    if (!attributes || typeof attributes !== 'object') {
+      return {};
+    }
+
+    const validated = { ...attributes };
+
+    // Category-specific validation
+    switch (category) {
+      case 'Paper':
+        // Ensure numeric fields are numbers
+        if (validated.grammage) validated.grammage = Number(validated.grammage) || 0;
+        if (validated.sheets_per_unit) validated.sheets_per_unit = Number(validated.sheets_per_unit) || 500;
+        break;
+      case 'Ink':
+        if (validated.volume_ml) validated.volume_ml = Number(validated.volume_ml) || 0;
+        break;
+      case 'Chemicals':
+        if (validated.volume_l) validated.volume_l = Number(validated.volume_l) || 0;
+        break;
+    }
+
+    return validated;
+  }
+
+  // Get material history (for backward compatibility)
   async getMaterialHistory(req, res) {
     try {
       const { material_id, days = 30 } = req.query;
@@ -815,7 +979,6 @@ export class InventoryController {
       }
 
       const inventoryItem = inventoryResult.rows[0];
-      const sheetsPerUnit = inventoryItem.sheets_per_unit;
 
       const usageHistory = await pool.query(
         `SELECT 
@@ -848,149 +1011,26 @@ export class InventoryController {
         [material_id]
       );
 
-      const totalUsed = usageHistory.rows.reduce((sum, row) => 
-        sum + (row.quantity_sheets || (row.quantity_used * sheetsPerUnit)), 0);
-      
-      const totalWasted = wasteHistory.rows.reduce((sum, row) => 
-        sum + (row.quantity_sheets || (row.quantity_wasted * sheetsPerUnit)), 0);
-
-      const display = SheetCalculator.toDisplay(inventoryItem.current_stock_sheets, sheetsPerUnit);
-      const usedDisplay = SheetCalculator.toDisplay(totalUsed, sheetsPerUnit);
-      const wastedDisplay = SheetCalculator.toDisplay(totalWasted, sheetsPerUnit);
+      const totalUsed = usageHistory.rows.reduce((sum, row) => sum + parseFloat(row.quantity_used), 0);
+      const totalWasted = wasteHistory.rows.reduce((sum, row) => sum + parseFloat(row.quantity_wasted), 0);
 
       res.json({
         material: {
           ...inventoryItem,
-          display_stock: display
+          display_stock: getDisplayStock(inventoryItem)
         },
         history: {
           usage: usageHistory.rows,
           waste: wasteHistory.rows
         },
         totals: {
-          used_sheets: totalUsed,
-          wasted_sheets: totalWasted,
-          total_sheets: totalUsed + totalWasted,
-          display: {
-            used: usedDisplay,
-            wasted: wastedDisplay
-          }
+          used: totalUsed,
+          wasted: totalWasted
         }
       });
     } catch (error) {
       console.error('Get material history error:', error);
       res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-
-  // Calculate sheets utility
-  async calculateSheets(req, res) {
-    try {
-      const { reams = 0, sheets = 0, sheets_per_unit = 500 } = req.body;
-      
-      const totalSheets = SheetCalculator.toSheets(reams, sheets, sheets_per_unit);
-      const display = SheetCalculator.toDisplay(totalSheets, sheets_per_unit);
-      
-      res.json({
-        totalSheets,
-        display: display.display,
-        reams: display.reams,
-        sheets: display.sheets
-      });
-    } catch (error) {
-      console.error('Calculate sheets error:', error);
-      res.status(500).json({ error: 'Calculation error' });
-    }
-  }
-
-  // Quick stock check
-  async quickStockCheck(req, res) {
-    try {
-      const { id } = req.params;
-      
-      const result = await pool.query(
-        'SELECT * FROM inventory WHERE id = $1',
-        [id]
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Item not found' });
-      }
-      
-      const item = result.rows[0];
-      const stockStatus = SheetCalculator.checkStockStatus(
-        item.current_stock_sheets,
-        item.threshold_sheets
-      );
-      
-      res.json({
-        material: item.material_name,
-        currentStock: SheetCalculator.toDisplay(item.current_stock_sheets, item.sheets_per_unit),
-        threshold: SheetCalculator.toDisplay(item.threshold_sheets, item.sheets_per_unit),
-        status: stockStatus
-      });
-    } catch (error) {
-      console.error('Stock check error:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  }
-
-  // Update job materials (for job integration)
-  async updateJobMaterials(req, res) {
-    const client = await pool.connect();
-    
-    try {
-      await client.query('BEGIN');
-
-      const { jobId } = req.params;
-      const { materials } = req.body;
-
-      for (const material of materials) {
-        if (material.material_id) {
-          const invResult = await client.query(
-            'SELECT * FROM inventory WHERE id = $1',
-            [material.material_id]
-          );
-
-          if (invResult.rows.length > 0) {
-            const inventoryItem = invResult.rows[0];
-            const sheetsUsed = material.quantity_sheets || 
-              (material.quantity * inventoryItem.sheets_per_unit);
-            const newSheets = inventoryItem.current_stock_sheets - sheetsUsed;
-            
-            await client.query(
-              'UPDATE inventory SET current_stock_sheets = $1 WHERE id = $2',
-              [newSheets, material.material_id]
-            );
-
-            await client.query(
-              `INSERT INTO materials_used (
-                job_id, material_id, material_name, quantity, quantity_sheets,
-                unit_cost, total_cost, sheets_converted
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-              [
-                jobId,
-                material.material_id,
-                material.material_name,
-                sheetsUsed / inventoryItem.sheets_per_unit,
-                sheetsUsed,
-                material.unit_cost || inventoryItem.unit_cost,
-                sheetsUsed * inventoryItem.cost_per_sheet,
-                true
-              ]
-            );
-          }
-        }
-      }
-
-      await client.query('COMMIT');
-      res.json({ message: 'Job materials updated with sheet tracking' });
-    } catch (error) {
-      await client.query('ROLLBACK');
-      console.error('Update job materials error:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    } finally {
-      client.release();
     }
   }
 }

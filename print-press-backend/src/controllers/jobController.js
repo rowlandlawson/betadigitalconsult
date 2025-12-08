@@ -18,25 +18,12 @@ export const getAllJobs = async (req, res) => {
     const { page = 1, limit = 20, status, worker_id, customer_id, search } = req.query;
     const offset = (page - 1) * limit;
 
-    let query = `
-      SELECT 
-        j.*,
-        c.name as customer_name,
-        c.phone as customer_phone,
-        c.total_jobs_count,
-        u.name as worker_name,
-        COALESCE(SUM(p.amount), 0) as amount_paid,
-        (j.total_cost - COALESCE(SUM(p.amount), 0)) as balance,
-        CASE 
-          WHEN COALESCE(SUM(p.amount), 0) >= j.total_cost THEN 'fully_paid'
-          WHEN COALESCE(SUM(p.amount), 0) > 0 THEN 'partially_paid'
-          ELSE 'pending'
-        END as payment_status,
-        COUNT(*) OVER() as total_count
+    // --- REFACTORED FOR PERFORMANCE ---
+    // Base query for filtering and counting
+    let countQuery = `
+      SELECT COUNT(DISTINCT j.id) as total_count
       FROM jobs j
       LEFT JOIN customers c ON j.customer_id = c.id
-      LEFT JOIN users u ON j.worker_id = u.id
-      LEFT JOIN payments p ON j.id = p.job_id
       WHERE 1=1
     `;
     const params = [];
@@ -44,49 +31,74 @@ export const getAllJobs = async (req, res) => {
 
     // Apply filters
     if (status) {
-      paramCount++;
-      query += ` AND j.status = $${paramCount}`;
+      countQuery += ` AND j.status = $${++paramCount}`;
       params.push(status);
     }
 
     if (worker_id) {
-      paramCount++;
-      query += ` AND j.worker_id = $${paramCount}`;
+      countQuery += ` AND j.worker_id = $${++paramCount}`;
       params.push(worker_id);
     }
 
     if (customer_id) {
-      paramCount++;
-      query += ` AND j.customer_id = $${paramCount}`;
+      countQuery += ` AND j.customer_id = $${++paramCount}`;
       params.push(customer_id);
     }
 
     // Search functionality
     if (search) {
-      paramCount++;
-      query += ` AND (
+      countQuery += ` AND (
         j.ticket_id ILIKE $${paramCount} OR 
         j.description ILIKE $${paramCount} OR
         c.name ILIKE $${paramCount}
       )`;
       params.push(`%${search}%`);
     }
-
+    
     // For workers, only show their own jobs
     if (req.user.role === 'worker') {
-      paramCount++;
-      query += ` AND j.worker_id = $${paramCount}`;
+      countQuery += ` AND j.worker_id = $${++paramCount}`;
       params.push(req.user.userId);
     }
 
-    query += ` 
-      GROUP BY j.id, c.name, c.phone, c.total_jobs_count, u.name
-      ORDER BY j.created_at DESC 
-      LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
-    `;
-    params.push(parseInt(limit), offset);
+    // Get total count first
+    const totalResult = await pool.query(countQuery, params);
+    const totalCount = parseInt(totalResult.rows[0]?.total_count || 0);
 
-    const result = await pool.query(query, params);
+    // We need to re-apply filters to the outer query if they exist
+    // This is a simplified example; a more complex refactor might be needed
+    // For now, we'll assume the LIMIT/OFFSET subquery is sufficient for most cases
+    // and the main performance gain comes from that.
+    
+    // A more robust way is to get IDs from the filtered query first
+    const paginatedIdsQuery = countQuery.replace('COUNT(DISTINCT j.id) as total_count', 'j.id') + 
+      ` ORDER BY j.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    
+    const paginatedIdsResult = await pool.query(paginatedIdsQuery, [...params, parseInt(limit), offset]);
+    const jobIds = paginatedIdsResult.rows.map(r => r.id);
+
+    if (jobIds.length === 0) {
+      return res.json({ jobs: [], pagination: { page: parseInt(page), limit: parseInt(limit), total: totalCount, totalPages: Math.ceil(totalCount / parseInt(limit)) } });
+    }
+
+    // The original mainQuery has a complex subquery for pagination that is replaced.
+    // We need to construct the final query by joining with the paginated IDs.
+    const finalQuery = `
+      SELECT j.*, c.name as customer_name, c.phone as customer_phone, c.total_jobs_count, u.name as worker_name,
+             COALESCE(p_sum.amount_paid, 0) as amount_paid,
+             (j.total_cost - COALESCE(p_sum.amount_paid, 0)) as balance,
+             CASE 
+               WHEN COALESCE(p_sum.amount_paid, 0) >= j.total_cost THEN 'fully_paid'
+               WHEN COALESCE(p_sum.amount_paid, 0) > 0 THEN 'partially_paid'
+               ELSE 'pending'
+             END as payment_status
+      FROM jobs j
+      JOIN unnest($1::uuid[]) WITH ORDINALITY t(id, ord) ON j.id = t.id
+      LEFT JOIN customers c ON j.customer_id = c.id
+      LEFT JOIN users u ON j.worker_id = u.id
+      LEFT JOIN (SELECT job_id, SUM(amount) as amount_paid FROM payments GROUP BY job_id) p_sum ON j.id = p_sum.job_id
+      ORDER BY t.ord;`;
+    const result = await pool.query(finalQuery, [jobIds]);
 
     const jobs = result.rows.map(row => ({
       ...row,
@@ -99,8 +111,8 @@ export const getAllJobs = async (req, res) => {
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: parseInt(result.rows[0]?.total_count || 0),
-        totalPages: Math.ceil(parseInt(result.rows[0]?.total_count || 0) / parseInt(limit))
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / parseInt(limit))
       }
     });
   } catch (error) {
@@ -113,6 +125,7 @@ export const getJobById = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // First, get the job with customer and worker info
     const jobResult = await pool.query(`
       SELECT 
         j.*,
@@ -120,30 +133,41 @@ export const getJobById = async (req, res) => {
         c.phone as customer_phone,
         c.email as customer_email,
         c.total_jobs_count,
-        u.name as worker_name,
-        COALESCE(SUM(p.amount), 0) as amount_paid,
-        (j.total_cost - COALESCE(SUM(p.amount), 0)) as balance,
-        CASE 
-          WHEN COALESCE(SUM(p.amount), 0) >= j.total_cost THEN 'fully_paid'
-          WHEN COALESCE(SUM(p.amount), 0) > 0 THEN 'partially_paid'
-          ELSE 'pending'
-        END as payment_status
+        u.name as worker_name
       FROM jobs j
       LEFT JOIN customers c ON j.customer_id = c.id
       LEFT JOIN users u ON j.worker_id = u.id
-      LEFT JOIN payments p ON j.id = p.job_id
       WHERE j.id = $1
-      GROUP BY j.id, c.name, c.phone, c.email, c.total_jobs_count, u.name
     `, [id]);
 
     if (jobResult.rows.length === 0) {
       return res.status(404).json({ error: 'Job not found' });
     }
 
+    const jobRow = jobResult.rows[0];
+
+    // Get payment summary separately
+    const paymentSummaryResult = await pool.query(`
+      SELECT 
+        COALESCE(SUM(amount), 0) as amount_paid
+      FROM payments
+      WHERE job_id = $1
+    `, [id]);
+
+    const amountPaid = parseFloat(paymentSummaryResult.rows[0]?.amount_paid || 0);
+    const balance = parseFloat(jobRow.total_cost) - amountPaid;
+    
+    const paymentStatus = amountPaid >= parseFloat(jobRow.total_cost) 
+      ? 'fully_paid' 
+      : amountPaid > 0 
+      ? 'partially_paid' 
+      : 'pending';
+
     const job = {
-      ...jobResult.rows[0],
-      amount_paid: parseFloat(jobResult.rows[0].amount_paid),
-      balance: parseFloat(jobResult.rows[0].balance)
+      ...jobRow,
+      amount_paid: amountPaid,
+      balance: balance,
+      payment_status: paymentStatus
     };
 
     // Check if worker has access to this job
@@ -153,7 +177,13 @@ export const getJobById = async (req, res) => {
 
     // Get materials used
     const materialsResult = await pool.query(
-      'SELECT * FROM materials_used WHERE job_id = $1',
+      `SELECT 
+         mu.*,
+         i.current_stock,
+         (i.attributes->>'sheets_per_unit')::integer as sheets_per_unit
+       FROM materials_used mu
+       LEFT JOIN inventory i ON mu.material_id = i.id
+       WHERE mu.job_id = $1`,
       [id]
     );
 
@@ -184,7 +214,20 @@ export const getJobById = async (req, res) => {
     });
   } catch (error) {
     console.error('Get job error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      detail: error.detail
+    });
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { 
+        detail: error.detail,
+        stack: error.stack 
+      })
+    });
   }
 };
 
@@ -385,7 +428,7 @@ export const updateJobStatus = async (req, res) => {
         
         if (material.material_name) {
           const invResult = await client.query(
-            'SELECT * FROM inventory WHERE material_name ILIKE $1 AND is_active = true LIMIT 1',
+            'SELECT *, (attributes->>\'sheets_per_unit\')::integer as sheets_per_unit FROM inventory WHERE material_name ILIKE $1 AND is_active = true LIMIT 1',
             [`%${material.material_name}%`]
           );
           
@@ -401,12 +444,21 @@ export const updateJobStatus = async (req, res) => {
           (material.quantity * sheetsPerUnit) || 
           material.quantity; // Fallback to quantity if no conversion
 
+        // --- FIX: Use authoritative cost from inventory if item is found ---
+        let finalUnitCost = material.unit_cost;
+        let finalTotalCost = material.total_cost;
+
+        if (inventoryItem) {
+          finalUnitCost = inventoryItem.unit_cost;
+          finalTotalCost = sheetsUsed * (inventoryItem.cost_per_sheet || (inventoryItem.unit_cost / sheetsPerUnit));
+        }
+
         // Always record material usage
         const materialUsedResult = await client.query(
           `INSERT INTO materials_used (
-            job_id, material_id, material_name, quantity, quantity_sheets,
-            unit_cost, total_cost, unit_of_measure, sheets_converted
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            job_id, material_id, material_name, quantity,
+            quantity_sheets, unit_cost, total_cost, sheets_converted
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           RETURNING *`,
           [
             id,
@@ -414,26 +466,28 @@ export const updateJobStatus = async (req, res) => {
             material.material_name,
             material.quantity || (sheetsUsed / sheetsPerUnit),
             sheetsUsed,
-            material.unit_cost,
-            material.total_cost || (sheetsUsed * (inventoryItem?.cost_per_sheet || material.unit_cost / sheetsPerUnit)),
-            material.unit_of_measure || 'sheets',
+            finalUnitCost,
+            finalTotalCost,
             !!inventoryItem
           ]
         );
 
         // Update inventory if material exists
         if (materialId && inventoryItem) {
+          // Get current stock (now stored as current_stock, but still represents sheets for paper items)
+          const currentStockSheets = parseFloat(inventoryItem.current_stock) || 0;
+          
           // Check stock
-          if (sheetsUsed > inventoryItem.current_stock_sheets) {
+          if (sheetsUsed > currentStockSheets) {
             // Insufficient stock - log warning but continue
-            console.warn(`Insufficient stock for ${inventoryItem.material_name}. Need: ${sheetsUsed}, Have: ${inventoryItem.current_stock_sheets}`);
+            console.warn(`Insufficient stock for ${inventoryItem.material_name}. Need: ${sheetsUsed}, Have: ${currentStockSheets}`);
             
             // Option 1: Use what's available
-            const actualSheetsUsed = Math.min(sheetsUsed, inventoryItem.current_stock_sheets);
-            const newSheets = inventoryItem.current_stock_sheets - actualSheetsUsed;
+            const actualSheetsUsed = Math.min(sheetsUsed, currentStockSheets);
+            const newSheets = currentStockSheets - actualSheetsUsed;
             
             await client.query(
-              'UPDATE inventory SET current_stock_sheets = $1 WHERE id = $2',
+              'UPDATE inventory SET current_stock = $1 WHERE id = $2',
               [newSheets, materialId]
             );
             
@@ -452,10 +506,10 @@ export const updateJobStatus = async (req, res) => {
             });
           } else {
             // Normal case - enough stock
-            const newSheets = inventoryItem.current_stock_sheets - sheetsUsed;
+            const newSheets = currentStockSheets - sheetsUsed;
             
             await client.query(
-              'UPDATE inventory SET current_stock_sheets = $1 WHERE id = $2',
+              'UPDATE inventory SET current_stock = $1 WHERE id = $2',
               [newSheets, materialId]
             );
           }
@@ -473,28 +527,32 @@ export const updateJobStatus = async (req, res) => {
               sheetsUsed,
               material.unit_cost || inventoryItem.unit_cost,
               sheetsUsed * inventoryItem.cost_per_sheet,
-              `Job ${job.ticket_id}`,
+              `Job ${jobTicketId}`,
               req.user.userId
             ]
           );
 
           // Check stock status
           const updatedInv = await client.query(
-            'SELECT * FROM inventory WHERE id = $1',
+            'SELECT *, (attributes->>\'sheets_per_unit\')::integer as sheets_per_unit FROM inventory WHERE id = $1',
             [materialId]
           );
           
           if (updatedInv.rows.length > 0) {
             const updatedItem = updatedInv.rows[0];
+            const currentStockSheets = parseFloat(updatedItem.current_stock) || 0;
+            const thresholdSheets = parseFloat(updatedItem.threshold) || 0;
+            const sheetsPerUnit = updatedItem.sheets_per_unit || 500;
+            
             const stockStatus = SheetCalculator.checkStockStatus(
-              updatedItem.current_stock_sheets,
-              updatedItem.threshold_sheets
+              currentStockSheets,
+              thresholdSheets
             );
             
             if (stockStatus.isLow) {
               const display = SheetCalculator.toDisplay(
-                updatedItem.current_stock_sheets,
-                updatedItem.sheets_per_unit
+                currentStockSheets,
+                sheetsPerUnit
               );
               
               await notificationService.createNotification({
@@ -881,7 +939,7 @@ export const updateJobMaterials = async (req, res) => {
             // Update inventory if material_id is present
             if(currentMaterial.material_id) {
               await client.query(
-                `UPDATE inventory SET current_stock_sheets = current_stock_sheets - $1 WHERE id = $2`,
+                `UPDATE inventory SET current_stock = current_stock - $1 WHERE id = $2`,
                 [quantityChange, currentMaterial.material_id]
               );
             }
@@ -933,7 +991,7 @@ export const updateJobMaterials = async (req, res) => {
         // Update inventory if material_id is present
         if (material.material_id) {
           await client.query(
-            `UPDATE inventory SET current_stock_sheets = current_stock_sheets - $1 WHERE id = $2`,
+            `UPDATE inventory SET current_stock = current_stock - $1 WHERE id = $2`,
             [quantitySheets, material.material_id]
           );
         }
@@ -966,6 +1024,15 @@ export const updateJobMaterials = async (req, res) => {
           `${edit_reason} (Material deleted)`, userId
         ]
       );
+
+      // Return stock to inventory if the deleted material was linked to an inventory item
+      if (materialToDelete.material_id) {
+        const sheetsToReturn = materialToDelete.quantity_sheets || 0;
+        await client.query(
+          `UPDATE inventory SET current_stock = current_stock + $1 WHERE id = $2`,
+          [sheetsToReturn, materialToDelete.material_id]
+        );
+      }
 
       // Delete the material
       await client.query(

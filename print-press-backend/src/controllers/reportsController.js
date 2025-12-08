@@ -42,7 +42,7 @@ async getDashboardStatistics(req, res) {
       FROM customers
     `;
 
-    // 2. Jobs Statistics
+    // 2. Jobs Statistics - For revenue, use actual payments received in the period, not job costs
     const jobsStatsQuery = `
       SELECT 
         COUNT(*) as total_jobs,
@@ -58,20 +58,27 @@ async getDashboardStatistics(req, res) {
       WHERE created_at >= $1
     `;
     
-    // 3. Payments Statistics
+    // Separate query for actual revenue (payments received in period)
+    const actualRevenueQuery = `
+      SELECT COALESCE(SUM(amount), 0) as total_revenue
+      FROM payments
+      WHERE date >= $1
+    `;
+    
+    // 3. Payments Statistics - FIXED: changed from payment_date to date
     const paymentStatsQuery = `
       SELECT
         COALESCE(SUM(amount), 0) as total_collected
       FROM payments
-      WHERE payment_date >= $1
+      WHERE date >= $1
     `;
 
     // 4. Inventory Alerts
     const inventoryAlertsQuery = `
       SELECT COUNT(*) as total_items,
-      COUNT(CASE WHEN current_stock <= threshold THEN 1 END) as low_stock_items,
-      COUNT(CASE WHEN current_stock <= (threshold * 0.5) THEN 1 END) as critical_stock_items,
-      COALESCE(SUM(current_stock * unit_cost), 0) as total_inventory_value
+      COUNT(CASE WHEN current_stock_sheets <= threshold_sheets THEN 1 END) as low_stock_items,
+      COUNT(CASE WHEN current_stock_sheets <= (threshold_sheets * 0.5) THEN 1 END) as critical_stock_items,
+      COALESCE(SUM(current_stock_sheets * cost_per_sheet), 0) as total_inventory_value
       FROM inventory
     `;
 
@@ -92,15 +99,15 @@ async getDashboardStatistics(req, res) {
       LIMIT 6
     `;
 
-    // 6. Monthly Revenue Trend (last 6 months)
+    // 6. Monthly Revenue Trend (last 6 months) - FIXED: changed from payment_date to date
     const revenueTrendQuery = `
     WITH monthly_payments AS (
         SELECT
-            DATE_TRUNC('month', payment_date) as month,
+            DATE_TRUNC('month', date) as month,
             SUM(amount) as collected
         FROM payments
-        WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months'
-        GROUP BY DATE_TRUNC('month', payment_date)
+        WHERE date >= CURRENT_DATE - INTERVAL '6 months'
+        GROUP BY DATE_TRUNC('month', date)
     )
     SELECT 
         DATE_TRUNC('month', j.created_at) as month,
@@ -115,29 +122,21 @@ async getDashboardStatistics(req, res) {
     LIMIT 6
     `;
 
-    // 7. Top Customers by Revenue
+    // 7. Top Customers by Revenue - REFACTORED FOR PERFORMANCE
     const topCustomersQuery = `
       SELECT 
         c.id,
         c.name,
         c.phone,
         c.email,
-        COUNT(j.id) as total_jobs,
+        COUNT(DISTINCT j.id) as total_jobs,
         COALESCE(SUM(j.total_cost), 0) as total_spent,
-        COALESCE(p.total_paid, 0) as total_paid,
-        (COALESCE(SUM(j.total_cost), 0) - COALESCE(p.total_paid, 0)) as outstanding_balance
+        COALESCE(SUM(p.amount), 0) as total_paid,
+        (COALESCE(SUM(j.total_cost), 0) - COALESCE(SUM(p.amount), 0)) as outstanding_balance
       FROM customers c
       LEFT JOIN jobs j ON c.id = j.customer_id AND j.created_at >= $1
-      LEFT JOIN (
-        SELECT 
-          jj.customer_id, 
-          SUM(pp.amount) as total_paid 
-        FROM payments pp
-        JOIN jobs jj ON pp.job_id = jj.id
-        WHERE pp.payment_date >= $1
-        GROUP BY jj.customer_id
-      ) p ON c.id = p.customer_id
-      GROUP BY c.id, c.name, c.phone, c.email, p.total_paid
+      LEFT JOIN payments p ON j.id = p.job_id AND p.date >= $1
+      GROUP BY c.id, c.name, c.phone, c.email
       ORDER BY total_paid DESC NULLS LAST
       LIMIT 5
     `;
@@ -148,6 +147,7 @@ async getDashboardStatistics(req, res) {
       customersResult,
       jobsResult,
       paymentResult,
+      actualRevenueResult,
       inventoryResult,
       activitiesResult,
       trendResult,
@@ -156,6 +156,7 @@ async getDashboardStatistics(req, res) {
       pool.query(totalCustomersQuery, [startOfMonth]),
       pool.query(jobsStatsQuery, [startDate]),
       pool.query(paymentStatsQuery, [startDate]),
+      pool.query(actualRevenueQuery, [startDate]),
       pool.query(inventoryAlertsQuery),
       pool.query(recentActivitiesQuery),
       pool.query(revenueTrendQuery),
@@ -172,25 +173,45 @@ async getDashboardStatistics(req, res) {
       topCustomers: customersRevenueResult.rows.length
     });
 
-    const customersStats = customersResult.rows[0] || { total_customers: 0, new_customers_this_month: 0 };
+    const customersStats = customersResult.rows[0] || { 
+      total_customers: 0, 
+      new_customers_this_month: 0 
+    };
+    
     const jobsStats = jobsResult.rows[0] || { 
-      total_jobs: 0, pending_jobs: 0, active_jobs: 0, completed_jobs: 0, delivered_jobs: 0,
-      fully_paid_jobs: 0, partially_paid_jobs: 0, unpaid_jobs: 0,
+      total_jobs: 0, 
+      pending_jobs: 0, 
+      active_jobs: 0, 
+      completed_jobs: 0, 
+      delivered_jobs: 0,
+      fully_paid_jobs: 0, 
+      partially_paid_jobs: 0, 
+      unpaid_jobs: 0,
       total_revenue: 0
     };
-    const paymentStatsResult = paymentResult.rows[0] || { total_collected: 0 };
+    
+    const paymentStatsResult = paymentResult.rows[0] || { 
+      total_collected: 0 
+    };
+    
     const inventoryStats = inventoryResult.rows[0] || { 
-      total_items: 0, low_stock_items: 0, critical_stock_items: 0, total_inventory_value: 0 
+      total_items: 0, 
+      low_stock_items: 0, 
+      critical_stock_items: 0, 
+      total_inventory_value: 0 
     };
 
-    // Calculate payment stats
-    const totalRevenue = parseFloat(jobsStats.total_revenue || 0);
+    // Calculate payment stats - Use actual payments received as revenue for the period
+    const actualRevenue = parseFloat(actualRevenueResult.rows[0]?.total_revenue || 0);
+    const totalRevenue = actualRevenue; // Use actual payments received, not job costs
     const totalCollected = parseFloat(paymentStatsResult.total_collected || 0);
+    // For outstanding, calculate from all jobs (not just period) vs payments in period
+    const totalOutstanding = Math.max(0, parseFloat(jobsStats.total_revenue || 0) - totalCollected);
     
     const paymentStats = {
       total_revenue: totalRevenue,
       total_collected: totalCollected,
-      total_outstanding: totalRevenue - totalCollected,
+      total_outstanding: totalOutstanding,
       collection_rate: totalRevenue > 0 ? (totalCollected / totalRevenue) * 100 : 0
     };
 
@@ -205,6 +226,40 @@ async getDashboardStatistics(req, res) {
         : (currentMonthRevenue > 0 ? 100 : 0);
     }
 
+    // Calculate inventory health
+    const totalStockItems = parseInt(inventoryStats.total_items || 0);
+    const lowStockItems = parseInt(inventoryStats.low_stock_items || 0);
+    const inventoryHealth = totalStockItems > 0 
+      ? ((totalStockItems - lowStockItems) / totalStockItems) * 100 
+      : 100;
+
+    // Calculate customer growth rate safely
+    const totalCustomers = parseInt(customersStats.total_customers || 0);
+    const newThisMonth = parseInt(customersStats.new_customers_this_month || 0);
+    const customerGrowthRate = totalCustomers > 0 
+      ? (newThisMonth / totalCustomers) * 100 
+      : (newThisMonth > 0 ? 100 : 0);
+
+    // Calculate job completion rate safely
+    const totalJobs = parseInt(jobsStats.total_jobs || 0);
+    const completedJobs = parseInt(jobsStats.completed_jobs || 0);
+    const jobCompletionRate = totalJobs > 0 
+      ? (completedJobs / totalJobs) * 100 
+      : 0;
+
+    // Prepare top customers with proper formatting
+    const topCustomers = (customersRevenueResult.rows || []).map(customer => ({
+      id: customer.id,
+      name: customer.name || 'Unknown Customer',
+      contact_person: customer.contact_person || customer.name || 'N/A',
+      phone: customer.phone || 'N/A',
+      email: customer.email || 'N/A',
+      total_jobs: parseInt(customer.total_jobs || 0),
+      total_spent: parseFloat(customer.total_spent || 0),
+      total_paid: parseFloat(customer.total_paid || 0),
+      outstanding_balance: Math.max(0, parseFloat(customer.outstanding_balance || 0))
+    }));
+
     const response = {
       summary: {
         timestamp: new Date().toISOString(),
@@ -212,47 +267,49 @@ async getDashboardStatistics(req, res) {
         updated_at: new Date().toISOString()
       },
       customers: {
-        total: parseInt(customersStats.total_customers || 0),
-        new_this_month: parseInt(customersStats.new_customers_this_month || 0),
-        growth_rate: customersStats.total_customers > 0 
-          ? (customersStats.new_customers_this_month / customersStats.total_customers) * 100 
-          : 0
+        total: totalCustomers,
+        new_this_month: newThisMonth,
+        growth_rate: parseFloat(customerGrowthRate.toFixed(2))
       },
       jobs: {
-        total: parseInt(jobsStats.total_jobs || 0),
+        total: totalJobs,
         pending: parseInt(jobsStats.pending_jobs || 0),
         active: parseInt(jobsStats.active_jobs || 0),
-        completed: parseInt(jobsStats.completed_jobs || 0),
+        completed: completedJobs,
         delivered: parseInt(jobsStats.delivered_jobs || 0),
-        completion_rate: jobsStats.total_jobs > 0 
-          ? (jobsStats.completed_jobs / jobsStats.total_jobs) * 100 
-          : 0
+        completion_rate: parseFloat(jobCompletionRate.toFixed(2))
       },
-      payments: paymentStats,
+      payments: {
+        total_revenue: parseFloat(paymentStats.total_revenue.toFixed(2)),
+        total_collected: parseFloat(paymentStats.total_collected.toFixed(2)),
+        total_outstanding: parseFloat(paymentStats.total_outstanding.toFixed(2)),
+        collection_rate: parseFloat(paymentStats.collection_rate.toFixed(2))
+      },
       inventory: {
-        total_items: parseInt(inventoryStats.total_items || 0),
-        low_stock: parseInt(inventoryStats.low_stock_items || 0),
+        total_items: totalStockItems,
+        low_stock: lowStockItems,
         critical_stock: parseInt(inventoryStats.critical_stock_items || 0),
-        total_value: parseFloat(inventoryStats.total_inventory_value || 0),
+        total_value: parseFloat(parseFloat(inventoryStats.total_inventory_value || 0).toFixed(2)),
         alert_level: inventoryStats.critical_stock_items > 0 ? 'CRITICAL' : 
                     inventoryStats.low_stock_items > 0 ? 'WARNING' : 'HEALTHY'
       },
       recent_activities: activitiesResult.rows || [],
-      revenue_trend: revenueTrend,
-      top_customers: customersRevenueResult.rows || [],
+      revenue_trend: revenueTrend.map(trend => ({
+        month: trend.month,
+        job_count: parseInt(trend.job_count || 0),
+        revenue: parseFloat(trend.revenue || 0),
+        collected: parseFloat(trend.collected || 0)
+      })),
+      top_customers: topCustomers,
       performance_metrics: {
-        monthly_revenue_growth: monthlyGrowth,
-        job_completion_rate: jobsStats.total_jobs > 0 
-          ? (jobsStats.completed_jobs / jobsStats.total_jobs) * 100 
-          : 0,
-        payment_collection_rate: paymentStats.collection_rate,
-        inventory_health: inventoryStats.total_items > 0 
-          ? ((inventoryStats.total_items - inventoryStats.low_stock_items) / inventoryStats.total_items) * 100 
-          : 100
+        monthly_revenue_growth: parseFloat(monthlyGrowth.toFixed(2)),
+        job_completion_rate: parseFloat(jobCompletionRate.toFixed(2)),
+        payment_collection_rate: parseFloat(paymentStats.collection_rate.toFixed(2)),
+        inventory_health: parseFloat(inventoryHealth.toFixed(2))
       }
     };
 
-    console.log('✅ Dashboard response prepared');
+    console.log('✅ Dashboard response prepared successfully');
     res.json(response);
 
   } catch (error) {
@@ -331,17 +388,18 @@ async getDashboardStatistics(req, res) {
 
       const [
         revenueResult,
-        materialResult,
-        wasteResult,
-        operationalResult,
-        laborResult
+        materialResult, 
+        wasteResult, 
+        operationalResult
       ] = await Promise.all([
         pool.query(revenueQuery, params),
         pool.query(materialCostsQuery, params),
         pool.query(wasteCostsQuery, params),
-        pool.query(operationalCostsQuery, params),
-        pool.query(laborCostsQuery)
+        pool.query(operationalCostsQuery, params)
       ]);
+
+      // Labor costs are calculated independently of the date range in the current logic
+      const laborResult = await pool.query(laborCostsQuery);
 
       const totalRevenue = parseFloat(revenueResult.rows[0].total_revenue);
       const totalMaterialCosts = parseFloat(materialResult.rows[0].material_costs);
@@ -395,28 +453,28 @@ async getDashboardStatistics(req, res) {
           month_name: startDate.toLocaleString('default', { month: 'long' })
         },
         revenue: {
-          total_revenue: totalRevenue,
-          total_material_costs: totalMaterialCosts,
-          gross_profit: grossProfit,
-          gross_profit_margin: totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0
+          total_revenue: parseFloat(totalRevenue.toFixed(2)),
+          total_material_costs: parseFloat(totalMaterialCosts.toFixed(2)),
+          gross_profit: parseFloat(grossProfit.toFixed(2)),
+          gross_profit_margin: parseFloat((totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0).toFixed(2))
         },
         expenses: {
-          material_costs: totalMaterialCosts,
-          waste_costs: totalWasteCosts,
-          operational_costs: totalOperationalCosts,
-          labor_costs: totalLaborCosts,
-          total_expenses: totalExpenses
+          material_costs: parseFloat(totalMaterialCosts.toFixed(2)),
+          waste_costs: parseFloat(totalWasteCosts.toFixed(2)),
+          operational_costs: parseFloat(totalOperationalCosts.toFixed(2)),
+          labor_costs: parseFloat(totalLaborCosts.toFixed(2)),
+          total_expenses: parseFloat(totalExpenses.toFixed(2))
         },
         profit: {
-          net_profit: netProfit,
-          profit_margin: totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0,
+          net_profit: parseFloat(netProfit.toFixed(2)),
+          profit_margin: parseFloat((totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0).toFixed(2)),
           is_profitable: netProfit > 0
         },
         job_stats: jobStatsResult.rows[0],
         top_materials: topMaterialsResult.rows,
         efficiency_metrics: {
-          material_efficiency: totalMaterialCosts > 0 ? (totalRevenue / totalMaterialCosts) : 0,
-          waste_percentage: totalMaterialCosts > 0 ? (totalWasteCosts / totalMaterialCosts) * 100 : 0
+          material_efficiency: parseFloat((totalMaterialCosts > 0 ? (totalRevenue / totalMaterialCosts) : 0).toFixed(2)),
+          waste_percentage: parseFloat((totalMaterialCosts > 0 ? (totalWasteCosts / totalMaterialCosts) * 100 : 0).toFixed(2))
         }
       });
     } catch (error) {
@@ -484,26 +542,63 @@ async getDashboardStatistics(req, res) {
         ORDER BY amount DESC
       `;
 
-      const [revenueBreakdown, expenseBreakdown] = await Promise.all([
+      // Labor costs (from worker salaries) - Note: This is a rough estimate and not tied to the date range
+      const laborCostsQuery = `
+        SELECT COALESCE(SUM(
+          CASE 
+            WHEN u.hourly_rate IS NOT NULL THEN u.hourly_rate * 160 -- Approx monthly hours
+            WHEN u.monthly_salary IS NOT NULL THEN u.monthly_salary
+            ELSE 0 
+          END
+        ), 0) as labor_costs
+        FROM users u
+        WHERE u.role = 'worker' 
+        AND u.is_active = true
+      `;
+
+      const [revenueBreakdown, expenseBreakdown, laborCostResult] = await Promise.all([
         pool.query(revenueBreakdownQuery, [start_date, end_date]),
-        pool.query(expenseBreakdownQuery, [start_date, end_date])
+        pool.query(expenseBreakdownQuery, [start_date, end_date]),
+        pool.query(laborCostsQuery) // Not date-range dependent in current schema
       ]);
+
+      // --- IMPROVED LOGIC: Prorate labor costs for the selected period ---
+      const startDate = new Date(start_date);
+      const endDate = new Date(end_date);
+      // Calculate the number of days in the period (+1 to include both start and end dates)
+      const daysInPeriod = (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24) + 1;
+      const daysInMonth = 30; // Using a standard 30-day month for proration
+
+      const monthlyLaborCosts = parseFloat(laborCostResult.rows[0]?.labor_costs || 0);
+      const proratedLaborCosts = (monthlyLaborCosts / daysInMonth) * daysInPeriod;
 
       // Calculate totals
       const totalRevenue = revenueBreakdown.rows.reduce((sum, row) => sum + parseFloat(row.revenue), 0);
-      const totalExpenses = expenseBreakdown.rows.reduce((sum, row) => sum + parseFloat(row.amount), 0);
+      const totalOperationalExpenses = expenseBreakdown.rows.reduce((sum, row) => sum + parseFloat(row.amount), 0);
+      const totalExpenses = totalOperationalExpenses + proratedLaborCosts;
       const netProfit = totalRevenue - totalExpenses;
+
+      // Add prorated labor cost to the expense breakdown for transparency
+      const finalExpenseBreakdown = [
+        ...expenseBreakdown.rows,
+        {
+          category: 'Labor',
+          description: `Prorated salaries for ${daysInPeriod.toFixed(0)} days`,
+          amount: proratedLaborCosts,
+          date: end_date // Assign to the end of the period
+        }
+      ].sort((a, b) => b.amount - a.amount); // Re-sort with labor costs included
 
       res.json({
         period: { start_date, end_date },
         summary: {
-          total_revenue: totalRevenue,
-          total_expenses: totalExpenses,
-          net_profit: netProfit,
-          profit_margin: totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0
+          total_revenue: parseFloat(totalRevenue.toFixed(2)),
+          total_expenses: parseFloat(totalExpenses.toFixed(2)),
+          net_profit: parseFloat(netProfit.toFixed(2)),
+          profit_margin: parseFloat((totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0).toFixed(2))
         },
         revenue_breakdown: revenueBreakdown.rows,
-        expense_breakdown: expenseBreakdown.rows
+        expense_breakdown: finalExpenseBreakdown
       });
     } catch (error) {
       console.error('Profit loss statement error:', error);
@@ -514,7 +609,13 @@ async getDashboardStatistics(req, res) {
   // Get material monitoring dashboard
   async getMaterialMonitoringDashboard(req, res) {
     try {
-      const { months = 6 } = req.query;
+      // Ensure months is a number to prevent injection
+      const months = parseInt(req.query.months, 10) || 6;
+
+      if (isNaN(months) || months <= 0) {
+        return res.status(400).json({ error: 'Invalid number of months specified.' });
+      }
+      const interval = `${months} months`;
 
       // Material usage trends
       const usageTrendsQuery = `
@@ -526,7 +627,7 @@ async getDashboardStatistics(req, res) {
           AVG(mu.unit_cost) as average_unit_cost
         FROM materials_used mu
         JOIN jobs j ON mu.job_id = j.id
-        WHERE j.date_requested >= CURRENT_DATE - INTERVAL '${months} months'
+        WHERE j.date_requested >= CURRENT_DATE - $1::interval
         GROUP BY period, mu.material_name
         ORDER BY period DESC, total_cost DESC
       `;
@@ -540,9 +641,9 @@ async getDashboardStatistics(req, res) {
           SUM(total_cost) as total_cost,
           AVG(total_cost) as average_cost,
           (SUM(total_cost) / (SELECT COALESCE(SUM(total_cost), 1) FROM waste_expenses 
-           WHERE created_at >= CURRENT_DATE - INTERVAL '${months} months')) * 100 as percentage_of_total
+           WHERE created_at >= CURRENT_DATE - $1::interval)) * 100 as percentage_of_total
         FROM waste_expenses 
-        WHERE created_at >= CURRENT_DATE - INTERVAL '${months} months'
+        WHERE created_at >= CURRENT_DATE - $1::interval
         GROUP BY type, waste_reason
         ORDER BY total_cost DESC
       `;
@@ -551,15 +652,15 @@ async getDashboardStatistics(req, res) {
       const stockAnalysisQuery = `
         SELECT 
           material_name,
-          current_stock,
-          threshold,
+          current_stock_sheets,
+          threshold_sheets,
           unit_of_measure,
           unit_cost,
-          (current_stock * unit_cost) as stock_value,
-          ROUND((current_stock / threshold) * 100, 2) as stock_percentage,
+          (current_stock_sheets * cost_per_sheet) as stock_value,
+          ROUND((current_stock_sheets / NULLIF(threshold_sheets, 0)) * 100, 2) as stock_percentage,
           CASE 
-            WHEN current_stock <= threshold THEN 'CRITICAL'
-            WHEN current_stock <= threshold * 1.5 THEN 'LOW'
+            WHEN current_stock_sheets <= threshold_sheets THEN 'CRITICAL'
+            WHEN current_stock_sheets <= threshold_sheets * 1.5 THEN 'LOW'
             ELSE 'HEALTHY'
           END as stock_status
         FROM inventory 
@@ -583,7 +684,7 @@ async getDashboardStatistics(req, res) {
           END as return_on_material
         FROM materials_used mu
         JOIN jobs j ON mu.job_id = j.id
-        WHERE j.date_requested >= CURRENT_DATE - INTERVAL '${months} months'
+        WHERE j.date_requested >= CURRENT_DATE - $1::interval
         AND j.status = 'completed'
         GROUP BY mu.material_name
         ORDER BY return_on_material DESC
@@ -595,10 +696,10 @@ async getDashboardStatistics(req, res) {
         stockAnalysisResult,
         costEfficiencyResult
       ] = await Promise.all([
-        pool.query(usageTrendsQuery),
-        pool.query(wasteAnalysisQuery),
+        pool.query(usageTrendsQuery, [interval]),
+        pool.query(wasteAnalysisQuery, [interval]),
         pool.query(stockAnalysisQuery),
-        pool.query(costEfficiencyQuery)
+        pool.query(costEfficiencyQuery, [interval])
       ]);
 
       res.json({
@@ -630,17 +731,17 @@ async getDashboardStatistics(req, res) {
       if (!allowedPeriods.includes(period)) {
         return res.status(400).json({ error: 'Invalid period specified' });
       }
-
+      const interval = '12 months';
       // Revenue trends
       const revenueTrendsQuery = `
         SELECT 
-          DATE_TRUNC('${period}', date_requested) as period,
+          DATE_TRUNC($1, date_requested) as period,
           COUNT(*) as job_count,
           COALESCE(SUM(total_cost), 0) as total_revenue,
           COALESCE(SUM(amount_paid), 0) as collected_revenue,
           COALESCE(AVG(total_cost), 0) as average_job_value
         FROM jobs
-        WHERE date_requested >= CURRENT_DATE - INTERVAL '12 months'
+        WHERE date_requested >= CURRENT_DATE - $2::interval
         GROUP BY period
         ORDER BY period DESC
       `;
@@ -648,11 +749,11 @@ async getDashboardStatistics(req, res) {
       // Customer acquisition trends
       const customerTrendsQuery = `
         SELECT 
-          DATE_TRUNC('${period}', first_interaction_date) as period,
+          DATE_TRUNC($1, first_interaction_date) as period,
           COUNT(*) as new_customers,
           COUNT(CASE WHEN total_jobs_count > 1 THEN 1 END) as repeat_customers
         FROM customers
-        WHERE first_interaction_date >= CURRENT_DATE - INTERVAL '12 months'
+        WHERE first_interaction_date >= CURRENT_DATE - $2::interval
         GROUP BY period
         ORDER BY period DESC
       `;
@@ -660,13 +761,13 @@ async getDashboardStatistics(req, res) {
       // Efficiency metrics
       const efficiencyMetricsQuery = `
         SELECT 
-          DATE_TRUNC('${period}', j.date_requested) as period,
+          DATE_TRUNC($1, j.date_requested) as period,
           COUNT(*) as total_jobs,
           COUNT(CASE WHEN j.status = 'completed' THEN 1 END) as completed_jobs,
           AVG(EXTRACT(EPOCH FROM (j.updated_at - j.created_at)) / 3600) as avg_completion_hours,
           (COUNT(CASE WHEN j.status = 'completed' THEN 1 END)::FLOAT / COUNT(*) * 100) as completion_rate
         FROM jobs j
-        WHERE j.date_requested >= CURRENT_DATE - INTERVAL '12 months'
+        WHERE j.date_requested >= CURRENT_DATE - $2::interval
         GROUP BY period
         ORDER BY period DESC
       `;
@@ -676,9 +777,9 @@ async getDashboardStatistics(req, res) {
         customerTrendsResult,
         efficiencyMetricsResult
       ] = await Promise.all([
-        pool.query(revenueTrendsQuery),
-        pool.query(customerTrendsQuery),
-        pool.query(efficiencyMetricsQuery)
+        pool.query(revenueTrendsQuery, [period, interval]),
+        pool.query(customerTrendsQuery, [period, interval]),
+        pool.query(efficiencyMetricsQuery, [period, interval])
       ]);
 
       res.json({
@@ -704,6 +805,10 @@ async getDashboardStatistics(req, res) {
   async exportReportData(req, res) {
     try {
       const { report_type, start_date, end_date } = req.query;
+
+      if (!report_type || !start_date || !end_date) {
+        return res.status(400).json({ error: 'Missing required parameters: report_type, start_date, and end_date are required.' });
+      }
 
       let query;
       let filename;

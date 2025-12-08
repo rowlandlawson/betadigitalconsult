@@ -1,37 +1,49 @@
+// print-press-backend/src/routes/inventory.js
 import express from 'express';
 import { inventoryController } from '../controllers/inventoryController.js';
-import { materialMonitoringController } from '../controllers/inventoryMaterial.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
-router.use(authenticateToken, requireAdmin);
 
-// Basic routes (should all work now)
+// Apply authentication middleware to all inventory routes
+router.use(authenticateToken);
+
+// Public routes (for workers)
 router.get('/', inventoryController.getInventory);
 router.get('/categories', inventoryController.getCategories);
-router.get('/alerts/low-stock', inventoryController.getLowStockAlerts);
+router.get('/attribute-templates', inventoryController.getAttributeTemplates); // Add this line
 router.get('/:id', inventoryController.getInventoryItem);
-router.post('/', inventoryController.createInventory);
-router.put('/:id', inventoryController.updateInventory);
-router.delete('/:id', inventoryController.deleteInventory);
+router.get('/search', inventoryController.searchInventory); // Add this line
 
-// Sheets-based routes
-router.post('/:id/add-stock', inventoryController.addStock);
-router.post('/usage/record-sheets', inventoryController.recordUsageSheets);
-router.get('/:id/history', inventoryController.getMaterialHistory);
-router.post('/calculate-sheets', inventoryController.calculateSheets);
+// Admin-only routes
+router.post('/', requireAdmin, inventoryController.createInventory);
+router.put('/:id', requireAdmin, inventoryController.updateInventory);
+router.delete('/:id', requireAdmin, inventoryController.deleteInventory);
+
+// Stock adjustment routes (admin only)
+router.post('/:id/adjust-stock', requireAdmin, inventoryController.adjustStock);
+
+// Material usage routes (admin and workers)
+router.post('/record-usage', inventoryController.recordUsage);
+
+// Material monitoring routes (admin only)
+router.get('/monitoring/usage-trends', requireAdmin, inventoryController.getMaterialUsageTrends);
+router.get('/monitoring/stock-levels', requireAdmin, inventoryController.getStockLevels);
+router.get('/monitoring/cost-analysis', requireAdmin, inventoryController.getCostAnalysis);
+router.get('/monitoring/automatic-updates', requireAdmin, inventoryController.getAutomaticStockUpdates);
+router.get('/monitoring/waste-analysis', requireAdmin, inventoryController.getWasteAnalysis);
+router.get('/monitoring/material-cost-analysis', requireAdmin, inventoryController.getMaterialCostAnalysis);
+
+// Material history routes
+router.get('/material-history', inventoryController.getMaterialHistory);
+
+// Quick stock check
 router.get('/:id/stock-check', inventoryController.quickStockCheck);
 
-// Old compatibility routes
-router.post('/usage/record', inventoryController.recordUsage);
-router.post('/waste/record', inventoryController.recordWaste);
-router.post('/stock/adjust', inventoryController.adjustStock);
+// Calculate sheets
+router.post('/calculate-sheets', inventoryController.calculateSheets);
 
-// Monitoring routes
-router.get('/monitoring/usage-trends', materialMonitoringController.getMaterialUsageTrends);
-router.get('/monitoring/waste-analysis', materialMonitoringController.getWasteAnalysis);
-router.get('/monitoring/stock-levels', materialMonitoringController.getStockLevels);
-router.get('/monitoring/cost-analysis', materialMonitoringController.getMaterialCostAnalysis);
-router.get('/monitoring/automatic-updates', materialMonitoringController.getAutomaticStockUpdates);
+// Job materials update
+router.post('/job/:jobId/materials', requireAdmin, inventoryController.updateJobMaterials);
 
 export default router;

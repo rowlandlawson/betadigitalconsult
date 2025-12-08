@@ -325,31 +325,42 @@ export const getPaymentStats = async (req, res) => {
   try {
     const { period = 'monthly' } = req.query;
 
-    let groupBy;
+    let groupBy, dateFilter, periodFormat;
+    const currentDate = new Date();
+    
     switch (period) {
       case 'daily':
+        // Get last 30 days
+        dateFilter = `p.date >= CURRENT_DATE - INTERVAL '30 days'`;
         groupBy = 'DATE(p.date)';
+        periodFormat = `TO_CHAR(DATE(p.date), 'YYYY-MM-DD')`;
         break;
       case 'weekly':
+        // Get last 12 weeks
+        dateFilter = `p.date >= CURRENT_DATE - INTERVAL '12 weeks'`;
         groupBy = 'EXTRACT(YEAR FROM p.date), EXTRACT(WEEK FROM p.date)';
+        periodFormat = `CONCAT(EXTRACT(YEAR FROM p.date), '-W', LPAD(EXTRACT(WEEK FROM p.date)::text, 2, '0'))`;
         break;
       case 'monthly':
       default:
+        // Get last 12 months
+        dateFilter = `p.date >= CURRENT_DATE - INTERVAL '12 months'`;
         groupBy = 'EXTRACT(YEAR FROM p.date), EXTRACT(MONTH FROM p.date)';
+        periodFormat = `TO_CHAR(DATE_TRUNC('month', p.date), 'YYYY-MM')`;
         break;
     }
 
     const query = `
       SELECT 
-        ${groupBy} as period,
+        ${periodFormat} as period,
         COUNT(*) as payment_count,
-        SUM(p.amount) as total_amount,
-        AVG(p.amount) as average_payment,
+        COALESCE(SUM(p.amount), 0) as total_amount,
+        COALESCE(AVG(p.amount), 0) as average_payment,
         COUNT(DISTINCT p.job_id) as unique_jobs,
         COUNT(DISTINCT j.customer_id) as unique_customers
       FROM payments p
       LEFT JOIN jobs j ON p.job_id = j.id
-      WHERE p.date >= CURRENT_DATE - INTERVAL '6 months'
+      WHERE ${dateFilter}
       GROUP BY ${groupBy}
       ORDER BY period DESC
       LIMIT 12
@@ -357,20 +368,30 @@ export const getPaymentStats = async (req, res) => {
 
     const result = await pool.query(query);
 
-    // Get payment method distribution
+    // Format the results properly
+    const formattedStats = result.rows.map(row => ({
+      period: row.period,
+      payment_count: parseInt(row.payment_count) || 0,
+      total_amount: parseFloat(row.total_amount) || 0,
+      average_payment: parseFloat(row.average_payment) || 0,
+      unique_jobs: parseInt(row.unique_jobs) || 0,
+      unique_customers: parseInt(row.unique_customers) || 0
+    }));
+
+    // Get payment method distribution for the same period
     const methodDistribution = await pool.query(`
       SELECT 
         payment_method,
         COUNT(*) as count,
-        SUM(amount) as total_amount
+        COALESCE(SUM(amount), 0) as total_amount
       FROM payments 
-      WHERE date >= CURRENT_DATE - INTERVAL '3 months'
+      WHERE ${dateFilter}
       GROUP BY payment_method
       ORDER BY total_amount DESC
     `);
 
     res.json({
-      payment_stats: result.rows,
+      payment_stats: formattedStats,
       method_distribution: methodDistribution.rows,
       period: period
     });

@@ -51,9 +51,19 @@ export const PaymentStats: React.FC = () => {
     );
   }
 
-  const totalRevenue = stats.payment_stats.reduce((sum, stat) => sum + stat.total_amount, 0);
-  const totalPayments = stats.payment_stats.reduce((sum, stat) => sum + stat.payment_count, 0);
+  const totalRevenue = stats.payment_stats.reduce((sum, stat) => {
+    const amount = parseFloat(stat.total_amount) || 0;
+    return sum + (isNaN(amount) ? 0 : amount);
+  }, 0);
+  const totalPayments = stats.payment_stats.reduce((sum, stat) => {
+    const count = parseInt(stat.payment_count) || 0;
+    return sum + (isNaN(count) ? 0 : count);
+  }, 0);
   const averagePayment = totalPayments > 0 ? totalRevenue / totalPayments : 0;
+  const uniqueJobs = stats.payment_stats.reduce((sum, stat) => {
+    const jobs = parseInt(stat.unique_jobs) || 0;
+    return sum + (isNaN(jobs) ? 0 : jobs);
+  }, 0);
 
   return (
     <div className="space-y-6">
@@ -97,7 +107,7 @@ export const PaymentStats: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Payments</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {totalPayments}
+                  {totalPayments.toString().replace(/^0+/, '') || '0'}
                 </p>
               </div>
             </div>
@@ -113,7 +123,7 @@ export const PaymentStats: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Average Payment</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(averagePayment)}
+                  {isNaN(averagePayment) || averagePayment === 0 ? '₦0.00' : formatCurrency(averagePayment)}
                 </p>
               </div>
             </div>
@@ -129,7 +139,7 @@ export const PaymentStats: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Unique Jobs</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {stats.payment_stats.reduce((sum, stat) => sum + stat.unique_jobs, 0)}
+                  {uniqueJobs.toString().replace(/^0+/, '') || '0'}
                 </p>
               </div>
             </div>
@@ -188,15 +198,15 @@ export const PaymentStats: React.FC = () => {
                     Period: {stat.period}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {stat.payment_count} payments • {stat.unique_jobs} jobs • {stat.unique_customers} customers
+                    {parseInt(stat.payment_count) || 0} payments • {parseInt(stat.unique_jobs) || 0} jobs • {parseInt(stat.unique_customers) || 0} customers
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-semibold text-green-600">
-                    {formatCurrency(stat.total_amount)}
+                    {formatCurrency(parseFloat(stat.total_amount) || 0)}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Avg: {formatCurrency(stat.average_payment)}
+                    Avg: {formatCurrency(parseFloat(stat.average_payment) || 0)}
                   </p>
                 </div>
               </div>

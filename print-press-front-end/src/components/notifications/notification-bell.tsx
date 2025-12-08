@@ -101,12 +101,14 @@ export const NotificationBell: React.FC = () => {
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      // Fetch notifications when opening the dropdown
+      fetchNotifications();
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen]);
+  }, [isOpen, fetchNotifications]);
 
   // WebSocket setup with authentication
   useEffect(() => {
@@ -232,10 +234,6 @@ export const NotificationBell: React.FC = () => {
         size="sm"
         onClick={() => {
           setIsOpen(!isOpen);
-          if (!isOpen) {
-            // Fetch notifications when opening the dropdown
-            fetchNotifications();
-          }
         }}
         className="relative p-2"
         title={wsConnected ? 'Connected to notifications' : 'Connecting...'}
@@ -297,9 +295,9 @@ export const NotificationBell: React.FC = () => {
                   )}
                 </div>
               ) : (
-                notifications.map((notification) => (
+                notifications.map((notification, index) => (
                   <div
-                    key={notification.id}
+                    key={notification.id || `notification-${index}`}
                     className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
                       !notification.is_read ? 'bg-blue-50' : ''
                     }`}

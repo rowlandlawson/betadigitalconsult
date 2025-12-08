@@ -465,7 +465,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
           </h3>
         </CardHeader>
         <CardContent>
-          {job.waste.length === 0 ? (
+          {!job.waste || job.waste.length === 0 ? (
             <p className="text-gray-500 italic text-center sm:text-left">No waste recorded.</p>
           ) : (
             <div className="space-y-2">

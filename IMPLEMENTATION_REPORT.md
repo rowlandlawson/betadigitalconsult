@@ -10,7 +10,7 @@ This report documents all the fixes and improvements made to the Print Press Man
 
 ### 1. INVENTORY IMPROVEMENTS
 
-#### 1.1 Created Inventory Detail Page
+#### 1.1 Created Inventory Detail Pagee
 - **File Created**: `print-press-front-end/src/app/admin/inventory/[id]/page.tsx`
 - **Component Created**: `print-press-front-end/src/components/inventory/inventory-detail.tsx`
 - **What was done**:

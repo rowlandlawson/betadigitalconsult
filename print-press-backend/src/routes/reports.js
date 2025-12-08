@@ -7,6 +7,8 @@ const router = express.Router();
 // Apply admin middleware to all report routes
 router.use(authenticateToken, requireAdmin);
 
+router.get('/dashboard-stats', reportsController.getDashboardStatistics);
+
 // Financial reports routes
 router.get('/financial-summary', reportsController.getMonthlyFinancialSummary);
 router.get('/profit-loss', reportsController.getProfitLossStatement);

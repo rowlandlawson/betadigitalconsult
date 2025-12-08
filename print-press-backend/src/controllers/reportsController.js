@@ -1,7 +1,274 @@
 import { pool } from '../config/database.js';
 
 export class ReportsController {
-  // Get automatic monthly financial summary
+  
+// Get dashboard statistics summary - FIXED VERSION
+async getDashboardStatistics(req, res) {
+  try {
+    console.log('📊 Fetching dashboard statistics...');
+    
+    // Get period from query, default to 'all'
+    const { period = 'all' } = req.query;
+    const currentDate = new Date();
+    let startDate;
+
+    // Determine the start date based on the period
+    switch (period) {
+      case 'day':
+        startDate = new Date();
+        startDate.setDate(currentDate.getDate() - 1);
+        break;
+      case 'week':
+        startDate = new Date();
+        startDate.setDate(currentDate.getDate() - 7);
+        break;
+      case 'year':
+        startDate = new Date(currentDate.getFullYear(), 0, 1);
+        break;
+      case 'month':
+        startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        break;
+      default: // 'all'
+        startDate = new Date('1970-01-01');
+    }
+
+    // For "new customers this month", we always use the start of the current calendar month
+    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+
+    // 1. Total Customers
+    const totalCustomersQuery = `
+      SELECT COUNT(*) as total_customers,
+      COUNT(CASE WHEN created_at >= $1 THEN 1 END) as new_customers_this_month
+      FROM customers
+    `;
+
+    // 2. Jobs Statistics
+    const jobsStatsQuery = `
+      SELECT 
+        COUNT(*) as total_jobs,
+        COUNT(CASE WHEN status = 'not_started' THEN 1 END) as pending_jobs,
+        COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as active_jobs,
+        COUNT(CASE WHEN status IN ('completed', 'delivered') THEN 1 END) as completed_jobs,
+        COUNT(CASE WHEN status = 'delivered' THEN 1 END) as delivered_jobs,
+        COUNT(CASE WHEN payment_status = 'fully_paid' THEN 1 END) as fully_paid_jobs,
+        COUNT(CASE WHEN payment_status = 'partially_paid' THEN 1 END) as partially_paid_jobs,
+        COUNT(CASE WHEN payment_status = 'pending' THEN 1 END) as unpaid_jobs,
+        COALESCE(SUM(total_cost), 0) as total_revenue
+      FROM jobs
+      WHERE created_at >= $1
+    `;
+    
+    // 3. Payments Statistics
+    const paymentStatsQuery = `
+      SELECT
+        COALESCE(SUM(amount), 0) as total_collected
+      FROM payments
+      WHERE payment_date >= $1
+    `;
+
+    // 4. Inventory Alerts
+    const inventoryAlertsQuery = `
+      SELECT COUNT(*) as total_items,
+      COUNT(CASE WHEN current_stock <= threshold THEN 1 END) as low_stock_items,
+      COUNT(CASE WHEN current_stock <= (threshold * 0.5) THEN 1 END) as critical_stock_items,
+      COALESCE(SUM(current_stock * unit_cost), 0) as total_inventory_value
+      FROM inventory
+    `;
+
+    // 5. Recent Activities (last 6 jobs)
+    const recentActivitiesQuery = `
+      SELECT 
+        j.ticket_id,
+        j.description,
+        j.status,
+        j.total_cost,
+        j.amount_paid,
+        j.balance,
+        j.created_at,
+        c.name as customer_name
+      FROM jobs j
+      LEFT JOIN customers c ON j.customer_id = c.id
+      ORDER BY j.created_at DESC
+      LIMIT 6
+    `;
+
+    // 6. Monthly Revenue Trend (last 6 months)
+    const revenueTrendQuery = `
+    WITH monthly_payments AS (
+        SELECT
+            DATE_TRUNC('month', payment_date) as month,
+            SUM(amount) as collected
+        FROM payments
+        WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months'
+        GROUP BY DATE_TRUNC('month', payment_date)
+    )
+    SELECT 
+        DATE_TRUNC('month', j.created_at) as month,
+        COUNT(j.id) as job_count,
+        COALESCE(SUM(j.total_cost), 0) as revenue,
+        COALESCE(mp.collected, 0) as collected
+    FROM jobs j
+    LEFT JOIN monthly_payments mp ON DATE_TRUNC('month', j.created_at) = mp.month
+    WHERE j.created_at >= CURRENT_DATE - INTERVAL '6 months'
+    GROUP BY DATE_TRUNC('month', j.created_at), mp.collected
+    ORDER BY month DESC
+    LIMIT 6
+    `;
+
+    // 7. Top Customers by Revenue
+    const topCustomersQuery = `
+      SELECT 
+        c.id,
+        c.name,
+        c.phone,
+        c.email,
+        COUNT(j.id) as total_jobs,
+        COALESCE(SUM(j.total_cost), 0) as total_spent,
+        COALESCE(p.total_paid, 0) as total_paid,
+        (COALESCE(SUM(j.total_cost), 0) - COALESCE(p.total_paid, 0)) as outstanding_balance
+      FROM customers c
+      LEFT JOIN jobs j ON c.id = j.customer_id AND j.created_at >= $1
+      LEFT JOIN (
+        SELECT 
+          jj.customer_id, 
+          SUM(pp.amount) as total_paid 
+        FROM payments pp
+        JOIN jobs jj ON pp.job_id = jj.id
+        WHERE pp.payment_date >= $1
+        GROUP BY jj.customer_id
+      ) p ON c.id = p.customer_id
+      GROUP BY c.id, c.name, c.phone, c.email, p.total_paid
+      ORDER BY total_paid DESC NULLS LAST
+      LIMIT 5
+    `;
+
+    console.log(`Executing queries for period: ${period}`, { startOfMonth, startDate });
+
+    const [
+      customersResult,
+      jobsResult,
+      paymentResult,
+      inventoryResult,
+      activitiesResult,
+      trendResult,
+      customersRevenueResult
+    ] = await Promise.all([
+      pool.query(totalCustomersQuery, [startOfMonth]),
+      pool.query(jobsStatsQuery, [startDate]),
+      pool.query(paymentStatsQuery, [startDate]),
+      pool.query(inventoryAlertsQuery),
+      pool.query(recentActivitiesQuery),
+      pool.query(revenueTrendQuery),
+      pool.query(topCustomersQuery, [startDate])
+    ]);
+
+    console.log('Query results:', {
+      customers: customersResult.rows[0],
+      jobs: jobsResult.rows[0],
+      payments: paymentResult.rows[0],
+      inventory: inventoryResult.rows[0],
+      activities: activitiesResult.rows.length,
+      trend: trendResult.rows.length,
+      topCustomers: customersRevenueResult.rows.length
+    });
+
+    const customersStats = customersResult.rows[0] || { total_customers: 0, new_customers_this_month: 0 };
+    const jobsStats = jobsResult.rows[0] || { 
+      total_jobs: 0, pending_jobs: 0, active_jobs: 0, completed_jobs: 0, delivered_jobs: 0,
+      fully_paid_jobs: 0, partially_paid_jobs: 0, unpaid_jobs: 0,
+      total_revenue: 0
+    };
+    const paymentStatsResult = paymentResult.rows[0] || { total_collected: 0 };
+    const inventoryStats = inventoryResult.rows[0] || { 
+      total_items: 0, low_stock_items: 0, critical_stock_items: 0, total_inventory_value: 0 
+    };
+
+    // Calculate payment stats
+    const totalRevenue = parseFloat(jobsStats.total_revenue || 0);
+    const totalCollected = parseFloat(paymentStatsResult.total_collected || 0);
+    
+    const paymentStats = {
+      total_revenue: totalRevenue,
+      total_collected: totalCollected,
+      total_outstanding: totalRevenue - totalCollected,
+      collection_rate: totalRevenue > 0 ? (totalCollected / totalRevenue) * 100 : 0
+    };
+
+    // Calculate monthly growth
+    const revenueTrend = trendResult.rows || [];
+    let monthlyGrowth = 0;
+    if (revenueTrend.length >= 2) {
+      const currentMonthRevenue = parseFloat(revenueTrend[0]?.revenue || 0);
+      const lastMonthRevenue = parseFloat(revenueTrend[1]?.revenue || 0);
+      monthlyGrowth = lastMonthRevenue > 0 
+        ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 
+        : (currentMonthRevenue > 0 ? 100 : 0);
+    }
+
+    const response = {
+      summary: {
+        timestamp: new Date().toISOString(),
+        period: period,
+        updated_at: new Date().toISOString()
+      },
+      customers: {
+        total: parseInt(customersStats.total_customers || 0),
+        new_this_month: parseInt(customersStats.new_customers_this_month || 0),
+        growth_rate: customersStats.total_customers > 0 
+          ? (customersStats.new_customers_this_month / customersStats.total_customers) * 100 
+          : 0
+      },
+      jobs: {
+        total: parseInt(jobsStats.total_jobs || 0),
+        pending: parseInt(jobsStats.pending_jobs || 0),
+        active: parseInt(jobsStats.active_jobs || 0),
+        completed: parseInt(jobsStats.completed_jobs || 0),
+        delivered: parseInt(jobsStats.delivered_jobs || 0),
+        completion_rate: jobsStats.total_jobs > 0 
+          ? (jobsStats.completed_jobs / jobsStats.total_jobs) * 100 
+          : 0
+      },
+      payments: paymentStats,
+      inventory: {
+        total_items: parseInt(inventoryStats.total_items || 0),
+        low_stock: parseInt(inventoryStats.low_stock_items || 0),
+        critical_stock: parseInt(inventoryStats.critical_stock_items || 0),
+        total_value: parseFloat(inventoryStats.total_inventory_value || 0),
+        alert_level: inventoryStats.critical_stock_items > 0 ? 'CRITICAL' : 
+                    inventoryStats.low_stock_items > 0 ? 'WARNING' : 'HEALTHY'
+      },
+      recent_activities: activitiesResult.rows || [],
+      revenue_trend: revenueTrend,
+      top_customers: customersRevenueResult.rows || [],
+      performance_metrics: {
+        monthly_revenue_growth: monthlyGrowth,
+        job_completion_rate: jobsStats.total_jobs > 0 
+          ? (jobsStats.completed_jobs / jobsStats.total_jobs) * 100 
+          : 0,
+        payment_collection_rate: paymentStats.collection_rate,
+        inventory_health: inventoryStats.total_items > 0 
+          ? ((inventoryStats.total_items - inventoryStats.low_stock_items) / inventoryStats.total_items) * 100 
+          : 100
+      }
+    };
+
+    console.log('✅ Dashboard response prepared');
+    res.json(response);
+
+  } catch (error) {
+    console.error('❌ Dashboard statistics error:', error);
+    console.error('Error stack:', error.stack);
+    
+    // Send detailed error for debugging
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message,
+      detail: error.detail || 'No additional details',
+      hint: 'Check SQL queries match your database schema'
+    });
+  }
+}
+
   async getMonthlyFinancialSummary(req, res) {
     try {
       const { year, month } = req.query;
@@ -359,10 +626,15 @@ export class ReportsController {
     try {
       const { period = 'month' } = req.query;
 
+      const allowedPeriods = ['day', 'week', 'month', 'quarter', 'year'];
+      if (!allowedPeriods.includes(period)) {
+        return res.status(400).json({ error: 'Invalid period specified' });
+      }
+
       // Revenue trends
       const revenueTrendsQuery = `
         SELECT 
-          DATE_TRUNC($1, date_requested) as period,
+          DATE_TRUNC('${period}', date_requested) as period,
           COUNT(*) as job_count,
           COALESCE(SUM(total_cost), 0) as total_revenue,
           COALESCE(SUM(amount_paid), 0) as collected_revenue,
@@ -376,7 +648,7 @@ export class ReportsController {
       // Customer acquisition trends
       const customerTrendsQuery = `
         SELECT 
-          DATE_TRUNC($1, first_interaction_date) as period,
+          DATE_TRUNC('${period}', first_interaction_date) as period,
           COUNT(*) as new_customers,
           COUNT(CASE WHEN total_jobs_count > 1 THEN 1 END) as repeat_customers
         FROM customers
@@ -388,7 +660,7 @@ export class ReportsController {
       // Efficiency metrics
       const efficiencyMetricsQuery = `
         SELECT 
-          DATE_TRUNC($1, j.date_requested) as period,
+          DATE_TRUNC('${period}', j.date_requested) as period,
           COUNT(*) as total_jobs,
           COUNT(CASE WHEN j.status = 'completed' THEN 1 END) as completed_jobs,
           AVG(EXTRACT(EPOCH FROM (j.updated_at - j.created_at)) / 3600) as avg_completion_hours,
@@ -404,9 +676,9 @@ export class ReportsController {
         customerTrendsResult,
         efficiencyMetricsResult
       ] = await Promise.all([
-        pool.query(revenueTrendsQuery, [period]),
-        pool.query(customerTrendsQuery, [period]),
-        pool.query(efficiencyMetricsQuery, [period])
+        pool.query(revenueTrendsQuery),
+        pool.query(customerTrendsQuery),
+        pool.query(efficiencyMetricsQuery)
       ]);
 
       res.json({

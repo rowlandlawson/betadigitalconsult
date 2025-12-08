@@ -64,5 +64,21 @@ export const jobService = {
   async getJobByTicketId(ticketId: string): Promise<Job> {
     const response = await api.get(`/jobs/ticket/${ticketId}`);
     return response.data.job;
+  },
+
+  async updateJobMaterials(
+    jobId: string,
+    materials: MaterialUsed[],
+    editReason: string,
+    waste?: any[],
+    expenses?: any[]
+  ): Promise<{ materials: MaterialUsed[]; waste?: any[]; expenses?: any[]; editHistory: any[] }> {
+    const response = await api.put(`/jobs/${jobId}/materials`, {
+      materials,
+      waste,
+      expenses,
+      edit_reason: editReason
+    });
+    return response.data;
   }
 };

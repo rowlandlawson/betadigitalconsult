@@ -24,6 +24,8 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
     end_date: '',
   });
   const [methodFilter, setMethodFilter] = useState<string>('');
+  const [totalAmount, setTotalAmount] = useState(0);
+  const [totalPaymentsCount, setTotalPaymentsCount] = useState(0);
 
   useEffect(() => {
     fetchPayments();
@@ -36,8 +38,10 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
       if (dateFilter.end_date) params.append('end_date', dateFilter.end_date);
       if (methodFilter) params.append('payment_method', methodFilter);
       
-      const response = await api.get<PaginatedResponse<Payment>>(`/payments?${params.toString()}`);
-      setPayments(response.data.data);
+      const response = await api.get<{ payments: Payment[]; pagination: any; summary: { total_amount: number } }>(`/payments?${params.toString()}`);
+      setPayments(response.data.payments || []);
+      setTotalAmount(response.data.summary?.total_amount || 0);
+      setTotalPaymentsCount(response.data.pagination?.total || 0);
     } catch (err: unknown) {
       console.error('Failed to fetch payments:', err);
       if (isApiError(err)) {
@@ -56,8 +60,6 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
     payment.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     payment.recorded_by_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const totalAmount = filteredPayments.reduce((sum, payment) => sum + payment.amount, 0);
 
   const getPaymentTypeColor = (type: string) => {
     switch (type) {
@@ -139,7 +141,7 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
         <Card>
           <CardContent className="p-4">
             <p className="text-sm font-medium text-gray-600">Total Payments</p>
-            <p className="text-2xl font-bold text-gray-900">{filteredPayments.length}</p>
+            <p className="text-2xl font-bold text-gray-900">{totalPaymentsCount}</p>
           </CardContent>
         </Card>
         <Card>
@@ -152,7 +154,7 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
           <CardContent className="p-4">
             <p className="text-sm font-medium text-gray-600">Average Payment</p>
             <p className="text-2xl font-bold text-blue-600">
-              {formatCurrency(filteredPayments.length > 0 ? totalAmount / filteredPayments.length : 0)}
+              {formatCurrency(totalPaymentsCount > 0 ? totalAmount / totalPaymentsCount : 0)}
             </p>
           </CardContent>
         </Card>
@@ -160,7 +162,7 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
           <CardContent className="p-4">
             <p className="text-sm font-medium text-gray-600">Unique Jobs</p>
             <p className="text-2xl font-bold text-purple-600">
-              {new Set(filteredPayments.map(p => p.job_id)).size}
+              {new Set(payments.map(p => p.job_id)).size}
             </p>
           </CardContent>
         </Card>

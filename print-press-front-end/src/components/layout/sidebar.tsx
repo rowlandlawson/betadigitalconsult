@@ -77,8 +77,6 @@ const adminNavGroups: NavGroup[] = [
   items: [
     { href: '/admin/inventory', label: 'All Items', icon: Package },
     { href: '/admin/inventory/create', label: 'Add Item', icon: PlusCircle },
-    { href: '/admin/inventory/monitoring', label: 'Material Monitoring', icon: TrendingUp },
-    { href: '/admin/inventory/tracking', label: 'Usage Tracking', icon: BarChart3 },
     { href: '/admin/inventory/alerts', label: 'Stock Alerts', icon: AlertTriangle }
   ]
 },

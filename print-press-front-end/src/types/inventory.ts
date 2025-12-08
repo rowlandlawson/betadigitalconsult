@@ -1,3 +1,11 @@
+export interface StockDisplay {
+  totalSheets: number;
+  reams: number;
+  sheets: number;
+  display: string;
+  displayShort: string;
+}
+
 export interface InventoryItem {
   id: string;
   material_name: string;
@@ -6,11 +14,15 @@ export interface InventoryItem {
   paper_type?: string;
   grammage?: number;
   supplier?: string;
-  current_stock: number;
+  current_stock: number; // This can be deprecated or used as a fallback
+  current_stock_sheets: number;
+  sheets_per_unit: number;
   unit_of_measure: string;
   unit_cost: number;
+  cost_per_sheet: number;
   selling_price?: number;
-  threshold: number;
+  threshold: number; // This can be deprecated
+  threshold_sheets: number;
   reorder_quantity?: number;
   is_active: boolean;
   created_at: string;
@@ -18,6 +30,8 @@ export interface InventoryItem {
   stock_value?: number;
   stock_status?: 'CRITICAL' | 'LOW' | 'HEALTHY';
   stock_percentage?: number;
+  display_stock: StockDisplay;
+  display_threshold: StockDisplay;
 }
 
 export interface InventoryFormData {
@@ -27,30 +41,37 @@ export interface InventoryFormData {
   paper_type?: string;
   grammage?: number;
   supplier?: string;
-  current_stock: number;
-  unit_of_measure: string;
+  sheets_per_unit?: number;
+  reams_stock?: number;
+  sheets_stock?: number;
+  total_sheets_stock?: number;
   unit_cost: number;
-  selling_price?: number;
-  threshold: number;
+  threshold_sheets?: number;
+  threshold_reams?: number;
   reorder_quantity?: number;
+  is_active?: boolean;
+  supplier_contact?: string;
 }
 
 export interface LowStockAlert {
   id: string;
   material_name: string;
-  current_stock: number;
-  threshold: number;
-  unit_of_measure: string;
+  current_stock_sheets: number;
+  threshold_sheets: number;
+  sheets_per_unit: number;
   unit_cost: number;
+  cost_per_sheet: number;
   stock_percentage: number;
   stock_status: 'CRITICAL' | 'LOW' | 'HEALTHY';
+  display_stock: StockDisplay;
+  display_threshold: StockDisplay;
 }
 
 export interface MaterialUsageTrend {
   period: string;
   material_name: string;
   category: string;
-  total_quantity: number;
+  total_quantity_sheets: number;
   total_cost: number;
   average_unit_cost: number;
 }
@@ -58,13 +79,15 @@ export interface MaterialUsageTrend {
 export interface StockLevel {
   material_name: string;
   category: string;
-  current_stock: number;
-  threshold: number;
-  unit_of_measure: string;
+  current_stock_sheets: number;
+  threshold_sheets: number;
+  sheets_per_unit: number;
   unit_cost: number;
+  cost_per_sheet: number;
   stock_value: number;
   stock_percentage: number;
   stock_status: 'CRITICAL' | 'LOW' | 'HEALTHY';
+  display_stock: StockDisplay;
 }
 
 export interface MaterialUsageRecord {
@@ -72,6 +95,7 @@ export interface MaterialUsageRecord {
   material_id: string;
   job_id?: string;
   quantity_used: number;
+  quantity_sheets: number;
   unit_cost: number;
   total_cost: number;
   usage_type: 'production' | 'waste' | 'adjustment' | 'other';
@@ -87,6 +111,7 @@ export interface MaterialWasteRecord {
   material_id: string;
   job_id?: string;
   quantity_wasted: number;
+  quantity_sheets: number;
   unit_cost: number;
   total_cost: number;
   waste_date: string;
@@ -101,9 +126,9 @@ export interface StockAdjustment {
   id: string;
   material_id: string;
   adjustment_type: 'add' | 'remove' | 'correction';
-  quantity: number;
-  previous_stock: number;
-  new_stock: number;
+  quantity: number; // This is quantity_sheets
+  previous_stock: number; // This is previous_stock_sheets
+  new_stock: number; // This is new_stock_sheets
   reason?: string;
   notes?: string;
   adjusted_by?: string;
@@ -129,7 +154,7 @@ export interface StockUpdate {
   type: 'usage' | 'waste' | 'adjustment';
   created_at: string;
   material_name: string;
-  quantity: number;
+  quantity_sheets: number;
   unit_cost?: number;
   total_cost?: number;
   sub_type: string;

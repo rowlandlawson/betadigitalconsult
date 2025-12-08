@@ -2,6 +2,7 @@
 import type { Metadata } from 'next';
 import '@/globals.css';
 import { ToasterProvider } from '@/components/ui/toaster-provider';
+import { PWAInstallPrompt } from '@/components/pwa-install';
 
 export const metadata: Metadata = {
   title: ' - Print Management System',
@@ -16,6 +17,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* PWA Meta Tags */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#AABD77" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Print Press" />
+        <link rel="apple-touch-icon" href="/logo.png" />
+        
         {/* Load Inter from Google Fonts to avoid next/font turbopack internal import issues */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -26,6 +35,7 @@ export default function RootLayout({
           {children}
         </div>
         <ToasterProvider />
+        <PWAInstallPrompt />
       </body>
     </html>
   );

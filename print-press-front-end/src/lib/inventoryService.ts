@@ -82,6 +82,7 @@ export const inventoryApi = {
       adjustment_type: 'add' | 'remove' | 'set'; 
       quantity: number; 
       purchase_cost?: number; 
+      unit_price?: number; // Unit price per unit (will be used as new unit_cost)
       reason?: string; 
       notes?: string 
     }

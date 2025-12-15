@@ -325,7 +325,7 @@ export const MaterialMonitoringDashboard: React.FC = () => {
                   <div>
                     <p className="font-medium text-gray-900">{update.material_name}</p>
                     <p className="text-sm text-gray-500 capitalize">
-                      {update.type} • {update.sub_type} • {update.quantity} units
+                      {update.type} • {update.sub_type} • {update.quantity_sheets} units
                     </p>
                   </div>
                 </div>

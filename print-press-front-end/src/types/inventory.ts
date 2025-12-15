@@ -82,6 +82,7 @@ export interface LowStockAlert {
   stock_percentage: number;
   stock_status: 'CRITICAL' | 'LOW' | 'HEALTHY';
   display_stock: string;
+  display_threshold: string;
 }
 
 export interface MaterialUsageTrend {

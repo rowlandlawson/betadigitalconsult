@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { userService } from '@/lib/userService';
 import { isApiError } from '@/lib/api';
 import { Key } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ResetPasswordModalProps {
   userId: string;
@@ -51,9 +52,9 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
       await userService.resetPassword(userId, newPassword);
       setNewPassword('');
       setConfirmPassword('');
+      toast.success('Password reset successfully');
       onSuccess?.();
       onClose();
-      alert('Password reset successfully');
     } catch (err: unknown) {
       console.error('Failed to reset password:', err);
       if (isApiError(err)) {
@@ -70,9 +71,11 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5" />
-            Reset Password for {userName}
+          <DialogTitle>
+            <div className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              <span>Reset Password for {userName}</span>
+            </div>
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">

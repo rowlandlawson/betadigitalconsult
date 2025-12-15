@@ -12,6 +12,7 @@ router.use(authenticateToken);
 router.get('/', inventoryController.getInventory);
 router.get('/categories', inventoryController.getCategories);
 router.get('/attribute-templates', inventoryController.getAttributeTemplates); // Add this line
+router.get('/low-stock-alerts', requireAdmin, inventoryController.getLowStockAlerts);
 router.get('/:id', inventoryController.getInventoryItem);
 router.get('/search', inventoryController.searchInventory); // Add this line
 
@@ -27,6 +28,7 @@ router.post('/:id/adjust-stock', requireAdmin, inventoryController.adjustStock);
 router.post('/record-usage', inventoryController.recordUsage);
 
 // Material monitoring routes (admin only)
+router.get('/low-stock-alerts', requireAdmin, inventoryController.getLowStockAlerts);
 router.get('/monitoring/usage-trends', requireAdmin, inventoryController.getMaterialUsageTrends);
 router.get('/monitoring/stock-levels', requireAdmin, inventoryController.getStockLevels);
 router.get('/monitoring/cost-analysis', requireAdmin, inventoryController.getCostAnalysis);

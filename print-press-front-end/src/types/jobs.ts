@@ -66,6 +66,9 @@ export interface MaterialUsed {
   created_at?: string;
 }
 
+// Alias for UI components that import `Material`
+export type Material = MaterialUsed;
+
 export interface WasteExpense {
   id?: string;
   job_id?: string;

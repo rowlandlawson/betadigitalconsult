@@ -22,7 +22,8 @@ import {
   BarChart,
   X,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  DollarSign
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -94,7 +95,8 @@ const adminNavGroups: NavGroup[] = [
       { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
       { href: '/admin/users', label: 'Users', icon: Users },
       { href: '/admin/notifications', label: 'Notifications', icon: Bell },
-      { href: '/admin/settings', label: 'Settings', icon: Settings }
+      { href: '/admin/settings', label: 'Settings', icon: Settings },
+      { href: '/admin/operational-expenses', label: 'Operational Expenses', icon: DollarSign }
     ]
   }
 ];

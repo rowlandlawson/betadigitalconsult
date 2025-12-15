@@ -10,11 +10,19 @@ const getDisplayStock = (item) => {
   const attributes = item.attributes || {};
   const currentStock = parseFloat(item.current_stock) || 0;
   
+  // For paper items, current_stock is stored in SHEETS, so we display it as reams + sheets
   if (item.category === 'Paper' && attributes.sheets_per_unit) {
     const sheetsPerUnit = parseInt(attributes.sheets_per_unit) || 500;
+    // current_stock is already in sheets, so we convert to display format
     const reams = Math.floor(currentStock / sheetsPerUnit);
     const sheets = currentStock % sheetsPerUnit;
-    return `${reams} reams, ${sheets} sheets`;
+    if (reams > 0 && sheets > 0) {
+      return `${reams} ream${reams !== 1 ? 's' : ''}, ${sheets} sheet${sheets !== 1 ? 's' : ''}`;
+    } else if (reams > 0) {
+      return `${reams} ream${reams !== 1 ? 's' : ''}`;
+    } else {
+      return `${sheets} sheet${sheets !== 1 ? 's' : ''}`;
+    }
   }
   
   return `${currentStock} ${item.unit_of_measure || 'units'}`;
@@ -58,7 +66,12 @@ export class InventoryController {
           created_at,
           updated_at,
           COUNT(*) OVER() as total_count,
-          (current_stock * unit_cost) as stock_value,
+          CASE 
+            WHEN category = 'Paper' AND attributes->>'sheets_per_unit' IS NOT NULL THEN
+              (current_stock * unit_cost / NULLIF((attributes->>'sheets_per_unit')::integer, 0))
+            ELSE
+              (current_stock * unit_cost)
+          END as stock_value,
           CASE 
             WHEN current_stock <= threshold THEN 'CRITICAL'
             WHEN current_stock <= threshold * 1.5 THEN 'LOW'
@@ -214,6 +227,56 @@ export class InventoryController {
     }
   }
 
+  // Get low stock alerts
+  async getLowStockAlerts(req, res) {
+    try {
+      const query = `
+        SELECT 
+          id,
+          material_name,
+          category,
+          current_stock,
+          unit_of_measure,
+          unit_cost,
+          threshold,
+          attributes,
+          supplier,
+          reorder_quantity,
+          is_active,
+          created_at,
+          updated_at,
+          CASE 
+            WHEN category = 'Paper' AND attributes->>'sheets_per_unit' IS NOT NULL THEN
+              (current_stock * unit_cost / NULLIF((attributes->>'sheets_per_unit')::integer, 0))
+            ELSE
+              (current_stock * unit_cost)
+          END as stock_value,
+          CASE 
+            WHEN current_stock <= threshold THEN 'CRITICAL'
+            WHEN current_stock <= threshold * 1.5 THEN 'LOW'
+            ELSE 'HEALTHY'
+          END as stock_status,
+          ROUND((current_stock / NULLIF(threshold, 0)) * 100, 2) as stock_percentage
+        FROM inventory 
+        WHERE is_active = true AND current_stock <= threshold * 1.5
+        ORDER BY stock_percentage ASC, material_name
+      `;
+
+      const result = await pool.query(query);
+
+      const low_stock_items = result.rows.map(item => ({
+        ...item,
+        display_stock: getDisplayStock(item),
+        display_threshold: `${item.threshold} ${item.unit_of_measure}`,
+      }));
+
+      res.json({ low_stock_items });
+    } catch (error) {
+      console.error('Get low stock alerts error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
   // Create a new inventory item
   async createInventory(req, res) {
     const client = await pool.connect();
@@ -243,6 +306,21 @@ export class InventoryController {
       // Validate attributes based on category
       const validatedAttributes = this.validateAttributes(category, attributes);
 
+      // For paper items, convert current_stock and threshold to sheets if unit_of_measure indicates reams
+      let stockInSheets = parseFloat(current_stock);
+      let thresholdInSheets = parseFloat(threshold);
+      
+      if (category === 'Paper') {
+        const sheetsPerUnit = parseInt(validatedAttributes.sheets_per_unit) || 500;
+        // If unit_of_measure contains "ream", convert reams to sheets
+        if (unit_of_measure && unit_of_measure.toLowerCase().includes('ream')) {
+          stockInSheets = stockInSheets * sheetsPerUnit;
+          thresholdInSheets = thresholdInSheets * sheetsPerUnit;
+        }
+        // If unit_of_measure is "sheet" or "sheets", values are already in sheets
+        // Otherwise, assume they're already in sheets (for backward compatibility)
+      }
+
       const result = await client.query(
         `INSERT INTO inventory (
           material_name, category, current_stock, unit_of_measure, unit_cost, 
@@ -252,10 +330,10 @@ export class InventoryController {
         [
           material_name,
           category,
-          current_stock,
+          stockInSheets,
           unit_of_measure,
           unit_cost,
-          threshold,
+          thresholdInSheets,
           JSON.stringify(validatedAttributes),
           supplier || null,
           selling_price || null,
@@ -314,11 +392,19 @@ export class InventoryController {
         is_active,
       } = req.body;
 
-      // Get current item to merge attributes
+      // Get current item to merge attributes and check category
       const currentItem = await client.query(
-        'SELECT attributes FROM inventory WHERE id = $1',
+        'SELECT category, attributes, unit_of_measure FROM inventory WHERE id = $1',
         [id]
       );
+
+      if (currentItem.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Inventory item not found' });
+      }
+
+      const existingCategory = currentItem.rows[0].category;
+      const finalCategory = category || existingCategory;
 
       let updatedAttributes = attributes;
       if (currentItem.rows.length > 0 && attributes) {
@@ -330,6 +416,22 @@ export class InventoryController {
       // Validate attributes if category is being updated
       if (category && updatedAttributes) {
         updatedAttributes = this.validateAttributes(category, updatedAttributes);
+      }
+
+      // For paper items, convert threshold to sheets if unit_of_measure indicates reams
+      let thresholdInSheets = threshold;
+      const finalUnitOfMeasure = unit_of_measure || currentItem.rows[0].unit_of_measure;
+      
+      if (finalCategory === 'Paper' && threshold !== null && threshold !== undefined) {
+        const sheetsPerUnit = parseInt(updatedAttributes?.sheets_per_unit || currentItem.rows[0].attributes?.sheets_per_unit) || 500;
+        // If unit_of_measure contains "ream", convert reams to sheets
+        if (finalUnitOfMeasure && finalUnitOfMeasure.toLowerCase().includes('ream')) {
+          thresholdInSheets = parseFloat(threshold) * sheetsPerUnit;
+        } else {
+          thresholdInSheets = parseFloat(threshold);
+        }
+      } else if (threshold !== null && threshold !== undefined) {
+        thresholdInSheets = parseFloat(threshold);
       }
 
       const result = await client.query(
@@ -351,7 +453,7 @@ export class InventoryController {
           material_name,
           category,
           unit_of_measure,
-          threshold,
+          thresholdInSheets,
           updatedAttributes ? JSON.stringify(updatedAttributes) : null,
           supplier,
           selling_price,
@@ -412,7 +514,8 @@ export class InventoryController {
       const { 
         adjustment_type, // 'add', 'remove', 'set'
         quantity, 
-        purchase_cost, // optional: cost of the new stock
+        purchase_cost, // optional: total cost of the new stock
+        unit_price, // optional: unit price per unit (will be used as new unit_cost)
         reason, 
         notes 
       } = req.body;
@@ -434,29 +537,70 @@ export class InventoryController {
 
       const item = inventoryResult.rows[0];
       const previousStock = parseFloat(item.current_stock);
+      
+      // For paper items, convert quantity to sheets if unit_of_measure indicates reams
+      let quantityInSheets = parseFloat(quantity);
+      if (item.category === 'Paper') {
+        const attributes = item.attributes || {};
+        const sheetsPerUnit = parseInt(attributes.sheets_per_unit) || 500;
+        // If unit_of_measure contains "ream", convert reams to sheets
+        if (item.unit_of_measure && item.unit_of_measure.toLowerCase().includes('ream')) {
+          quantityInSheets = quantityInSheets * sheetsPerUnit;
+        }
+        // If unit_of_measure is "sheet" or "sheets", quantity is already in sheets
+        // Otherwise, assume it's already in sheets (for backward compatibility)
+      }
+      
       let newStock;
 
       if (adjustment_type === 'add') {
-        newStock = previousStock + parseFloat(quantity);
+        newStock = previousStock + quantityInSheets;
       } else if (adjustment_type === 'remove') {
-        newStock = previousStock - parseFloat(quantity);
+        newStock = previousStock - quantityInSheets;
         if (newStock < 0) {
           await client.query('ROLLBACK');
           return res.status(400).json({ error: 'Insufficient stock for removal.' });
         }
       } else if (adjustment_type === 'set') {
-        newStock = parseFloat(quantity);
+        newStock = quantityInSheets;
       } else {
         await client.query('ROLLBACK');
         return res.status(400).json({ error: 'Invalid adjustment type.' });
       }
       
       let newUnitCost = parseFloat(item.unit_cost);
-      // If adding stock with a purchase cost, update the average unit cost
-      if (adjustment_type === 'add' && purchase_cost && quantity > 0) {
-        const existingValue = previousStock * item.unit_cost;
-        const additionValue = parseFloat(purchase_cost);
-        newUnitCost = (existingValue + additionValue) / newStock;
+      // If adding stock with a unit_price, use that as the new unit cost
+      // Otherwise, if purchase_cost is provided, calculate average unit cost
+      if (adjustment_type === 'add') {
+        if (unit_price !== undefined && unit_price !== null && parseFloat(unit_price) > 0) {
+          // Use the entered unit price as the new unit cost
+          // For paper items, unit_price is per ream (if unit_of_measure is "ream")
+          // For non-paper items, unit_price is per unit
+          newUnitCost = parseFloat(unit_price);
+        } else if (purchase_cost && parseFloat(quantity) > 0) {
+          // Calculate average unit cost based on purchase cost
+          // For paper items, need to handle conversion properly
+          if (item.category === 'Paper') {
+            const attributes = item.attributes || {};
+            const sheetsPerUnit = parseInt(attributes.sheets_per_unit) || 500;
+            const unitOfMeasure = item.unit_of_measure || '';
+            // If unit_of_measure contains "ream", purchase_cost is total for reams
+            if (unitOfMeasure.toLowerCase().includes('ream')) {
+              // Calculate cost per ream from total purchase cost
+              const costPerReam = parseFloat(purchase_cost) / parseFloat(quantity);
+              newUnitCost = costPerReam; // Store as cost per ream
+            } else {
+              // Purchase is in sheets, calculate cost per sheet then convert to cost per ream
+              const costPerSheet = parseFloat(purchase_cost) / quantityInSheets;
+              newUnitCost = costPerSheet * sheetsPerUnit; // Store as cost per ream
+            }
+          } else {
+            // For non-paper items, calculate average
+            const existingValue = previousStock * item.unit_cost;
+            const additionValue = parseFloat(purchase_cost);
+            newUnitCost = (existingValue + additionValue) / newStock;
+          }
+        }
       }
 
       await client.query(
@@ -529,25 +673,58 @@ export class InventoryController {
 
       const item = inventoryResult.rows[0];
 
-      if (quantity_used > item.current_stock) {
+      // For paper items, convert quantity_used to sheets if unit_of_measure indicates reams
+      let quantityInSheets = parseFloat(quantity_used);
+      if (item.category === 'Paper') {
+        const attributes = item.attributes || {};
+        const sheetsPerUnit = parseInt(attributes.sheets_per_unit) || 500;
+        // If unit_of_measure contains "ream", convert reams to sheets
+        if (item.unit_of_measure && item.unit_of_measure.toLowerCase().includes('ream')) {
+          quantityInSheets = quantityInSheets * sheetsPerUnit;
+        }
+        // If unit_of_measure is "sheet" or "sheets", quantity is already in sheets
+      }
+
+      // For paper items, current_stock is in sheets, so compare directly
+      const currentStockSheets = parseFloat(item.current_stock) || 0;
+      
+      if (quantityInSheets > currentStockSheets) {
         await client.query('ROLLBACK');
         return res.status(400).json({ error: 'Insufficient stock' });
       }
 
-      const newStock = item.current_stock - quantity_used;
-      const totalCost = quantity_used * item.unit_cost;
+      const newStock = currentStockSheets - quantityInSheets;
+      // Calculate cost based on sheets for paper items
+      let totalCost;
+      if (item.category === 'Paper') {
+        const attributes = item.attributes || {};
+        const sheetsPerUnit = parseInt(attributes.sheets_per_unit) || 500;
+        const costPerSheet = parseFloat(item.unit_cost) / sheetsPerUnit;
+        totalCost = quantityInSheets * costPerSheet;
+      } else {
+        totalCost = quantityInSheets * item.unit_cost;
+      }
 
       await client.query(
         'UPDATE inventory SET current_stock = $1 WHERE id = $2',
         [newStock, material_id]
       );
 
-      const usageResult = await client.query(
+      const usageResult =       await client.query(
         `INSERT INTO material_usage (
-          material_id, job_id, quantity_used, unit_cost, total_cost, usage_type, notes, recorded_by
-        ) VALUES ($1, $2, $3, $4, $5, 'production', $6, $7)
+          material_id, job_id, quantity_used, quantity_sheets, unit_cost, total_cost, usage_type, notes, recorded_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, 'production', $7, $8)
         RETURNING *`,
-        [material_id, job_id, quantity_used, item.unit_cost, totalCost, notes, req.user.id]
+        [
+          material_id, 
+          job_id, 
+          item.category === 'Paper' ? (quantityInSheets / (parseInt(item.attributes?.sheets_per_unit) || 500)) : quantity_used, // quantity_used in units
+          item.category === 'Paper' ? quantityInSheets : null, // quantity_sheets for paper
+          item.unit_cost, 
+          totalCost, 
+          notes, 
+          req.user.id
+        ]
       );
       
       if (newStock <= item.threshold) {
@@ -594,7 +771,12 @@ export class InventoryController {
           current_stock,
           unit_of_measure,
           attributes,
-          (current_stock * unit_cost) as stock_value
+          CASE 
+            WHEN category = 'Paper' AND attributes->>'sheets_per_unit' IS NOT NULL THEN
+              (current_stock * unit_cost / NULLIF((attributes->>'sheets_per_unit')::integer, 0))
+            ELSE
+              (current_stock * unit_cost)
+          END as stock_value
         FROM inventory 
         WHERE is_active = true 
           AND (material_name ILIKE $1 OR attributes::text ILIKE $1)
@@ -795,7 +977,12 @@ export class InventoryController {
           threshold,
           unit_of_measure,
           unit_cost,
-          (current_stock * unit_cost) as stock_value,
+          CASE 
+            WHEN category = 'Paper' AND attributes->>'sheets_per_unit' IS NOT NULL THEN
+              (current_stock * unit_cost / NULLIF((attributes->>'sheets_per_unit')::integer, 0))
+            ELSE
+              (current_stock * unit_cost)
+          END as stock_value,
           ROUND((current_stock / threshold) * 100, 2) as stock_percentage,
           CASE 
             WHEN current_stock <= threshold THEN 'CRITICAL'
@@ -847,7 +1034,14 @@ export class InventoryController {
 
       // Get total inventory value
       const totalValueQuery = `
-        SELECT COALESCE(SUM(current_stock * unit_cost), 0) as total_inventory_value
+        SELECT COALESCE(SUM(
+          CASE 
+            WHEN category = 'Paper' AND attributes->>'sheets_per_unit' IS NOT NULL THEN
+              (current_stock * unit_cost / NULLIF((attributes->>'sheets_per_unit')::integer, 0))
+            ELSE
+              (current_stock * unit_cost)
+          END
+        ), 0) as total_inventory_value
         FROM inventory WHERE is_active = true
       `;
 

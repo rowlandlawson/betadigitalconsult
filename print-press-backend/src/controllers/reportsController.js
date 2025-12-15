@@ -75,11 +75,13 @@ async getDashboardStatistics(req, res) {
 
     // 4. Inventory Alerts
     const inventoryAlertsQuery = `
-      SELECT COUNT(*) as total_items,
-      COUNT(CASE WHEN current_stock_sheets <= threshold_sheets THEN 1 END) as low_stock_items,
-      COUNT(CASE WHEN current_stock_sheets <= (threshold_sheets * 0.5) THEN 1 END) as critical_stock_items,
-      COALESCE(SUM(current_stock_sheets * cost_per_sheet), 0) as total_inventory_value
+      SELECT 
+        COUNT(*) as total_items,
+        COUNT(CASE WHEN current_stock <= threshold * 1.5 AND current_stock > threshold THEN 1 END) as low_stock_items,
+        COUNT(CASE WHEN current_stock <= threshold THEN 1 END) as critical_stock_items,
+        COALESCE(SUM(current_stock * unit_cost), 0) as total_inventory_value
       FROM inventory
+      WHERE is_active = true
     `;
 
     // 5. Recent Activities (last 6 jobs)

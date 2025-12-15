@@ -108,6 +108,7 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
         adjustment_type: 'add',
         quantity: quantity,
         purchase_cost: totalAmount,
+        unit_price: parseFloat(formData.unit_price), // Send unit price to be used as new unit_cost
         reason: 'Purchase',
         notes: `Purchased ${quantity} ${item.unit_of_measure} at ${formData.unit_price} per unit`
       });
@@ -157,7 +158,7 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
             <div className="p-3 bg-gray-50 rounded-md">
               <p className="text-sm text-gray-600">Current Stock</p>
               <p className="text-lg font-semibold text-gray-900">
-                {item.display_stock} ({item.current_stock} {item.unit_of_measure})
+                {item.display_stock || `${Number(item.current_stock || 0).toFixed(2)} ${item.unit_of_measure}`}
               </p>
             </div>
 
@@ -217,7 +218,58 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
               <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
                 <p className="text-sm text-blue-800 font-medium">After Purchase:</p>
                 <p className="text-lg font-semibold text-blue-900">
-                  {(item.current_stock + parseFloat(formData.quantity || '0')).toFixed(2)} {item.unit_of_measure}
+                  {(() => {
+                    try {
+                      const currentStock = Number(item.current_stock) || 0;
+                      let quantityToAdd = parseFloat(formData.quantity || '0') || 0;
+                      
+                      // Ensure both values are valid numbers
+                      if (isNaN(currentStock) || isNaN(quantityToAdd)) {
+                        return 'Calculating...';
+                      }
+                      
+                      // For paper items, convert reams to sheets if unit_of_measure indicates reams
+                      if (item.category === 'Paper' && item.attributes?.sheets_per_unit) {
+                        const sheetsPerUnit = parseInt(item.attributes.sheets_per_unit) || 500;
+                        const unitOfMeasure = item.unit_of_measure || '';
+                        // If unit_of_measure contains "ream", convert reams to sheets
+                        if (unitOfMeasure.toLowerCase().includes('ream')) {
+                          quantityToAdd = quantityToAdd * sheetsPerUnit;
+                        }
+                        // current_stock is already in sheets, so add directly
+                        const newStock = currentStock + quantityToAdd;
+                        
+                        // Ensure newStock is a valid number
+                        if (isNaN(newStock)) {
+                          return 'Calculating...';
+                        }
+                        
+                        // Display in reams + sheets format
+                        const reams = Math.floor(newStock / sheetsPerUnit);
+                        const sheets = newStock % sheetsPerUnit;
+                        if (reams > 0 && sheets > 0) {
+                          return `${reams} ream${reams !== 1 ? 's' : ''}, ${sheets} sheet${sheets !== 1 ? 's' : ''}`;
+                        } else if (reams > 0) {
+                          return `${reams} ream${reams !== 1 ? 's' : ''}`;
+                        } else {
+                          return `${sheets} sheet${sheets !== 1 ? 's' : ''}`;
+                        }
+                      } else {
+                        // For non-paper items, add directly
+                        const newStock = currentStock + quantityToAdd;
+                        
+                        // Ensure newStock is a valid number before calling toFixed
+                        if (isNaN(newStock) || !isFinite(newStock)) {
+                          return 'Calculating...';
+                        }
+                        
+                        return `${newStock.toFixed(2)} ${item.unit_of_measure || ''}`;
+                      }
+                    } catch (error) {
+                      console.error('Error calculating new stock:', error);
+                      return 'Error calculating';
+                    }
+                  })()}
                 </p>
               </div>
             )}

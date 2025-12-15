@@ -216,9 +216,9 @@ export const login = async (req, res) => {
 
     const result = await pool.query(
       `SELECT * FROM users 
-       WHERE (email = $1 OR user_name = $1) 
+       WHERE (LOWER(email) = LOWER($1) OR LOWER(user_name) = LOWER($1)) 
        AND is_active = true`,
-      [identifier.toLowerCase()]
+      [identifier]
     );
 
     if (result.rows.length === 0) {

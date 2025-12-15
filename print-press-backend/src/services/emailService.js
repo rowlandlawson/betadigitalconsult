@@ -76,7 +76,7 @@ class EmailService {
   }
 
   async sendPasswordResetRequest(adminEmail, userName, resetToken) {
-    const resetLink = `${process.env.APP_URL}/reset-password?token=${resetToken}`;
+    const resetLink = `${process.env.FRONTEND_URL || process.env.APP_URL}/reset-password?token=${resetToken}`;
     
     const subject = 'Password Reset Request - PrintPress Suite';
     const html = `

@@ -6,11 +6,11 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { userService, CreateUserData, UpdateUserData, User } from '@/lib/userService';
+import { userService, CreateUserData, UpdateUserData } from '@/lib/userService';
 import { passwordService } from '@/lib/passwordService';
 import { isApiError } from '@/lib/api';
 import { Eye, EyeOff, RefreshCw } from 'lucide-react';
-import { isApiError } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface UserFormProps {
   userId?: string;
@@ -118,7 +118,7 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
       await userService.resetUserPassword(userId, passwordChangeData.newPassword);
       setPasswordChangeData({ newPassword: '', confirmPassword: '' });
       setError('');
-      alert('Password changed successfully');
+      toast.success('Password changed successfully');
     } catch (err: unknown) {
       console.error('Failed to change password:', err);
       if (isApiError(err)) {

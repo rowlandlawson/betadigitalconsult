@@ -4,15 +4,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { inventoryApi } from '@/lib/inventoryService';
-import { LowStockAlert } from '@/types/inventory';
+import { LowStockAlert, InventoryItem } from '@/types/inventory';
 import { formatCurrency } from '@/lib/utils';
-import { AlertTriangle, Package, Bell, RefreshCw } from 'lucide-react';
-import Link from 'next/link';
+import { AlertTriangle, Package, Bell, RefreshCw, ShoppingCart } from 'lucide-react';
+import { StockManagementModal } from './stock-management-modal';
 
 export const LowStockAlerts: React.FC = () => {
   const [alerts, setAlerts] = useState<LowStockAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
 
   const fetchLowStockAlerts = useCallback(async () => {
     setLoading(true);
@@ -63,6 +65,23 @@ export const LowStockAlerts: React.FC = () => {
   const criticalCount = alerts.filter(a => a.stock_status === 'CRITICAL').length;
   const lowCount = alerts.filter(a => a.stock_status === 'LOW').length;
 
+  const handlePurchaseClick = async (alert: LowStockAlert) => {
+    try {
+      // Fetch the full inventory item details
+      const response = await inventoryApi.getInventoryItem(alert.id);
+      setSelectedItem(response.item);
+      setPurchaseModalOpen(true);
+    } catch (err) {
+      console.error('Failed to load item details:', err);
+      setError('Failed to load item details for purchase.');
+    }
+  };
+
+  const handlePurchaseSuccess = () => {
+    // Refresh alerts after successful purchase
+    fetchLowStockAlerts();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -96,7 +115,7 @@ export const LowStockAlerts: React.FC = () => {
             <div className="space-y-4">
               {alerts.map((alert) => {
                 const styles = getStatusStyle(alert.stock_status);
-                const stockValue = alert.current_stock_sheets * alert.cost_per_sheet;
+                const stockValue = alert.current_stock * alert.unit_cost;
 
                 return (
                   <div key={alert.id} className={`p-4 border-l-4 rounded-r-lg ${styles.card}`}>
@@ -109,8 +128,8 @@ export const LowStockAlerts: React.FC = () => {
                           </span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                          <div><span className="font-medium">Current:</span> {alert.display_stock.display}</div>
-                          <div><span className="font-medium">Threshold:</span> {alert.display_threshold.display}</div>
+                          <div><span className="font-medium">Current:</span> {alert.display_stock}</div>
+                          <div><span className="font-medium">Threshold:</span> {alert.display_threshold}</div>
                         </div>
                         <div className="mt-2">
                           <div className="w-full bg-gray-200 rounded-full h-2.5">
@@ -123,9 +142,15 @@ export const LowStockAlerts: React.FC = () => {
                           <p className="text-lg font-bold">{formatCurrency(stockValue)}</p>
                           <p className="text-sm text-gray-500">Stock Value</p>
                         </div>
-                        <Link href={`/admin/inventory/${alert.id}/edit`}>
-                            <Button variant="outline" size="sm">Manage</Button>
-                        </Link>
+                        <Button 
+                          variant="default" 
+                          size="sm"
+                          onClick={() => handlePurchaseClick(alert)}
+                          className="flex items-center gap-2"
+                        >
+                          <ShoppingCart className="h-4 w-4" />
+                          Update Stock
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -135,6 +160,17 @@ export const LowStockAlerts: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Purchase Modal */}
+      <StockManagementModal
+        isOpen={purchaseModalOpen}
+        onClose={() => {
+          setPurchaseModalOpen(false);
+          setSelectedItem(null);
+        }}
+        item={selectedItem}
+        onSuccess={handlePurchaseSuccess}
+      />
     </div>
   );
 };

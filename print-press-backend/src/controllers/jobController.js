@@ -439,10 +439,27 @@ export const updateJobStatus = async (req, res) => {
         }
 
         // Calculate sheets used
-        const sheetsPerUnit = inventoryItem?.sheets_per_unit || 500;
-        const sheetsUsed = material.quantity_sheets || 
-          (material.quantity * sheetsPerUnit) || 
-          material.quantity; // Fallback to quantity if no conversion
+        // For paper items, prioritize quantity_sheets if provided
+        // Otherwise, check if quantity needs conversion based on unit_of_measure
+        const sheetsPerUnit = inventoryItem?.sheets_per_unit || (inventoryItem?.attributes?.sheets_per_unit ? parseInt(inventoryItem.attributes.sheets_per_unit) : 500);
+        let sheetsUsed;
+        if (inventoryItem?.category === 'Paper') {
+          if (material.quantity_sheets !== undefined && material.quantity_sheets !== null) {
+            sheetsUsed = material.quantity_sheets;
+          } else {
+            const unitOfMeasure = inventoryItem?.unit_of_measure || '';
+            // If unit_of_measure contains "ream", convert reams to sheets
+            if (unitOfMeasure.toLowerCase().includes('ream')) {
+              sheetsUsed = (material.quantity || 0) * sheetsPerUnit;
+            } else {
+              // Assume quantity is already in sheets
+              sheetsUsed = material.quantity || 0;
+            }
+          }
+        } else {
+          // For non-paper items, use quantity_sheets if provided, otherwise use quantity
+          sheetsUsed = material.quantity_sheets || material.quantity || 0;
+        }
 
         // --- FIX: Use authoritative cost from inventory if item is found ---
         let finalUnitCost = material.unit_cost;
@@ -450,10 +467,24 @@ export const updateJobStatus = async (req, res) => {
 
         if (inventoryItem) {
           finalUnitCost = inventoryItem.unit_cost;
-          finalTotalCost = sheetsUsed * (inventoryItem.cost_per_sheet || (inventoryItem.unit_cost / sheetsPerUnit));
+          // For paper items, calculate cost per sheet; for others, use unit_cost directly
+          if (inventoryItem.category === 'Paper') {
+            const costPerSheet = inventoryItem.cost_per_sheet || (inventoryItem.unit_cost / sheetsPerUnit);
+            finalTotalCost = sheetsUsed * costPerSheet;
+          } else {
+            finalTotalCost = sheetsUsed * inventoryItem.unit_cost;
+          }
         }
 
         // Always record material usage
+        // Calculate quantity in units (for display/storage)
+        let quantityInUnits;
+        if (inventoryItem?.category === 'Paper') {
+          quantityInUnits = material.quantity || (sheetsUsed / sheetsPerUnit);
+        } else {
+          quantityInUnits = material.quantity || sheetsUsed;
+        }
+        
         const materialUsedResult = await client.query(
           `INSERT INTO materials_used (
             job_id, material_id, material_name, quantity,
@@ -464,11 +495,11 @@ export const updateJobStatus = async (req, res) => {
             id,
             materialId,
             material.material_name,
-            material.quantity || (sheetsUsed / sheetsPerUnit),
-            sheetsUsed,
+            quantityInUnits,
+            inventoryItem?.category === 'Paper' ? sheetsUsed : null,
             finalUnitCost,
             finalTotalCost,
-            !!inventoryItem
+            !!inventoryItem && inventoryItem.category === 'Paper'
           ]
         );
 
@@ -515,6 +546,23 @@ export const updateJobStatus = async (req, res) => {
           }
 
           // Record in material_usage table
+          // Calculate quantity_used in units
+          let quantityUsedInUnits;
+          if (inventoryItem.category === 'Paper') {
+            quantityUsedInUnits = sheetsUsed / sheetsPerUnit;
+          } else {
+            quantityUsedInUnits = sheetsUsed;
+          }
+          
+          // Calculate total cost
+          let totalCostForUsage;
+          if (inventoryItem.category === 'Paper') {
+            const costPerSheet = inventoryItem.cost_per_sheet || (inventoryItem.unit_cost / sheetsPerUnit);
+            totalCostForUsage = sheetsUsed * costPerSheet;
+          } else {
+            totalCostForUsage = sheetsUsed * inventoryItem.unit_cost;
+          }
+          
           await client.query(
             `INSERT INTO material_usage (
               material_id, job_id, quantity_used, quantity_sheets, unit_cost, total_cost,
@@ -523,10 +571,10 @@ export const updateJobStatus = async (req, res) => {
             [
               materialId,
               id,
-              sheetsUsed / sheetsPerUnit,
-              sheetsUsed,
+              quantityUsedInUnits,
+              inventoryItem.category === 'Paper' ? sheetsUsed : null,
               material.unit_cost || inventoryItem.unit_cost,
-              sheetsUsed * inventoryItem.cost_per_sheet,
+              totalCostForUsage,
               `Job ${jobTicketId}`,
               req.user.userId
             ]
@@ -573,15 +621,25 @@ export const updateJobStatus = async (req, res) => {
     if (waste && Array.isArray(waste)) {
       for (const wasteItem of waste) {
         let materialId = null;
+        let inventoryItem = null; 
+
         if (wasteItem.material_id) {
           materialId = wasteItem.material_id;
+          const invResult = await client.query(
+            'SELECT * FROM inventory WHERE id = $1',
+            [materialId]
+          );
+          if (invResult.rows.length > 0) {
+            inventoryItem = invResult.rows[0];
+          }
         } else if (wasteItem.material_name) {
           const invResult = await client.query(
-            'SELECT id FROM inventory WHERE material_name = $1 LIMIT 1',
+            'SELECT * FROM inventory WHERE material_name = $1 LIMIT 1',
             [wasteItem.material_name]
           );
           if (invResult.rows.length > 0) {
-            materialId = invResult.rows[0].id;
+            inventoryItem = invResult.rows[0];
+            materialId = inventoryItem.id;
           }
         }
 
@@ -599,6 +657,37 @@ export const updateJobStatus = async (req, res) => {
             wasteItem.waste_reason || null
           ]
         );
+
+        if (inventoryItem && wasteItem.quantity > 0) {
+            const isPaper = inventoryItem.category === 'Paper';
+            const attributes = inventoryItem.attributes || {};
+            const sheetsPerUnit = parseInt(attributes.sheets_per_unit) || 500;
+            const unitOfMeasure = (inventoryItem.unit_of_measure || '').toLowerCase();
+            let quantityToSubtract = wasteItem.quantity;
+
+            if (isPaper) {
+                if (unitOfMeasure.includes('ream')) {
+                  quantityToSubtract = wasteItem.quantity * sheetsPerUnit;
+                }
+            }
+            
+          const currentStock = parseFloat(inventoryItem.current_stock) || 0;
+          let newStock = currentStock - quantityToSubtract;
+          if (newStock < 0) {
+            console.warn(`Insufficient stock for ${inventoryItem.material_name} to cover waste. Adjusting to 0.`);
+            newStock = 0;
+          }
+
+          await client.query(
+            `UPDATE inventory 
+             SET current_stock = $1, updated_at = CURRENT_TIMESTAMP 
+             WHERE id = $2`,
+            [
+              newStock,
+              inventoryItem.id
+            ]
+          );
+        }
       }
     }
 
@@ -861,7 +950,7 @@ export const updateJobMaterials = async (req, res) => {
 
     // Get current materials for comparison
     const currentMaterials = await client.query(
-      'SELECT * FROM materials_used WHERE job_id = $1',
+      'SELECT mu.*, i.category FROM materials_used mu LEFT JOIN inventory i ON mu.material_id = i.id WHERE mu.job_id = $1',
       [jobId]
     );
 
@@ -872,15 +961,43 @@ export const updateJobMaterials = async (req, res) => {
 
     // Process material updates
     for (const material of materials) {
-      const sheetsPerUnit = material.sheets_per_unit || 500;
-      const quantitySheets = material.quantity_sheets || (material.quantity * sheetsPerUnit);
+      let inventoryItem = null;
+      if (material.material_id) {
+        const invResult = await client.query('SELECT * FROM inventory WHERE id = $1', [material.material_id]);
+        if (invResult.rows.length > 0) {
+          inventoryItem = invResult.rows[0];
+        }
+      }
+
+      const isPaper = inventoryItem?.category === 'Paper';
+      const sheetsPerUnit = parseInt(inventoryItem?.attributes?.sheets_per_unit) || 500;
+      // For paper items, prioritize quantity_sheets if provided, otherwise convert quantity to sheets
+      // For non-paper items, use quantity_sheets if provided, otherwise use quantity as-is
+      let quantitySheets;
+      if (isPaper) {
+        if (material.quantity_sheets !== undefined && material.quantity_sheets !== null) {
+          quantitySheets = material.quantity_sheets;
+        } else {
+          // If quantity_sheets not provided, assume quantity is in sheets (for backward compatibility)
+          // But if unit_of_measure suggests reams, convert
+          const unitOfMeasure = inventoryItem?.unit_of_measure || '';
+          if (unitOfMeasure.toLowerCase().includes('ream')) {
+            quantitySheets = (material.quantity || 0) * sheetsPerUnit;
+          } else {
+            quantitySheets = material.quantity || 0;
+          }
+        }
+      } else {
+        quantitySheets = material.quantity_sheets || (material.quantity || 0);
+      }
 
       if (material.id) {
         // Update existing material
         const currentMaterial = currentMaterialsMap.get(material.id);
         
         if (currentMaterial) {
-          const oldQuantitySheets = currentMaterial.quantity_sheets || (currentMaterial.quantity * sheetsPerUnit);
+          const isOldPaper = currentMaterial.category === 'Paper';
+          const oldQuantitySheets = (isOldPaper ? currentMaterial.quantity_sheets : (currentMaterial.quantity_sheets || (currentMaterial.quantity * sheetsPerUnit))) || 0;
           const quantityChange = quantitySheets - oldQuantitySheets;
 
           // Check if any changes were made
@@ -937,11 +1054,23 @@ export const updateJobMaterials = async (req, res) => {
             );
 
             // Update inventory if material_id is present
+            // quantityChange is in sheets for paper items, so we can use it directly
             if(currentMaterial.material_id) {
-              await client.query(
-                `UPDATE inventory SET current_stock = current_stock - $1 WHERE id = $2`,
-                [quantityChange, currentMaterial.material_id]
-              );
+              const currentStock = parseFloat(inventoryItem?.current_stock) || 0;
+              const newStock = currentStock - quantityChange;
+              
+              if (newStock < 0) {
+                console.warn(`Insufficient stock for ${inventoryItem?.material_name}. Adjusting to 0.`);
+                await client.query(
+                  `UPDATE inventory SET current_stock = 0 WHERE id = $1`,
+                  [currentMaterial.material_id]
+                );
+              } else {
+                await client.query(
+                  `UPDATE inventory SET current_stock = $1 WHERE id = $2`,
+                  [newStock, currentMaterial.material_id]
+                );
+              }
             }
           }
         }
@@ -989,11 +1118,22 @@ export const updateJobMaterials = async (req, res) => {
         );
 
         // Update inventory if material_id is present
-        if (material.material_id) {
-          await client.query(
-            `UPDATE inventory SET current_stock = current_stock - $1 WHERE id = $2`,
-            [quantitySheets, material.material_id]
-          );
+        if (material.material_id && inventoryItem) {
+          const currentStock = parseFloat(inventoryItem.current_stock) || 0;
+          const newStock = currentStock - quantitySheets;
+          
+          if (newStock < 0) {
+            console.warn(`Insufficient stock for ${inventoryItem.material_name}. Adjusting to 0.`);
+            await client.query(
+              `UPDATE inventory SET current_stock = 0 WHERE id = $1`,
+              [material.material_id]
+            );
+          } else {
+            await client.query(
+              `UPDATE inventory SET current_stock = $1 WHERE id = $2`,
+              [newStock, material.material_id]
+            );
+          }
         }
       }
     }
@@ -1045,15 +1185,72 @@ export const updateJobMaterials = async (req, res) => {
     if (waste && Array.isArray(waste)) {
       for (const wasteItem of waste) {
         let materialId = null;
+        let inventoryItem = null;
+
         if (wasteItem.material_id) {
           materialId = wasteItem.material_id;
         } else if (wasteItem.material_name) {
           const invResult = await client.query(
-            'SELECT id FROM inventory WHERE material_name = $1 LIMIT 1',
+            'SELECT * FROM inventory WHERE material_name = $1 LIMIT 1',
             [wasteItem.material_name]
           );
           if (invResult.rows.length > 0) {
-            materialId = invResult.rows[0].id;
+            inventoryItem = invResult.rows[0];
+            materialId = inventoryItem.id;
+          }
+        }
+
+        // If we only have an id, fetch the inventory item
+        if (!inventoryItem && materialId) {
+          const invById = await client.query(
+            'SELECT * FROM inventory WHERE id = $1',
+            [materialId]
+          );
+          if (invById.rows.length > 0) {
+            inventoryItem = invById.rows[0];
+          }
+        }
+
+        // Derive unit_cost and total_cost from inventory when missing
+        let unitCost = wasteItem.unit_cost;
+        let totalCost = wasteItem.total_cost;
+        let quantityForInventory = wasteItem.quantity || 0;
+
+        if (inventoryItem) {
+          const isPaper = inventoryItem.category === 'Paper';
+          const attributes = inventoryItem.attributes || {};
+          const sheetsPerUnit = parseInt(attributes.sheets_per_unit) || 500;
+          const unitOfMeasure = (inventoryItem.unit_of_measure || '').toLowerCase();
+
+          if (isPaper) {
+            // Convert to sheets for stock tracking
+            if (unitOfMeasure.includes('ream')) {
+              quantityForInventory = (wasteItem.quantity || 0) * sheetsPerUnit;
+            } else {
+              quantityForInventory = wasteItem.quantity || 0;
+            }
+
+            const costPerSheet = parseFloat(inventoryItem.unit_cost) / sheetsPerUnit;
+            if (unitCost == null) {
+              unitCost = inventoryItem.unit_cost;
+            }
+            if (totalCost == null && quantityForInventory > 0) {
+              totalCost = quantityForInventory * costPerSheet;
+            }
+          } else {
+            quantityForInventory = wasteItem.quantity || 0;
+            if (unitCost == null) {
+              unitCost = inventoryItem.unit_cost;
+            }
+            if (totalCost == null && quantityForInventory > 0) {
+              totalCost = quantityForInventory * parseFloat(inventoryItem.unit_cost);
+            }
+          }
+        } else {
+          // Fallback if we don't have inventory details
+          if (unitCost == null) unitCost = wasteItem.unit_cost || 0;
+          if (totalCost == null && quantityForInventory && unitCost) {
+            totalCost = quantityForInventory * unitCost;
           }
         }
 
@@ -1069,8 +1266,8 @@ export const updateJobMaterials = async (req, res) => {
               wasteItem.type,
               wasteItem.description,
               wasteItem.quantity || null,
-              wasteItem.unit_cost || null,
-              wasteItem.total_cost,
+              unitCost || null,
+              totalCost,
               wasteItem.waste_reason || null,
               wasteItem.id,
               jobId
@@ -1087,11 +1284,30 @@ export const updateJobMaterials = async (req, res) => {
               wasteItem.type,
               wasteItem.description,
               wasteItem.quantity || null,
-              wasteItem.unit_cost || null,
-              wasteItem.total_cost,
+              unitCost || null,
+              totalCost,
               wasteItem.waste_reason || null
             ]
           );
+
+          // For new waste records, also subtract from inventory stock
+          if (inventoryItem && quantityForInventory > 0) {
+            const currentStock = parseFloat(inventoryItem.current_stock) || 0;
+            let newStock = currentStock - quantityForInventory;
+            if (newStock < 0) {
+              newStock = 0;
+            }
+
+            await client.query(
+              `UPDATE inventory 
+               SET current_stock = $1, updated_at = CURRENT_TIMESTAMP 
+               WHERE id = $2`,
+              [
+                newStock,
+                inventoryItem.id
+              ]
+            );
+          }
         }
       }
     }

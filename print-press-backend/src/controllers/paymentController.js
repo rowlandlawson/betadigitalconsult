@@ -325,27 +325,26 @@ export const getPaymentStats = async (req, res) => {
   try {
     const { period = 'monthly' } = req.query;
 
-    let groupBy, dateFilter, periodFormat;
-    const currentDate = new Date();
+    let groupByExpr, dateFilter, periodFormat;
     
     switch (period) {
       case 'daily':
         // Get last 30 days
         dateFilter = `p.date >= CURRENT_DATE - INTERVAL '30 days'`;
-        groupBy = 'DATE(p.date)';
+        groupByExpr = `DATE(p.date)`;
         periodFormat = `TO_CHAR(DATE(p.date), 'YYYY-MM-DD')`;
         break;
       case 'weekly':
         // Get last 12 weeks
         dateFilter = `p.date >= CURRENT_DATE - INTERVAL '12 weeks'`;
-        groupBy = 'EXTRACT(YEAR FROM p.date), EXTRACT(WEEK FROM p.date)';
-        periodFormat = `CONCAT(EXTRACT(YEAR FROM p.date), '-W', LPAD(EXTRACT(WEEK FROM p.date)::text, 2, '0'))`;
+        groupByExpr = `DATE_TRUNC('week', p.date)`;
+        periodFormat = `TO_CHAR(DATE_TRUNC('week', p.date), 'IYYY-"W"IW')`;
         break;
       case 'monthly':
       default:
         // Get last 12 months
         dateFilter = `p.date >= CURRENT_DATE - INTERVAL '12 months'`;
-        groupBy = 'EXTRACT(YEAR FROM p.date), EXTRACT(MONTH FROM p.date)';
+        groupByExpr = `DATE_TRUNC('month', p.date)`;
         periodFormat = `TO_CHAR(DATE_TRUNC('month', p.date), 'YYYY-MM')`;
         break;
     }
@@ -361,8 +360,8 @@ export const getPaymentStats = async (req, res) => {
       FROM payments p
       LEFT JOIN jobs j ON p.job_id = j.id
       WHERE ${dateFilter}
-      GROUP BY ${groupBy}
-      ORDER BY period DESC
+      GROUP BY ${groupByExpr}
+      ORDER BY ${groupByExpr} DESC
       LIMIT 12
     `;
 
@@ -384,7 +383,7 @@ export const getPaymentStats = async (req, res) => {
         payment_method,
         COUNT(*) as count,
         COALESCE(SUM(amount), 0) as total_amount
-      FROM payments 
+      FROM payments p
       WHERE ${dateFilter}
       GROUP BY payment_method
       ORDER BY total_amount DESC

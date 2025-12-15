@@ -110,17 +110,23 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
   };
 
   const updateMaterial = (index: number, field: keyof Material, value: any) => {
-    setMaterials(prev => {
-      const updated = [...prev];
-      const newMaterial = { ...updated[index] };
+    setMaterials((prev: Material[]) => {
+      const updated: Material[] = [...prev];
+      const newMaterial: Material = { ...updated[index] };
 
       // Update the field that changed
       if (field === 'grammage') {
         newMaterial[field] = value === '' ? undefined : Number(value);
       } else if (field === 'quantity' || field === 'unit_cost') {
-        newMaterial[field] = Number(value) || 0;
+        // Explicitly assign numeric fields to avoid implicit any/never issues
+        if (field === 'quantity') {
+          newMaterial.quantity = Number(value) || 0;
+        } else {
+          newMaterial.unit_cost = Number(value) || 0;
+        }
       } else {
-        newMaterial[field] = value;
+        // Safely assign other fields using a type assertion
+        (newMaterial as any)[field] = value;
       }
 
       // If material name changes, check inventory and autofill/reset data
@@ -130,6 +136,7 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
 
         if (inventoryItem) {
           // An inventory item is selected
+          newMaterial.material_id = inventoryItem.id;
           newMaterial.unit_cost = inventoryItem.unit_cost;
           newMaterial.paper_size = inventoryItem.paper_size || '';
           newMaterial.paper_type = inventoryItem.paper_type || '';

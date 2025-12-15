@@ -177,11 +177,35 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       const newWaste = [...prevWaste];
       const updatedItem = { ...newWaste[index] };
 
-      if (field === 'quantity' || field === 'total_cost') {
-         (updatedItem as any)[field] = parseFloat(value) || 0;
+      if (field === 'material_id') {
+        updatedItem.material_id = value || undefined;
+
+        // When material is selected, derive unit cost and default values
+        const inventoryItem = inventoryItems.find((item) => item.id === value);
+        if (inventoryItem) {
+          // Default description if empty
+          if (!updatedItem.description) {
+            updatedItem.description = inventoryItem.material_name;
+          }
+          // Auto unit_cost from inventory
+          if (!updatedItem.unit_cost || updatedItem.unit_cost === 0) {
+            updatedItem.unit_cost = parseFloat(inventoryItem.unit_cost);
+          }
+          // Ensure quantity has a sensible default
+          if (!updatedItem.quantity || updatedItem.quantity === 0) {
+            updatedItem.quantity = 1;
+          }
+        }
+      } else if (field === 'quantity' || field === 'unit_cost' || field === 'total_cost') {
+        (updatedItem as any)[field] = parseFloat(value) || 0;
       } else {
-         (updatedItem as any)[field] = value;
+        (updatedItem as any)[field] = value;
       }
+
+      // Always recalc total_cost from quantity and unit_cost
+      const qty = updatedItem.quantity || 0;
+      const unit = updatedItem.unit_cost || 0;
+      updatedItem.total_cost = qty * unit;
 
       newWaste[index] = updatedItem;
       return newWaste;
@@ -295,6 +319,21 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
 
             {waste.map((item, index) => (
               <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border border-red-100 p-3 rounded-md bg-red-50">
+                <div className="md:col-span-3">
+                  <Label className="text-xs">Material (optional)</Label>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
+                    value={item.material_id || ''}
+                    onChange={(e) => updateWaste(index, 'material_id', e.target.value)}
+                  >
+                    <option value="">-- Select material --</option>
+                    {inventoryItems.map((inv) => (
+                      <option key={inv.id} value={inv.id}>
+                        {inv.material_name} ({formatCurrency(inv.unit_cost)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
                  <div className="md:col-span-3">
                   <Label className="text-xs">Reason</Label>
                   <Input 
@@ -303,7 +342,7 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                     placeholder="e.g. Error"
                   />
                 </div>
-                <div className="md:col-span-4">
+                <div className="md:col-span-3">
                   <Label className="text-xs">Description</Label>
                   <Input 
                     value={item.description}
@@ -324,7 +363,8 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                   <Input 
                     type="number" 
                     value={item.total_cost}
-                    onChange={(e) => updateWaste(index, 'total_cost', e.target.value)}
+                    readOnly
+                    className="bg-gray-100 text-gray-600"
                   />
                 </div>
                 <div className="md:col-span-1 flex justify-end md:justify-center">

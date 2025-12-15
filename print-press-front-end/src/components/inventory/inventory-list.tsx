@@ -104,7 +104,7 @@ export const InventoryList: React.FC = () => {
   const pagination = data?.pagination;
 
   const totalValue = inventory.reduce((sum: number, item: InventoryItem) => {
-    const stockValue = item.stock_value || (item.current_stock * item.unit_cost) || 0;
+    const stockValue = (item.current_stock * item.unit_cost) || 0;
     return sum + (isNaN(stockValue) ? 0 : stockValue);
   }, 0);
   const lowStockCount = inventory.filter((item: InventoryItem) => 
@@ -310,7 +310,7 @@ export const InventoryList: React.FC = () => {
                       </td>
                       <td className="py-3 px-4">
                         <div>
-                          <p className="font-medium">{formatCurrency(item.stock_value || 0)}</p>
+                          <p className="font-medium">{formatCurrency(item.current_stock * item.unit_cost)}</p>
                           <p className="text-xs text-gray-500">
                             {formatCurrency(item.unit_cost)}/{item.unit_of_measure}
                           </p>

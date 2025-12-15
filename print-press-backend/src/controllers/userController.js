@@ -82,7 +82,7 @@ export const createUser = async (req, res) => {
       [
         email.toLowerCase(),
         name,
-        userName,
+        userName ? userName.toLowerCase() : null,
         hashedPassword,
         role,
         phone,

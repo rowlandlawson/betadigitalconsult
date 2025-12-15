@@ -46,9 +46,9 @@ export const MaterialUsageTracker: React.FC = () => {
     setMessage(null);
 
     try {
-      await inventoryApi.recordUsageSheets({
+      await inventoryApi.recordUsage({
         material_id: selectedMaterial,
-        sheets_used: Number(sheetsUsed),
+        quantity_used: Number(sheetsUsed),
         notes: notes,
       });
 
@@ -67,7 +67,7 @@ export const MaterialUsageTracker: React.FC = () => {
   };
 
   const selectedMaterialData = inventory.find(item => item.id === selectedMaterial);
-  const costOfUsage = selectedMaterialData && sheetsUsed ? Number(sheetsUsed) * selectedMaterialData.cost_per_sheet : 0;
+  const costOfUsage = selectedMaterialData && sheetsUsed ? Number(sheetsUsed) * selectedMaterialData.unit_cost : 0;
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -97,7 +97,7 @@ export const MaterialUsageTracker: React.FC = () => {
               <option value="">{loading ? 'Loading...' : 'Choose a material'}</option>
               {inventory.map(item => (
                 <option key={item.id} value={item.id}>
-                  {item.material_name} ({item.display_stock.display} in stock)
+                  {item.material_name} ({item.display_stock} in stock)
                 </option>
               ))}
             </select>
@@ -140,7 +140,7 @@ export const MaterialUsageTracker: React.FC = () => {
                 <div>
                   <p className="text-gray-600">Stock Remaining:</p>
                   <p className="font-medium">
-                    {selectedMaterialData.current_stock_sheets - Number(sheetsUsed)} sheets
+                    {selectedMaterialData.current_stock - Number(sheetsUsed)} sheets
                   </p>
                 </div>
               </div>

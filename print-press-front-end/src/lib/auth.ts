@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export interface User {
   id: string;
@@ -32,7 +33,7 @@ export const refreshAuthToken = async (): Promise<AuthResponse | null> => {
   try {
     console.log('🔄 Attempting token refresh...');
     const refreshToken = localStorage.getItem('refresh_token');
-    
+
     if (!refreshToken) {
       console.log('❌ No refresh token available');
       throw new Error('No refresh token available');
@@ -49,14 +50,14 @@ export const refreshAuthToken = async (): Promise<AuthResponse | null> => {
     if (response.ok) {
       const data: AuthResponse = await response.json();
       console.log('✅ Token refresh successful');
-      
+
       // Store new tokens
       localStorage.setItem('auth_token', data.accessToken);
       if (data.refreshToken) {
         localStorage.setItem('refresh_token', data.refreshToken);
       }
       localStorage.setItem('user', JSON.stringify(data.user));
-      
+
       return data;
     } else {
       const errorData: ApiError = await response.json();
@@ -82,13 +83,13 @@ export const getValidToken = async (): Promise<string | null> => {
 
     // Check if token is expired
     const isExpired = isTokenExpired(token);
-    
+
     if (isExpired) {
       console.log('🔄 Access token expired, refreshing...');
       const newAuth = await refreshAuthToken();
       return newAuth ? newAuth.accessToken : null;
     }
-    
+
     console.log('✅ Access token is valid');
     return token;
   } catch (error) {
@@ -103,7 +104,7 @@ export const logout = (): void => {
   localStorage.removeItem('auth_token');
   localStorage.removeItem('refresh_token');
   localStorage.removeItem('user');
-  
+
   // Redirect to login page
   if (typeof window !== 'undefined') {
     console.log('🔄 Redirecting to login page...');
@@ -124,14 +125,14 @@ export const isTokenExpired = (token: string): boolean => {
     const expirationTime = payload.exp * 1000; // Convert to milliseconds
     const currentTime = Date.now();
     const bufferTime = 5 * 60 * 1000; // 5 minutes buffer
-    
+
     const isExpired = expirationTime - bufferTime <= currentTime;
     console.log('🔍 JWT expiration check:', {
       expirationTime: new Date(expirationTime).toISOString(),
       currentTime: new Date(currentTime).toISOString(),
-      isExpired
+      isExpired,
     });
-    
+
     return isExpired;
   } catch (error) {
     console.error('❌ Error checking token expiration:', error);
@@ -141,7 +142,7 @@ export const isTokenExpired = (token: string): boolean => {
 
 export const getStoredUser = (): User | null => {
   if (typeof window === 'undefined') return null;
-  
+
   try {
     const userData = localStorage.getItem('user');
     const user = userData ? JSON.parse(userData) : null;
@@ -155,18 +156,18 @@ export const getStoredUser = (): User | null => {
 
 export const isAuthenticated = (): boolean => {
   if (typeof window === 'undefined') return false;
-  
+
   const token = localStorage.getItem('auth_token');
   const user = getStoredUser();
-  
+
   console.log('🔍 Authentication check:', {
     hasToken: !!token,
     hasUser: !!user,
-    userRole: user?.role
+    userRole: user?.role,
   });
 
   if (!token || !user) return false;
-  
+
   // Check if token is expired
   return !isTokenExpired(token);
 };

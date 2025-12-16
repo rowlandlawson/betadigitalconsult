@@ -239,7 +239,12 @@ export interface JobFilters {
 export interface JobActivity {
   id: string;
   job_id: string;
-  activity_type: 'created' | 'status_changed' | 'payment_received' | 'material_updated' | 'note_added';
+  activity_type:
+    | 'created'
+    | 'status_changed'
+    | 'payment_received'
+    | 'material_updated'
+    | 'note_added';
   description: string;
   user_id?: string;
   user_name?: string;

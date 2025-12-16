@@ -13,4 +13,3 @@ export default function EditUserPage({ params }: EditUserPageProps) {
   const { id } = React.use(params);
   return <UserForm mode="edit" userId={id} />;
 }
-

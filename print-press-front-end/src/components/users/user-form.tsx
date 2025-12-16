@@ -26,10 +26,12 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [passwordChangeData, setPasswordChangeData] = useState({
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
   const [changingPassword, setChangingPassword] = useState(false);
-  const [formData, setFormData] = useState<CreateUserData & { isActive?: boolean }>({
+  const [formData, setFormData] = useState<
+    CreateUserData & { isActive?: boolean }
+  >({
     email: '',
     name: '',
     userName: '',
@@ -85,7 +87,8 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
   }, [mode, userId]);
 
   const generatePassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+    const chars =
+      'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
     let password = '';
     for (let i = 0; i < 12; i++) {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -94,7 +97,10 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
   };
 
   const handlePasswordChange = async () => {
-    if (!passwordChangeData.newPassword || !passwordChangeData.confirmPassword) {
+    if (
+      !passwordChangeData.newPassword ||
+      !passwordChangeData.confirmPassword
+    ) {
       setError('Please fill in both password fields');
       return;
     }
@@ -115,7 +121,10 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
     setError('');
 
     try {
-      await userService.resetUserPassword(userId, passwordChangeData.newPassword);
+      await userService.resetUserPassword(
+        userId,
+        passwordChangeData.newPassword
+      );
       setPasswordChangeData({ newPassword: '', confirmPassword: '' });
       setError('');
       toast.success('Password changed successfully');
@@ -173,7 +182,9 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-2xl font-bold">{mode === 'create' ? 'Create New User' : 'Edit User'}</h2>
+        <h2 className="text-2xl font-bold">
+          {mode === 'create' ? 'Create New User' : 'Edit User'}
+        </h2>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -186,14 +197,16 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
           {/* Basic Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Basic Information</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="name">Name *</Label>
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -204,7 +217,9 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   required
                   disabled={mode === 'edit'}
                 />
@@ -212,7 +227,9 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
 
               {mode === 'create' && (
                 <div className="md:col-span-2">
-                  <Label>Generated Password (will be sent to admin email)</Label>
+                  <Label>
+                    Generated Password (will be sent to admin email)
+                  </Label>
                   <div className="flex gap-2">
                     <Input
                       type={showPassword ? 'text' : 'password'}
@@ -226,7 +243,11 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                       variant="outline"
                       onClick={() => setShowPassword(!showPassword)}
                     >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
                     </Button>
                     <Button
                       type="button"
@@ -238,7 +259,8 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                     </Button>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    A password will be auto-generated when creating the user. You can generate one here to preview.
+                    A password will be auto-generated when creating the user.
+                    You can generate one here to preview.
                   </p>
                 </div>
               )}
@@ -248,7 +270,9 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                 <Input
                   id="userName"
                   value={formData.userName}
-                  onChange={(e) => setFormData({ ...formData, userName: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, userName: e.target.value })
+                  }
                 />
               </div>
 
@@ -258,7 +282,9 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                   id="phone"
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
                 />
               </div>
 
@@ -267,7 +293,12 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                 <select
                   id="role"
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'worker' })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      role: e.target.value as 'admin' | 'worker',
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   required
                 >
@@ -282,7 +313,9 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                   id="dateJoined"
                   type="date"
                   value={formData.dateJoined}
-                  onChange={(e) => setFormData({ ...formData, dateJoined: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, dateJoined: e.target.value })
+                  }
                 />
               </div>
 
@@ -292,7 +325,12 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                   <select
                     id="isActive"
                     value={formData.isActive ? 'true' : 'false'}
-                    onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        isActive: e.target.value === 'true',
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
                     <option value="true">Active</option>
@@ -307,7 +345,9 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
               <Input
                 id="address"
                 value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
+                }
               />
             </div>
           </div>
@@ -316,7 +356,7 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
           {formData.role === 'worker' && (
             <div className="space-y-4 pt-4 border-t">
               <h3 className="text-lg font-semibold">Payment Information</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="hourlyRate">Hourly Rate</Label>
@@ -325,7 +365,14 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                     type="number"
                     step="0.01"
                     value={formData.hourlyRate || ''}
-                    onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value ? parseFloat(e.target.value) : undefined })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        hourlyRate: e.target.value
+                          ? parseFloat(e.target.value)
+                          : undefined,
+                      })
+                    }
                   />
                 </div>
 
@@ -336,7 +383,14 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                     type="number"
                     step="0.01"
                     value={formData.monthlySalary || ''}
-                    onChange={(e) => setFormData({ ...formData, monthlySalary: e.target.value ? parseFloat(e.target.value) : undefined })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        monthlySalary: e.target.value
+                          ? parseFloat(e.target.value)
+                          : undefined,
+                      })
+                    }
                   />
                 </div>
 
@@ -345,7 +399,12 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                   <select
                     id="paymentMethod"
                     value={formData.paymentMethod}
-                    onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        paymentMethod: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
                     <option value="">Select method</option>
@@ -360,7 +419,9 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                   <Input
                     id="bankName"
                     value={formData.bankName}
-                    onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, bankName: e.target.value })
+                    }
                   />
                 </div>
 
@@ -369,7 +430,12 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                   <Input
                     id="accountNumber"
                     value={formData.accountNumber}
-                    onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        accountNumber: e.target.value,
+                      })
+                    }
                   />
                 </div>
 
@@ -378,7 +444,9 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                   <Input
                     id="accountName"
                     value={formData.accountName}
-                    onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, accountName: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -389,7 +457,7 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
           {mode === 'edit' && formData.role === 'worker' && userId && (
             <div className="space-y-4 pt-4 border-t">
               <h3 className="text-lg font-semibold">Change Password</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="newPassword">New Password</Label>
@@ -397,7 +465,12 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                     id="newPassword"
                     type="password"
                     value={passwordChangeData.newPassword}
-                    onChange={(e) => setPasswordChangeData({ ...passwordChangeData, newPassword: e.target.value })}
+                    onChange={(e) =>
+                      setPasswordChangeData({
+                        ...passwordChangeData,
+                        newPassword: e.target.value,
+                      })
+                    }
                     placeholder="Enter new password"
                   />
                 </div>
@@ -407,17 +480,26 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                     id="confirmPassword"
                     type="password"
                     value={passwordChangeData.confirmPassword}
-                    onChange={(e) => setPasswordChangeData({ ...passwordChangeData, confirmPassword: e.target.value })}
+                    onChange={(e) =>
+                      setPasswordChangeData({
+                        ...passwordChangeData,
+                        confirmPassword: e.target.value,
+                      })
+                    }
                     placeholder="Confirm new password"
                   />
                 </div>
               </div>
-              
+
               <Button
                 type="button"
                 variant="outline"
                 onClick={handlePasswordChange}
-                disabled={changingPassword || !passwordChangeData.newPassword || !passwordChangeData.confirmPassword}
+                disabled={
+                  changingPassword ||
+                  !passwordChangeData.newPassword ||
+                  !passwordChangeData.confirmPassword
+                }
               >
                 {changingPassword ? 'Changing...' : 'Change Password'}
               </Button>
@@ -426,9 +508,17 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
 
           <div className="flex gap-4 pt-4">
             <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : mode === 'create' ? 'Create User' : 'Update User'}
+              {loading
+                ? 'Saving...'
+                : mode === 'create'
+                  ? 'Create User'
+                  : 'Update User'}
             </Button>
-            <Button type="button" variant="outline" onClick={() => router.push('/admin/users')}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push('/admin/users')}
+            >
               Cancel
             </Button>
           </div>
@@ -437,4 +527,3 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
     </Card>
   );
 };
-

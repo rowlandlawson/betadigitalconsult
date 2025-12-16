@@ -29,12 +29,17 @@ export const operationalExpensesService = {
     return response.data;
   },
 
-  async createExpense(expenseData: CreateExpenseData): Promise<{ expense: OperationalExpense; message: string }> {
+  async createExpense(
+    expenseData: CreateExpenseData
+  ): Promise<{ expense: OperationalExpense; message: string }> {
     const response = await api.post('/operational-expenses', expenseData);
     return response.data;
   },
 
-  async updateExpense(id: string, expenseData: UpdateExpenseData): Promise<{ expense: OperationalExpense; message: string }> {
+  async updateExpense(
+    id: string,
+    expenseData: UpdateExpenseData
+  ): Promise<{ expense: OperationalExpense; message: string }> {
     const response = await api.put(`/operational-expenses/${id}`, expenseData);
     return response.data;
   },
@@ -44,11 +49,15 @@ export const operationalExpensesService = {
   },
 
   async getCategories(): Promise<string[]> {
-    const response = await api.get<ExpenseCategoriesResponse>('/operational-expenses/categories');
+    const response = await api.get<ExpenseCategoriesResponse>(
+      '/operational-expenses/categories'
+    );
     return response.data.categories;
   },
 
-  async getMonthlySummary(year?: number): Promise<MonthlyExpenseSummaryResponse> {
+  async getMonthlySummary(
+    year?: number
+  ): Promise<MonthlyExpenseSummaryResponse> {
     const queryParams = new URLSearchParams();
     if (year) queryParams.append('year', year.toString());
 
@@ -58,4 +67,3 @@ export const operationalExpensesService = {
     return response.data;
   },
 };
-

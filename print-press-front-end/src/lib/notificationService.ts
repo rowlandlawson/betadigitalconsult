@@ -10,17 +10,24 @@ export interface UnreadCountResponse {
 }
 
 export const notificationService = {
-  async getNotifications(params?: { limit?: number; unreadOnly?: boolean }): Promise<Notification[]> {
+  async getNotifications(params?: {
+    limit?: number;
+    unreadOnly?: boolean;
+  }): Promise<Notification[]> {
     const queryParams = new URLSearchParams();
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.unreadOnly) queryParams.append('unreadOnly', 'true');
 
-    const response = await api.get<NotificationsResponse>(`/notifications?${queryParams.toString()}`);
+    const response = await api.get<NotificationsResponse>(
+      `/notifications?${queryParams.toString()}`
+    );
     return response.data.notifications;
   },
 
   async getUnreadCount(): Promise<number> {
-    const response = await api.get<UnreadCountResponse>('/notifications/unread-count');
+    const response = await api.get<UnreadCountResponse>(
+      '/notifications/unread-count'
+    );
     return response.data.count;
   },
 
@@ -30,6 +37,5 @@ export const notificationService = {
 
   async markAllAsRead(): Promise<void> {
     await api.patch('/notifications/mark-all-read');
-  }
+  },
 };
-

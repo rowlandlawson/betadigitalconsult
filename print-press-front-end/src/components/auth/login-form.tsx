@@ -28,10 +28,13 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
     setLoading(true);
 
     try {
-      console.log('🔐 Attempting login...', { isAdmin, identifier: formData.identifier });
+      console.log('🔐 Attempting login...', {
+        isAdmin,
+        identifier: formData.identifier,
+      });
 
       const endpoint = isAdmin ? '/auth/admin/login' : '/auth/login';
-      
+
       const response = await api.post(endpoint, {
         identifier: formData.identifier,
         password: formData.password,
@@ -62,17 +65,17 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
       console.log('💾 Tokens stored successfully:', {
         accessToken: !!accessToken,
         refreshToken: !!refreshToken,
-        userRole: user.role
+        userRole: user.role,
       });
 
       // Verify the token is stored correctly
       const storedToken = localStorage.getItem('auth_token');
       const storedUser = localStorage.getItem('user');
-      
+
       console.log('🔍 Storage verification:', {
         tokenStored: !!storedToken,
         userStored: !!storedUser,
-        userRole: storedUser ? JSON.parse(storedUser).role : 'none'
+        userRole: storedUser ? JSON.parse(storedUser).role : 'none',
       });
 
       // Redirect based on user role
@@ -83,12 +86,13 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
         console.log('🔄 Redirecting to worker dashboard...');
         router.push('/worker/dashboard');
       }
-
     } catch (error: unknown) {
       console.error('❌ Login error:', error);
-      
+
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { data?: { error?: string } } };
+        const axiosError = error as {
+          response?: { data?: { error?: string } };
+        };
         if (axiosError.response?.data?.error) {
           setError(axiosError.response.data.error);
         } else {
@@ -109,7 +113,9 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
     setRecoveryMessage('');
 
     if (!recoveryIdentifier.trim()) {
-      setRecoveryMessage('Please provide the email or username for the account.');
+      setRecoveryMessage(
+        'Please provide the email or username for the account.'
+      );
       return;
     }
 
@@ -118,12 +124,16 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
       const response = await passwordService.requestResetLink({
         identifier: recoveryIdentifier.trim(),
       });
-      setRecoveryMessage(response.message || 'Password reset link sent successfully.');
+      setRecoveryMessage(
+        response.message || 'Password reset link sent successfully.'
+      );
       setRecoveryIdentifier('');
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosError = err as { response?: { data?: { error?: string } } };
-        setRecoveryMessage(axiosError.response?.data?.error || 'Failed to send reset link.');
+        setRecoveryMessage(
+          axiosError.response?.data?.error || 'Failed to send reset link.'
+        );
       } else if (err instanceof Error) {
         setRecoveryMessage(err.message);
       } else {
@@ -146,7 +156,7 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
       <h2 className="text-2xl font-bold text-center mb-6">
         {isAdmin ? 'Admin Login' : 'User Login'}
       </h2>
-      
+
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
@@ -155,7 +165,10 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="identifier"
+            className="block text-sm font-medium text-gray-700"
+          >
             {isAdmin ? 'Email or Username' : 'Email or Username'}
           </label>
           <input
@@ -166,12 +179,19 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
             value={formData.identifier}
             onChange={handleChange}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            placeholder={isAdmin ? "Enter admin email or username" : "Enter your email or username"}
+            placeholder={
+              isAdmin
+                ? 'Enter admin email or username'
+                : 'Enter your email or username'
+            }
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-gray-700"
+          >
             Password
           </label>
           <input
@@ -210,7 +230,10 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
         {showRecovery && (
           <form onSubmit={handleRecoverySubmit} className="mt-4 space-y-3">
             <div>
-              <label htmlFor="recoveryIdentifier" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="recoveryIdentifier"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Enter your email or username
               </label>
               <input
@@ -243,9 +266,7 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
               )}
             </div>
             {recoveryMessage && (
-              <p className="text-sm text-gray-600">
-                {recoveryMessage}
-              </p>
+              <p className="text-sm text-gray-600">{recoveryMessage}</p>
             )}
           </form>
         )}

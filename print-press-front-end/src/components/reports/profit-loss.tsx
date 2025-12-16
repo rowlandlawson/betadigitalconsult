@@ -9,7 +9,16 @@ import { ProfitLossStatement } from '@/types/reports';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { isApiError } from '@/lib/api';
 import { Download, Calendar } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from 'recharts';
 
 export const ProfitLoss: React.FC = () => {
   const [data, setData] = useState<ProfitLossStatement | null>(null);
@@ -20,7 +29,9 @@ export const ProfitLoss: React.FC = () => {
     date.setMonth(date.getMonth() - 1);
     return date.toISOString().split('T')[0];
   });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(
+    () => new Date().toISOString().split('T')[0]
+  );
 
   const fetchData = async () => {
     if (!startDate || !endDate) {
@@ -31,7 +42,10 @@ export const ProfitLoss: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      const statement = await reportsService.getProfitLossStatement(startDate, endDate);
+      const statement = await reportsService.getProfitLossStatement(
+        startDate,
+        endDate
+      );
       setData(statement);
     } catch (err: unknown) {
       console.error('Failed to fetch profit/loss statement:', err);
@@ -52,7 +66,11 @@ export const ProfitLoss: React.FC = () => {
   const handleExport = async () => {
     if (!data) return;
     try {
-      const blob = await reportsService.exportReportData('financial_summary', startDate, endDate);
+      const blob = await reportsService.exportReportData(
+        'financial_summary',
+        startDate,
+        endDate
+      );
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -66,20 +84,27 @@ export const ProfitLoss: React.FC = () => {
     }
   };
 
-  const chartData = data?.revenue_breakdown.slice(0, 10).map(item => ({
-    name: item.ticket_id,
-    revenue: item.revenue,
-  })) || [];
+  const chartData =
+    data?.revenue_breakdown.slice(0, 10).map((item) => ({
+      name: item.ticket_id,
+      revenue: item.revenue,
+    })) || [];
 
-  const expenseByCategory = data?.expense_breakdown.reduce((acc, item) => {
-    acc[item.category] = (acc[item.category] || 0) + item.amount;
-    return acc;
-  }, {} as Record<string, number>) || {};
+  const expenseByCategory =
+    data?.expense_breakdown.reduce(
+      (acc, item) => {
+        acc[item.category] = (acc[item.category] || 0) + item.amount;
+        return acc;
+      },
+      {} as Record<string, number>
+    ) || {};
 
-  const expenseChartData = Object.entries(expenseByCategory).map(([category, amount]) => ({
-    category,
-    amount,
-  }));
+  const expenseChartData = Object.entries(expenseByCategory).map(
+    ([category, amount]) => ({
+      category,
+      amount,
+    })
+  );
 
   return (
     <div className="space-y-6">
@@ -142,7 +167,9 @@ export const ProfitLoss: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-6">
-                <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Total Revenue
+                </p>
                 <p className="text-2xl font-bold text-green-600 mt-1">
                   {formatCurrency(data.summary.total_revenue)}
                 </p>
@@ -151,7 +178,9 @@ export const ProfitLoss: React.FC = () => {
 
             <Card>
               <CardContent className="p-6">
-                <p className="text-sm font-medium text-gray-600">Total Expenses</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Total Expenses
+                </p>
                 <p className="text-2xl font-bold text-red-600 mt-1">
                   {formatCurrency(data.summary.total_expenses)}
                 </p>
@@ -161,7 +190,9 @@ export const ProfitLoss: React.FC = () => {
             <Card>
               <CardContent className="p-6">
                 <p className="text-sm font-medium text-gray-600">Net Profit</p>
-                <p className={`text-2xl font-bold mt-1 ${data.summary.net_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <p
+                  className={`text-2xl font-bold mt-1 ${data.summary.net_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {formatCurrency(data.summary.net_profit)}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
@@ -181,9 +212,16 @@ export const ProfitLoss: React.FC = () => {
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                    <XAxis
+                      dataKey="name"
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
                     <YAxis />
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <Tooltip
+                      formatter={(value: number) => formatCurrency(value)}
+                    />
                     <Bar dataKey="revenue" fill="#AABD77" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -200,7 +238,9 @@ export const ProfitLoss: React.FC = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="category" />
                     <YAxis />
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <Tooltip
+                      formatter={(value: number) => formatCurrency(value)}
+                    />
                     <Bar dataKey="amount" fill="#ef4444" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -232,12 +272,20 @@ export const ProfitLoss: React.FC = () => {
                         <td className="p-2 font-medium">{item.ticket_id}</td>
                         <td className="p-2">{item.description}</td>
                         <td className="p-2">{item.customer_name || 'N/A'}</td>
-                        <td className="p-2 text-right font-medium">{formatCurrency(item.revenue)}</td>
-                        <td className="p-2">{formatDate(item.date_requested)}</td>
+                        <td className="p-2 text-right font-medium">
+                          {formatCurrency(item.revenue)}
+                        </td>
                         <td className="p-2">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            item.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                          }`}>
+                          {formatDate(item.date_requested)}
+                        </td>
+                        <td className="p-2">
+                          <span
+                            className={`px-2 py-1 rounded text-xs ${
+                              item.status === 'completed'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}
+                          >
                             {item.status}
                           </span>
                         </td>
@@ -270,7 +318,9 @@ export const ProfitLoss: React.FC = () => {
                       <tr key={idx} className="border-b hover:bg-gray-50">
                         <td className="p-2 font-medium">{item.category}</td>
                         <td className="p-2">{item.description}</td>
-                        <td className="p-2 text-right font-medium text-red-600">{formatCurrency(item.amount)}</td>
+                        <td className="p-2 text-right font-medium text-red-600">
+                          {formatCurrency(item.amount)}
+                        </td>
                         <td className="p-2">{formatDate(item.date)}</td>
                       </tr>
                     ))}
@@ -284,4 +334,3 @@ export const ProfitLoss: React.FC = () => {
     </div>
   );
 };
-

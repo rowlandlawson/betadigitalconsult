@@ -15,17 +15,33 @@ export const ReportsDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ReportTab>('financial');
 
   const tabs = [
-    { id: 'financial' as ReportTab, label: 'Financial Summary', icon: DollarSign },
+    {
+      id: 'financial' as ReportTab,
+      label: 'Financial Summary',
+      icon: DollarSign,
+    },
     { id: 'profit-loss' as ReportTab, label: 'Profit & Loss', icon: BarChart3 },
-    { id: 'material' as ReportTab, label: 'Material Monitoring', icon: Package },
-    { id: 'performance' as ReportTab, label: 'Business Performance', icon: TrendingUp },
+    {
+      id: 'material' as ReportTab,
+      label: 'Material Monitoring',
+      icon: Package,
+    },
+    {
+      id: 'performance' as ReportTab,
+      label: 'Business Performance',
+      icon: TrendingUp,
+    },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
-        <p className="text-gray-600">Comprehensive business insights and financial reports</p>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Reports & Analytics
+        </h1>
+        <p className="text-gray-600">
+          Comprehensive business insights and financial reports
+        </p>
       </div>
 
       {/* Tab Navigation */}
@@ -66,4 +82,3 @@ export const ReportsDashboard: React.FC = () => {
     </div>
   );
 };
-

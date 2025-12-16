@@ -34,11 +34,16 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
   const fetchPayments = async () => {
     try {
       const params = new URLSearchParams();
-      if (dateFilter.start_date) params.append('start_date', dateFilter.start_date);
+      if (dateFilter.start_date)
+        params.append('start_date', dateFilter.start_date);
       if (dateFilter.end_date) params.append('end_date', dateFilter.end_date);
       if (methodFilter) params.append('payment_method', methodFilter);
-      
-      const response = await api.get<{ payments: Payment[]; pagination: any; summary: { total_amount: number } }>(`/payments?${params.toString()}`);
+
+      const response = await api.get<{
+        payments: Payment[];
+        pagination: any;
+        summary: { total_amount: number };
+      }>(`/payments?${params.toString()}`);
       setPayments(response.data.payments || []);
       setTotalAmount(response.data.summary?.total_amount || 0);
       setTotalPaymentsCount(response.data.pagination?.total || 0);
@@ -54,11 +59,12 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
     }
   };
 
-  const filteredPayments = (payments || []).filter(payment =>
-    payment.receipt_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    payment.ticket_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    payment.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    payment.recorded_by_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredPayments = (payments || []).filter(
+    (payment) =>
+      payment.receipt_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.ticket_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.recorded_by_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getPaymentTypeColor = (type: string) => {
@@ -90,9 +96,9 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
   const downloadReceipt = async (paymentId: string) => {
     try {
       const response = await api.get(`/payments/receipt/${paymentId}/pdf`, {
-        responseType: 'blob'
+        responseType: 'blob',
       });
-      
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -131,9 +137,7 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
       </div>
 
       {error && (
-        <div className="p-4 text-red-600 bg-red-50 rounded-lg">
-          {error}
-        </div>
+        <div className="p-4 text-red-600 bg-red-50 rounded-lg">{error}</div>
       )}
 
       {/* Summary Card */}
@@ -141,20 +145,26 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
         <Card>
           <CardContent className="p-4">
             <p className="text-sm font-medium text-gray-600">Total Payments</p>
-            <p className="text-2xl font-bold text-gray-900">{totalPaymentsCount}</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {totalPaymentsCount}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-sm font-medium text-gray-600">Total Amount</p>
-            <p className="text-2xl font-bold text-green-600">{formatCurrency(totalAmount)}</p>
+            <p className="text-2xl font-bold text-green-600">
+              {formatCurrency(totalAmount)}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-sm font-medium text-gray-600">Average Payment</p>
             <p className="text-2xl font-bold text-blue-600">
-              {formatCurrency(totalPaymentsCount > 0 ? totalAmount / totalPaymentsCount : 0)}
+              {formatCurrency(
+                totalPaymentsCount > 0 ? totalAmount / totalPaymentsCount : 0
+              )}
             </p>
           </CardContent>
         </Card>
@@ -162,7 +172,7 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
           <CardContent className="p-4">
             <p className="text-sm font-medium text-gray-600">Unique Jobs</p>
             <p className="text-2xl font-bold text-purple-600">
-              {new Set(payments.map(p => p.job_id)).size}
+              {new Set(payments.map((p) => p.job_id)).size}
             </p>
           </CardContent>
         </Card>
@@ -188,14 +198,24 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
                 type="date"
                 placeholder="Start Date"
                 value={dateFilter.start_date}
-                onChange={(e) => setDateFilter(prev => ({ ...prev, start_date: e.target.value }))}
+                onChange={(e) =>
+                  setDateFilter((prev) => ({
+                    ...prev,
+                    start_date: e.target.value,
+                  }))
+                }
                 className="w-full sm:w-40"
               />
               <Input
                 type="date"
                 placeholder="End Date"
                 value={dateFilter.end_date}
-                onChange={(e) => setDateFilter(prev => ({ ...prev, end_date: e.target.value }))}
+                onChange={(e) =>
+                  setDateFilter((prev) => ({
+                    ...prev,
+                    end_date: e.target.value,
+                  }))
+                }
                 className="w-full sm:w-40"
               />
               <select
@@ -234,37 +254,48 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
                 >
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <h4 className="font-semibold text-gray-900">{payment.receipt_number}</h4>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentTypeColor(payment.payment_type)}`}>
+                      <h4 className="font-semibold text-gray-900">
+                        {payment.receipt_number}
+                      </h4>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentTypeColor(payment.payment_type)}`}
+                      >
                         {payment.payment_type.replace('_', ' ')}
                       </span>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentMethodColor(payment.payment_method)}`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentMethodColor(payment.payment_method)}`}
+                      >
                         {payment.payment_method.toUpperCase()}
                       </span>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
                       <div>
-                        <span className="font-medium">Job:</span> {payment.ticket_id}
+                        <span className="font-medium">Job:</span>{' '}
+                        {payment.ticket_id}
                       </div>
                       <div>
-                        <span className="font-medium">Customer:</span> {payment.customer_name}
+                        <span className="font-medium">Customer:</span>{' '}
+                        {payment.customer_name}
                       </div>
                       <div>
-                        <span className="font-medium">Recorded by:</span> {payment.recorded_by_name}
+                        <span className="font-medium">Recorded by:</span>{' '}
+                        {payment.recorded_by_name}
                       </div>
                       <div>
-                        <span className="font-medium">Date:</span> {formatDate(payment.date)}
+                        <span className="font-medium">Date:</span>{' '}
+                        {formatDate(payment.date)}
                       </div>
                     </div>
-                    
+
                     {payment.notes && (
                       <p className="text-sm text-gray-500 mt-2">
-                        <span className="font-medium">Notes:</span> {payment.notes}
+                        <span className="font-medium">Notes:</span>{' '}
+                        {payment.notes}
                       </p>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center space-x-4 mt-4 lg:mt-0">
                     <div className="text-right">
                       <p className="text-2xl font-bold text-green-600">
@@ -275,7 +306,9 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
                       </p>
                     </div>
                     <div className="flex space-x-2">
-                      <Link href={`/${userRole}/payments/receipt/${payment.id}`}>
+                      <Link
+                        href={`/${userRole}/payments/receipt/${payment.id}`}
+                      >
                         <Button variant="outline" size="sm">
                           View Receipt
                         </Button>

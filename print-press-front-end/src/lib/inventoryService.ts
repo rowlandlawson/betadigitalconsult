@@ -1,17 +1,17 @@
 // print-press-front-end/src/lib/inventoryService.ts
 import { api } from './api';
-import { 
-  InventoryItem, 
-  InventoryFormData, 
-  LowStockAlert, 
+import {
+  InventoryItem,
+  InventoryFormData,
+  LowStockAlert,
   StockUpdate,
   MaterialUsageTrend,
   StockLevel,
   CostAnalysis,
-  MaterialUsageRecord, 
-  MaterialWasteRecord, 
-  StockAdjustment, 
-  CategoryTemplates
+  MaterialUsageRecord,
+  MaterialWasteRecord,
+  StockAdjustment,
+  CategoryTemplates,
 } from '../types/inventory';
 
 // Define a type for pagination data
@@ -52,13 +52,18 @@ export const inventoryApi = {
   },
 
   // Create a new inventory item
-  createInventory: async (formData: InventoryFormData): Promise<{ message: string; item: InventoryItem }> => {
+  createInventory: async (
+    formData: InventoryFormData
+  ): Promise<{ message: string; item: InventoryItem }> => {
     const response = await api.post('/inventory', formData);
     return response.data;
   },
 
   // Update an existing inventory item
-  updateInventory: async (id: string, updates: Partial<InventoryFormData>): Promise<{ message: string; item: InventoryItem }> => {
+  updateInventory: async (
+    id: string,
+    updates: Partial<InventoryFormData>
+  ): Promise<{ message: string; item: InventoryItem }> => {
     const response = await api.put(`/inventory/${id}`, updates);
     return response.data;
   },
@@ -68,23 +73,25 @@ export const inventoryApi = {
     const response = await api.delete(`/inventory/${id}`);
     return response.data;
   },
-  
+
   // Fetch low stock alerts
-  getLowStockAlerts: async (): Promise<{ low_stock_items: LowStockAlert[] }> => {
+  getLowStockAlerts: async (): Promise<{
+    low_stock_items: LowStockAlert[];
+  }> => {
     const response = await api.get('/inventory/low-stock-alerts');
     return response.data;
   },
 
   // Adjust stock (add, remove, set)
   adjustStock: async (
-    id: string, 
-    data: { 
-      adjustment_type: 'add' | 'remove' | 'set'; 
-      quantity: number; 
-      purchase_cost?: number; 
+    id: string,
+    data: {
+      adjustment_type: 'add' | 'remove' | 'set';
+      quantity: number;
+      purchase_cost?: number;
       unit_price?: number; // Unit price per unit (will be used as new unit_cost)
-      reason?: string; 
-      notes?: string 
+      reason?: string;
+      notes?: string;
     }
   ): Promise<{ message: string; item: InventoryItem }> => {
     const response = await api.post(`/inventory/${id}/adjust-stock`, data);
@@ -92,11 +99,11 @@ export const inventoryApi = {
   },
 
   // Record material usage (general - works with any unit)
-  recordUsage: async (data: { 
-    material_id: string; 
-    job_id?: string; 
-    quantity_used: number; 
-    notes?: string 
+  recordUsage: async (data: {
+    material_id: string;
+    job_id?: string;
+    quantity_used: number;
+    notes?: string;
   }): Promise<{ message: string; usage: MaterialUsageRecord }> => {
     const response = await api.post('/inventory/record-usage', data);
     return response.data;
@@ -104,7 +111,7 @@ export const inventoryApi = {
 
   // Get material history (usage, waste, adjustments)
   getMaterialHistory: async (
-    materialId: string, 
+    materialId: string,
     days: number = 30
   ): Promise<{
     material: InventoryItem;
@@ -118,7 +125,9 @@ export const inventoryApi = {
       wasted: number;
     };
   }> => {
-    const response = await api.get(`/inventory/material-history?material_id=${materialId}&days=${days}`);
+    const response = await api.get(
+      `/inventory/material-history?material_id=${materialId}&days=${days}`
+    );
     return response.data;
   },
 
@@ -129,25 +138,29 @@ export const inventoryApi = {
   },
 
   // NEW: Get attribute templates for categories
-  getAttributeTemplates: async (): Promise<{ templates: CategoryTemplates }> => {
+  getAttributeTemplates: async (): Promise<{
+    templates: CategoryTemplates;
+  }> => {
     const response = await api.get('/inventory/attribute-templates');
     return response.data;
   },
 
   // NEW: Search inventory by material name or attributes
   searchInventory: async (
-    query: string, 
+    query: string,
     category?: string
   ): Promise<{ results: InventoryItem[] }> => {
     const params = new URLSearchParams({ query });
     if (category) params.append('category', category);
-    
+
     const response = await api.get(`/inventory/search?${params.toString()}`);
     return response.data;
   },
 
   // NEW: Quick stock check
-  quickStockCheck: async (id: string): Promise<{
+  quickStockCheck: async (
+    id: string
+  ): Promise<{
     material: string;
     currentStock: string;
     threshold: string;
@@ -174,15 +187,15 @@ export const inventoryApi = {
 
   // NEW: Update job materials (for job integration)
   updateJobMaterials: async (
-    jobId: string, 
-    data: { 
+    jobId: string,
+    data: {
       materials: Array<{
         material_id?: string;
         material_name: string;
         quantity: number;
         unit_cost?: number;
         total_cost?: number;
-      }>
+      }>;
     }
   ): Promise<{ message: string }> => {
     const response = await api.post(`/inventory/job/${jobId}/materials`, data);
@@ -191,10 +204,12 @@ export const inventoryApi = {
 
   // Material monitoring endpoints
   getMaterialUsageTrends: async (
-    period: string = 'month', 
+    period: string = 'month',
     months: number = 6
   ): Promise<{ material_usage_trends: MaterialUsageTrend[] }> => {
-    const response = await api.get(`/inventory/monitoring/usage-trends?period=${period}&months=${months}`);
+    const response = await api.get(
+      `/inventory/monitoring/usage-trends?period=${period}&months=${months}`
+    );
     return response.data;
   },
 
@@ -203,45 +218,55 @@ export const inventoryApi = {
     return response.data;
   },
 
-  getCostAnalysis: async (
-    months: number = 6
-  ): Promise<CostAnalysis> => {
-    const response = await api.get(`/inventory/monitoring/cost-analysis?months=${months}`);
+  getCostAnalysis: async (months: number = 6): Promise<CostAnalysis> => {
+    const response = await api.get(
+      `/inventory/monitoring/cost-analysis?months=${months}`
+    );
     return response.data;
   },
 
   getAutomaticStockUpdates: async (
     days: number = 30
   ): Promise<{ automatic_updates: StockUpdate[] }> => {
-    const response = await api.get(`/inventory/monitoring/automatic-updates?days=${days}`);
+    const response = await api.get(
+      `/inventory/monitoring/automatic-updates?days=${days}`
+    );
     return response.data;
   },
 
   getWasteAnalysis: async (
     months: number = 3
-  ): Promise<{ waste_analysis: Array<{
-    type: string;
-    waste_reason: string;
-    occurrence_count: number;
-    total_cost: number;
-    average_cost: number;
-  }> }> => {
-    const response = await api.get(`/inventory/monitoring/waste-analysis?months=${months}`);
+  ): Promise<{
+    waste_analysis: Array<{
+      type: string;
+      waste_reason: string;
+      occurrence_count: number;
+      total_cost: number;
+      average_cost: number;
+    }>;
+  }> => {
+    const response = await api.get(
+      `/inventory/monitoring/waste-analysis?months=${months}`
+    );
     return response.data;
   },
 
   getMaterialCostAnalysis: async (
     months: number = 6
-  ): Promise<{ material_cost_analysis: Array<{
-    material_name: string;
-    jobs_count: number;
-    total_quantity: number;
-    total_cost: number;
-    avg_unit_cost: number;
-    max_unit_cost: number;
-    min_unit_cost: number;
-  }> }> => {
-    const response = await api.get(`/inventory/monitoring/material-cost-analysis?months=${months}`);
+  ): Promise<{
+    material_cost_analysis: Array<{
+      material_name: string;
+      jobs_count: number;
+      total_quantity: number;
+      total_cost: number;
+      avg_unit_cost: number;
+      max_unit_cost: number;
+      min_unit_cost: number;
+    }>;
+  }> => {
+    const response = await api.get(
+      `/inventory/monitoring/material-cost-analysis?months=${months}`
+    );
     return response.data;
-  }
+  },
 };

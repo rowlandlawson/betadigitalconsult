@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +29,7 @@ export const StockManagementModal: React.FC<StockManagementModalProps> = ({
   isOpen,
   item,
   onClose,
-  onSuccess
+  onSuccess,
 }) => {
   const [quantity, setQuantity] = useState<string>('');
   const [totalCost, setTotalCost] = useState<string>('');
@@ -39,7 +44,8 @@ export const StockManagementModal: React.FC<StockManagementModalProps> = ({
 
   if (!isOpen || !item) return null;
 
-  const remainingDisplay = item.display_stock || `${item.current_stock} ${item.unit_of_measure}`;
+  const remainingDisplay =
+    item.display_stock || `${item.current_stock} ${item.unit_of_measure}`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +70,7 @@ export const StockManagementModal: React.FC<StockManagementModalProps> = ({
         purchase_cost: cost,
         unit_price: cost / qty,
         reason: 'Manual stock update',
-        notes: `Added ${qty} ${item.unit_of_measure} at total cost ${cost}`
+        notes: `Added ${qty} ${item.unit_of_measure} at total cost ${cost}`,
       });
 
       toast.success('Stock updated and unit cost recalculated');
@@ -86,8 +92,14 @@ export const StockManagementModal: React.FC<StockManagementModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-2 mb-4">
-          <p className="text-sm text-gray-600">Material: <span className="font-semibold">{item.material_name}</span></p>
-          <p className="text-sm text-gray-600">Current stock: <span className="font-semibold">{remainingDisplay}</span></p>
+          <p className="text-sm text-gray-600">
+            Material:{' '}
+            <span className="font-semibold">{item.material_name}</span>
+          </p>
+          <p className="text-sm text-gray-600">
+            Current stock:{' '}
+            <span className="font-semibold">{remainingDisplay}</span>
+          </p>
           <p className="text-xs text-gray-500">Unit: {item.unit_of_measure}</p>
         </div>
 
@@ -124,7 +136,12 @@ export const StockManagementModal: React.FC<StockManagementModalProps> = ({
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={loading}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
@@ -136,4 +153,3 @@ export const StockManagementModal: React.FC<StockManagementModalProps> = ({
     </Dialog>
   );
 };
-

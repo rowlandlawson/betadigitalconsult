@@ -8,11 +8,11 @@ interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
   required?: boolean;
 }
 
-export const Label: React.FC<LabelProps> = ({ 
-  children, 
+export const Label: React.FC<LabelProps> = ({
+  children,
   required = false,
   className = '',
-  ...props 
+  ...props
 }) => {
   return (
     <label

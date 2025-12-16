@@ -11,13 +11,17 @@ export const PaymentStats: React.FC = () => {
   const [stats, setStats] = useState<PaymentStatsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
+  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>(
+    'monthly'
+  );
 
   // Define fetchPaymentStats with useCallback to stabilize the function reference
   const fetchPaymentStats = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get<PaymentStatsType>(`/payments/stats?period=${period}`);
+      const response = await api.get<PaymentStatsType>(
+        `/payments/stats?period=${period}`
+      );
       setStats(response.data);
     } catch (err: unknown) {
       console.error('Failed to fetch payment stats:', err);
@@ -71,7 +75,9 @@ export const PaymentStats: React.FC = () => {
         <h2 className="text-2xl font-bold text-gray-900">Payment Statistics</h2>
         <select
           value={period}
-          onChange={(e) => setPeriod(e.target.value as 'daily' | 'weekly' | 'monthly')}
+          onChange={(e) =>
+            setPeriod(e.target.value as 'daily' | 'weekly' | 'monthly')
+          }
           className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         >
           <option value="daily">Daily</option>
@@ -89,7 +95,9 @@ export const PaymentStats: React.FC = () => {
                 <CreditCard className="h-6 w-6 text-blue-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Total Revenue
+                </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {formatCurrency(totalRevenue)}
                 </p>
@@ -105,7 +113,9 @@ export const PaymentStats: React.FC = () => {
                 <TrendingUp className="h-6 w-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Payments</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Total Payments
+                </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {totalPayments.toString().replace(/^0+/, '') || '0'}
                 </p>
@@ -121,9 +131,13 @@ export const PaymentStats: React.FC = () => {
                 <BarChart3 className="h-6 w-6 text-purple-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Average Payment</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Average Payment
+                </p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {isNaN(averagePayment) || averagePayment === 0 ? '₦0.00' : formatCurrency(averagePayment)}
+                  {isNaN(averagePayment) || averagePayment === 0
+                    ? '₦0.00'
+                    : formatCurrency(averagePayment)}
                 </p>
               </div>
             </div>
@@ -155,15 +169,20 @@ export const PaymentStats: React.FC = () => {
         <CardContent>
           <div className="space-y-4">
             {stats.method_distribution.map((method) => (
-              <div key={method.payment_method} className="flex items-center justify-between">
+              <div
+                key={method.payment_method}
+                className="flex items-center justify-between"
+              >
                 <div className="flex items-center space-x-3">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    method.payment_method === 'cash' 
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : method.payment_method === 'transfer'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-blue-100 text-blue-800'
-                  }`}>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      method.payment_method === 'cash'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : method.payment_method === 'transfer'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-blue-100 text-blue-800'
+                    }`}
+                  >
                     {method.payment_method.toUpperCase()}
                   </span>
                   <span className="text-sm text-gray-600">
@@ -187,18 +206,26 @@ export const PaymentStats: React.FC = () => {
       {/* Recent Periods */}
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Recent {period.charAt(0).toUpperCase() + period.slice(1)} Performance</h3>
+          <h3 className="text-lg font-semibold">
+            Recent {period.charAt(0).toUpperCase() + period.slice(1)}{' '}
+            Performance
+          </h3>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {stats.payment_stats.slice(0, 6).map((stat, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+              >
                 <div>
                   <p className="font-medium text-gray-900">
                     Period: {stat.period}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {parseInt(stat.payment_count) || 0} payments • {parseInt(stat.unique_jobs) || 0} jobs • {parseInt(stat.unique_customers) || 0} customers
+                    {parseInt(stat.payment_count) || 0} payments •{' '}
+                    {parseInt(stat.unique_jobs) || 0} jobs •{' '}
+                    {parseInt(stat.unique_customers) || 0} customers
                   </p>
                 </div>
                 <div className="text-right">

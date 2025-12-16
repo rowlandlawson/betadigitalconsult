@@ -9,7 +9,9 @@ interface CustomerDetailPageProps {
   }>;
 }
 
-export default function CustomerDetailPage({ params }: CustomerDetailPageProps) {
+export default function CustomerDetailPage({
+  params,
+}: CustomerDetailPageProps) {
   const { id } = React.use(params);
   return <CustomerDetail customerId={id} />;
 }

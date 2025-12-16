@@ -29,7 +29,10 @@ export const companySettingsService = {
 
   async updateSettings(settings: CompanySettings): Promise<CompanySettings> {
     try {
-      const response = await api.put<CompanySettings>('/company-settings', settings);
+      const response = await api.put<CompanySettings>(
+        '/company-settings',
+        settings
+      );
       return response.data;
     } catch (error) {
       console.error('Failed to update company settings:', error);
@@ -41,14 +44,18 @@ export const companySettingsService = {
     try {
       const formData = new FormData();
       formData.append('logo', file);
-      
+
       // Backend returns { success: true, logoUrl: string, message: string }
-      const response = await api.post<{ success?: boolean; logoUrl: string; message?: string }>('/company-settings/upload-logo', formData, {
+      const response = await api.post<{
+        success?: boolean;
+        logoUrl: string;
+        message?: string;
+      }>('/company-settings/upload-logo', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
-      
+
       // Extract logoUrl from response (handles both old and new format)
       return { logoUrl: response.data.logoUrl };
     } catch (error) {

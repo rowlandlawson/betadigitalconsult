@@ -40,11 +40,11 @@ export const PWAInstallPrompt = () => {
 
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    
+
     if (outcome === 'accepted') {
       console.log('User accepted the install prompt');
     }
-    
+
     setDeferredPrompt(null);
     setShowPrompt(false);
   };
@@ -69,14 +69,10 @@ export const PWAInstallPrompt = () => {
           <X className="h-4 w-4" />
         </Button>
       </div>
-      <Button
-        onClick={handleInstall}
-        className="w-full mt-3"
-      >
+      <Button onClick={handleInstall} className="w-full mt-3">
         <Download className="h-4 w-4 mr-2" />
         Install Now
       </Button>
     </div>
   );
 };
-

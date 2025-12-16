@@ -21,16 +21,16 @@ export interface InventoryItem {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  
+
   // Calculated fields (from queries)
   stock_value?: number;
   stock_status?: 'CRITICAL' | 'LOW' | 'HEALTHY';
   stock_percentage?: number;
   total_count?: number;
-  
+
   // Helper fields for display
   display_stock: string;
-  
+
   // Common attribute shortcuts (for convenience)
   paper_size?: string;
   paper_type?: string;

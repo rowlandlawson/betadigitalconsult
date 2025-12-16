@@ -2,7 +2,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { companySettingsService, CompanySettings } from './companySettingsService';
+import {
+  companySettingsService,
+  CompanySettings,
+} from './companySettingsService';
 import { isApiError } from './api';
 import { toast } from 'sonner';
 import { getLogoUrl } from './utils';
@@ -53,7 +56,9 @@ const loadCompanySettings = async () => {
     const data = await companySettingsService.getSettings();
     const normalizedLogo = normalizeLogoPath(data.logo);
     updateStore({
-      settings: normalizedLogo ? { ...data, logo: normalizedLogo } : { ...data, logo: undefined },
+      settings: normalizedLogo
+        ? { ...data, logo: normalizedLogo }
+        : { ...data, logo: undefined },
       loading: false,
       error: null,
     });
@@ -61,7 +66,9 @@ const loadCompanySettings = async () => {
     console.log('🔍 Company settings loaded:', data);
   } catch (err: unknown) {
     console.error('Failed to load company settings:', err);
-    const errorMessage = isApiError(err) ? err.error : 'Failed to load company settings';
+    const errorMessage = isApiError(err)
+      ? err.error
+      : 'Failed to load company settings';
     updateStore({
       loading: false,
       error: errorMessage,
@@ -96,13 +103,17 @@ const updateCompanySettings = async (newSettings: Partial<CompanySettings>) => {
     const response = await companySettingsService.updateSettings(payload);
     const { message, ...settingsResponse } = response;
     const normalizedLogo = normalizeLogoPath(settingsResponse.logo);
-    const nextSettings = normalizedLogo ? { ...settingsResponse, logo: normalizedLogo } : { ...settingsResponse, logo: undefined };
+    const nextSettings = normalizedLogo
+      ? { ...settingsResponse, logo: normalizedLogo }
+      : { ...settingsResponse, logo: undefined };
     updateStore({ settings: nextSettings, error: null });
     toast.success(message || 'Settings updated successfully!');
     return nextSettings;
   } catch (err: unknown) {
     console.error('Failed to update company settings:', err);
-    const errorMessage = isApiError(err) ? err.error : 'Failed to update settings';
+    const errorMessage = isApiError(err)
+      ? err.error
+      : 'Failed to update settings';
     updateStore({ error: errorMessage });
     toast.error(`Failed to update settings: ${errorMessage}`);
     throw err;

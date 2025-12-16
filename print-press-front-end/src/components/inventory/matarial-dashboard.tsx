@@ -5,10 +5,33 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api';
-import { MaterialUsageTrend, StockLevel, CostAnalysis, StockUpdate } from '@/types/inventory';
+import {
+  MaterialUsageTrend,
+  StockLevel,
+  CostAnalysis,
+  StockUpdate,
+} from '@/types/inventory';
 import { formatCurrency } from '@/lib/utils';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Calendar, TrendingUp, AlertTriangle, Package, DollarSign } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
+import {
+  Calendar,
+  TrendingUp,
+  AlertTriangle,
+  Package,
+  DollarSign,
+} from 'lucide-react';
 
 interface PieTooltipProps {
   payload?: Array<{
@@ -27,24 +50,26 @@ export const MaterialMonitoringDashboard: React.FC = () => {
   const [stockUpdates, setStockUpdates] = useState<StockUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
-    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0]
+    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+      .toISOString()
+      .split('T')[0],
+    end: new Date().toISOString().split('T')[0],
   });
 
   const fetchMonitoringData = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       const params = new URLSearchParams({
         start_date: dateRange.start,
-        end_date: dateRange.end
+        end_date: dateRange.end,
       });
 
       const [trendsRes, levelsRes, costRes, updatesRes] = await Promise.all([
         api.get(`/inventory/monitoring/usage-trends?${params}`),
         api.get('/inventory/monitoring/stock-levels'),
         api.get(`/inventory/monitoring/cost-analysis?${params}`),
-        api.get('/inventory/monitoring/automatic-updates?limit=10')
+        api.get('/inventory/monitoring/automatic-updates?limit=10'),
       ]);
 
       setUsageTrends(trendsRes.data.usage_trends);
@@ -64,35 +89,52 @@ export const MaterialMonitoringDashboard: React.FC = () => {
 
   const getStockStatusColor = (status: string) => {
     switch (status) {
-      case 'CRITICAL': return '#ef4444';
-      case 'LOW': return '#f59e0b';
-      case 'HEALTHY': return '#10b981';
-      default: return '#6b7280';
+      case 'CRITICAL':
+        return '#ef4444';
+      case 'LOW':
+        return '#f59e0b';
+      case 'HEALTHY':
+        return '#10b981';
+      default:
+        return '#6b7280';
     }
   };
 
   const getUpdateTypeColor = (type: string) => {
     switch (type) {
-      case 'usage': return '#3b82f6';
-      case 'waste': return '#ef4444';
-      case 'adjustment': return '#f59e0b';
-      default: return '#6b7280';
+      case 'usage':
+        return '#3b82f6';
+      case 'waste':
+        return '#ef4444';
+      case 'adjustment':
+        return '#f59e0b';
+      default:
+        return '#6b7280';
     }
   };
 
-  const stockStatusData = stockLevels.reduce((acc, item) => {
-    acc[item.stock_status] = (acc[item.stock_status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const stockStatusData = stockLevels.reduce(
+    (acc, item) => {
+      acc[item.stock_status] = (acc[item.stock_status] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   const pieData = Object.entries(stockStatusData).map(([name, value]) => ({
     name,
     value,
-    color: getStockStatusColor(name)
+    color: getStockStatusColor(name),
   }));
 
   // Fixed pie chart label function with proper TypeScript types
-  const renderCustomizedLabel = ({ percent, name }: { percent?: number; name?: string }) => {
+  const renderCustomizedLabel = ({
+    percent,
+    name,
+  }: {
+    percent?: number;
+    name?: string;
+  }) => {
     return `${name} (${((percent || 0) * 100).toFixed(0)}%)`;
   };
 
@@ -125,21 +167,29 @@ export const MaterialMonitoringDashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Material Monitoring</h1>
-          <p className="text-gray-600">Track material usage, waste, and costs</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Material Monitoring
+          </h1>
+          <p className="text-gray-600">
+            Track material usage, waste, and costs
+          </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-2">
           <Input
             type="date"
             value={dateRange.start}
-            onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+            onChange={(e) =>
+              setDateRange((prev) => ({ ...prev, start: e.target.value }))
+            }
             className="w-full sm:w-auto"
           />
           <Input
             type="date"
             value={dateRange.end}
-            onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+            onChange={(e) =>
+              setDateRange((prev) => ({ ...prev, end: e.target.value }))
+            }
             className="w-full sm:w-auto"
           />
           <Button onClick={fetchMonitoringData}>
@@ -159,7 +209,9 @@ export const MaterialMonitoringDashboard: React.FC = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Items</p>
-                <p className="text-2xl font-bold text-gray-900">{stockLevels.length}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stockLevels.length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -172,9 +224,15 @@ export const MaterialMonitoringDashboard: React.FC = () => {
                 <AlertTriangle className="h-6 w-6 text-red-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Critical Stock</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Critical Stock
+                </p>
                 <p className="text-2xl font-bold text-red-600">
-                  {stockLevels.filter(item => item.stock_status === 'CRITICAL').length}
+                  {
+                    stockLevels.filter(
+                      (item) => item.stock_status === 'CRITICAL'
+                    ).length
+                  }
                 </p>
               </div>
             </div>
@@ -188,7 +246,9 @@ export const MaterialMonitoringDashboard: React.FC = () => {
                 <DollarSign className="h-6 w-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Inventory Value</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Inventory Value
+                </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {formatCurrency(costAnalysis?.total_inventory_value || 0)}
                 </p>
@@ -206,7 +266,12 @@ export const MaterialMonitoringDashboard: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Usage Cost</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(costAnalysis?.usage_costs.reduce((sum, cost) => sum + cost.usage_cost, 0) || 0)}
+                  {formatCurrency(
+                    costAnalysis?.usage_costs.reduce(
+                      (sum, cost) => sum + cost.usage_cost,
+                      0
+                    ) || 0
+                  )}
                 </p>
               </div>
             </div>
@@ -244,7 +309,7 @@ export const MaterialMonitoringDashboard: React.FC = () => {
             <div className="flex justify-center mt-4 space-x-4">
               {pieData.map((entry, index) => (
                 <div key={index} className="flex items-center">
-                  <div 
+                  <div
                     className="w-3 h-3 rounded-full mr-2"
                     style={{ backgroundColor: entry.color }}
                   />
@@ -264,9 +329,16 @@ export const MaterialMonitoringDashboard: React.FC = () => {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={usageTrends.slice(0, 10)}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="material_name" angle={-45} textAnchor="end" height={80} />
+                <XAxis
+                  dataKey="material_name"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
                 <YAxis />
-                <Tooltip formatter={(value: number) => [formatCurrency(value), 'Cost']} />
+                <Tooltip
+                  formatter={(value: number) => [formatCurrency(value), 'Cost']}
+                />
                 <Legend />
                 <Bar dataKey="total_cost" name="Total Cost" fill="#3b82f6" />
               </BarChart>
@@ -285,23 +357,46 @@ export const MaterialMonitoringDashboard: React.FC = () => {
             <div className="text-center p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-600">Total Usage Cost</p>
               <p className="text-2xl font-bold text-blue-700">
-                {formatCurrency(costAnalysis?.usage_costs.reduce((sum, cost) => sum + cost.usage_cost, 0) || 0)}
+                {formatCurrency(
+                  costAnalysis?.usage_costs.reduce(
+                    (sum, cost) => sum + cost.usage_cost,
+                    0
+                  ) || 0
+                )}
               </p>
             </div>
             <div className="text-center p-4 bg-red-50 rounded-lg">
               <p className="text-sm text-red-600">Total Waste Cost</p>
               <p className="text-2xl font-bold text-red-700">
-                {formatCurrency(costAnalysis?.waste_costs.reduce((sum, cost) => sum + cost.waste_cost, 0) || 0)}
+                {formatCurrency(
+                  costAnalysis?.waste_costs.reduce(
+                    (sum, cost) => sum + cost.waste_cost,
+                    0
+                  ) || 0
+                )}
               </p>
             </div>
             <div className="text-center p-4 bg-green-50 rounded-lg">
               <p className="text-sm text-green-600">Waste Percentage</p>
               <p className="text-2xl font-bold text-green-700">
-                {costAnalysis ? (
-                  ((costAnalysis.waste_costs.reduce((sum, cost) => sum + cost.waste_cost, 0) / 
-                   (costAnalysis.usage_costs.reduce((sum, cost) => sum + cost.usage_cost, 0) + 
-                    costAnalysis.waste_costs.reduce((sum, cost) => sum + cost.waste_cost, 0))) * 100).toFixed(1)
-                ) : 0}%
+                {costAnalysis
+                  ? (
+                      (costAnalysis.waste_costs.reduce(
+                        (sum, cost) => sum + cost.waste_cost,
+                        0
+                      ) /
+                        (costAnalysis.usage_costs.reduce(
+                          (sum, cost) => sum + cost.usage_cost,
+                          0
+                        ) +
+                          costAnalysis.waste_costs.reduce(
+                            (sum, cost) => sum + cost.waste_cost,
+                            0
+                          ))) *
+                      100
+                    ).toFixed(1)
+                  : 0}
+                %
               </p>
             </div>
           </div>
@@ -316,16 +411,22 @@ export const MaterialMonitoringDashboard: React.FC = () => {
         <CardContent>
           <div className="space-y-3">
             {stockUpdates.map((update, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+              >
                 <div className="flex items-center space-x-3">
-                  <div 
+                  <div
                     className="w-3 h-3 rounded-full"
                     style={{ backgroundColor: getUpdateTypeColor(update.type) }}
                   ></div>
                   <div>
-                    <p className="font-medium text-gray-900">{update.material_name}</p>
+                    <p className="font-medium text-gray-900">
+                      {update.material_name}
+                    </p>
                     <p className="text-sm text-gray-500 capitalize">
-                      {update.type} • {update.sub_type} • {update.quantity_sheets} units
+                      {update.type} • {update.sub_type} •{' '}
+                      {update.quantity_sheets} units
                     </p>
                   </div>
                 </div>

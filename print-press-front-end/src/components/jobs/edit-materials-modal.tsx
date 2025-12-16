@@ -3,8 +3,20 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
-import { AlertCircle, History, Plus, Trash2, X, AlertTriangle } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardFooter,
+} from '@/components/ui/card';
+import {
+  AlertCircle,
+  History,
+  Plus,
+  Trash2,
+  X,
+  AlertTriangle,
+} from 'lucide-react';
 import { Material, MaterialEditHistory } from '@/types/jobs';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
@@ -34,7 +46,12 @@ export interface OperationalExpenseEntry {
 interface EditMaterialsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (materials: Material[], editHistory: MaterialEditHistory[], waste?: WasteEntry[], expenses?: OperationalExpenseEntry[]) => void;
+  onSave: (
+    materials: Material[],
+    editHistory: MaterialEditHistory[],
+    waste?: WasteEntry[],
+    expenses?: OperationalExpenseEntry[]
+  ) => void;
   initialMaterials: Material[];
   initialWaste?: WasteEntry[];
   initialExpenses?: OperationalExpenseEntry[];
@@ -50,7 +67,7 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
   initialWaste = [],
   initialExpenses = [],
   jobId,
-  userRole
+  userRole,
 }) => {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [waste, setWaste] = useState<WasteEntry[]>([]);
@@ -94,19 +111,22 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
   };
 
   const addMaterial = () => {
-    setMaterials(prev => [...prev, {
-      material_name: '',
-      paper_size: '',
-      paper_type: '',
-      grammage: undefined, // Changed from empty string to undefined
-      quantity: 1,
-      unit_cost: 0,
-      total_cost: 0
-    }]);
+    setMaterials((prev) => [
+      ...prev,
+      {
+        material_name: '',
+        paper_size: '',
+        paper_type: '',
+        grammage: undefined, // Changed from empty string to undefined
+        quantity: 1,
+        unit_cost: 0,
+        total_cost: 0,
+      },
+    ]);
   };
 
   const removeMaterial = (index: number) => {
-    setMaterials(prev => prev.filter((_, i) => i !== index));
+    setMaterials((prev) => prev.filter((_, i) => i !== index));
   };
 
   const updateMaterial = (index: number, field: keyof Material, value: any) => {
@@ -131,8 +151,12 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
 
       // If material name changes, check inventory and autofill/reset data
       if (field === 'material_name') {
-        const inventoryItem = inventoryItems.find(item => item.material_name === value);
-        const wasInventoryItem = inventoryItems.some(item => item.material_name === updated[index].material_name);
+        const inventoryItem = inventoryItems.find(
+          (item) => item.material_name === value
+        );
+        const wasInventoryItem = inventoryItems.some(
+          (item) => item.material_name === updated[index].material_name
+        );
 
         if (inventoryItem) {
           // An inventory item is selected
@@ -151,7 +175,8 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
       }
 
       // Always recalculate total cost
-      newMaterial.total_cost = (newMaterial.quantity || 0) * (newMaterial.unit_cost || 0);
+      newMaterial.total_cost =
+        (newMaterial.quantity || 0) * (newMaterial.unit_cost || 0);
 
       updated[index] = newMaterial;
       return updated;
@@ -159,30 +184,43 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
   };
 
   const addWasteRow = () => {
-    setWaste(prev => [...prev, {
-      type: 'material_waste',
-      description: '',
-      quantity: 1,
-      total_cost: 0,
-      waste_reason: ''
-    }]);
+    setWaste((prev) => [
+      ...prev,
+      {
+        type: 'material_waste',
+        description: '',
+        quantity: 1,
+        total_cost: 0,
+        waste_reason: '',
+      },
+    ]);
   };
 
   const removeWasteRow = (index: number) => {
-    setWaste(prev => prev.filter((_, i) => i !== index));
+    setWaste((prev) => prev.filter((_, i) => i !== index));
   };
 
   const updateWaste = (index: number, field: keyof WasteEntry, value: any) => {
-    setWaste(prevWaste => {
+    setWaste((prevWaste) => {
       const newWaste = [...prevWaste];
       const updatedItem = { ...newWaste[index] };
 
-      if (field === 'quantity' || field === 'total_cost' || field === 'unit_cost') {
+      if (
+        field === 'quantity' ||
+        field === 'total_cost' ||
+        field === 'unit_cost'
+      ) {
         (updatedItem as any)[field] = parseFloat(value) || 0;
         // Auto-calculate total_cost if quantity or unit_cost changes
         if (field === 'quantity' || field === 'unit_cost') {
-          const quantity = field === 'quantity' ? parseFloat(value) || 0 : updatedItem.quantity || 0;
-          const unit_cost = field === 'unit_cost' ? parseFloat(value) || 0 : updatedItem.unit_cost || 0;
+          const quantity =
+            field === 'quantity'
+              ? parseFloat(value) || 0
+              : updatedItem.quantity || 0;
+          const unit_cost =
+            field === 'unit_cost'
+              ? parseFloat(value) || 0
+              : updatedItem.unit_cost || 0;
           updatedItem.total_cost = quantity * unit_cost;
         }
       } else {
@@ -195,31 +233,38 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
   };
 
   const addExpenseRow = () => {
-    setExpenses(prev => [...prev, {
-      description: '',
-      category: '',
-      amount: 0,
-      expense_date: new Date().toISOString().split('T')[0],
-      receipt_number: '',
-      notes: ''
-    }]);
+    setExpenses((prev) => [
+      ...prev,
+      {
+        description: '',
+        category: '',
+        amount: 0,
+        expense_date: new Date().toISOString().split('T')[0],
+        receipt_number: '',
+        notes: '',
+      },
+    ]);
   };
 
   const removeExpenseRow = (index: number) => {
-    setExpenses(prev => prev.filter((_, i) => i !== index));
+    setExpenses((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const updateExpense = (index: number, field: keyof OperationalExpenseEntry, value: any) => {
-    setExpenses(prev => {
+  const updateExpense = (
+    index: number,
+    field: keyof OperationalExpenseEntry,
+    value: any
+  ) => {
+    setExpenses((prev) => {
       const newExpenses = [...prev];
       const updatedItem = { ...newExpenses[index] };
-      
+
       if (field === 'amount') {
         updatedItem.amount = parseFloat(value) || 0;
       } else {
         (updatedItem as any)[field] = value;
       }
-      
+
       newExpenses[index] = updatedItem;
       return newExpenses;
     });
@@ -252,7 +297,7 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setLoading(true);
@@ -261,11 +306,11 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
         materials,
         waste: waste.length > 0 ? waste : undefined,
         expenses: expenses.length > 0 ? expenses : undefined,
-        edit_reason: editReason
+        edit_reason: editReason,
       });
-      
+
       onSave(
-        response.data.materials || materials, 
+        response.data.materials || materials,
         response.data.editHistory || [],
         response.data.waste || waste,
         response.data.expenses || expenses
@@ -313,7 +358,8 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
-                This reason will be recorded in the edit history for audit purposes.
+                This reason will be recorded in the edit history for audit
+                purposes.
               </p>
             </div>
 
@@ -352,27 +398,35 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                       <Label>Material Name *</Label>
                       <select
                         value={material.material_name}
-                        onChange={(e) => updateMaterial(index, 'material_name', e.target.value)}
+                        onChange={(e) =>
+                          updateMaterial(index, 'material_name', e.target.value)
+                        }
                         className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
                         required
                       >
                         <option value="">-- Select from Inventory --</option>
-                        {inventoryItems.map(inv => {
+                        {inventoryItems.map((inv) => {
                           const isDisabled = inv.current_stock <= 0;
                           return (
-                            <option 
-                              key={inv.id} 
+                            <option
+                              key={inv.id}
                               value={inv.material_name}
                               disabled={isDisabled}
                             >
-                              {inv.material_name} ({formatCurrency(inv.unit_cost)}) {isDisabled ? '- OUT OF STOCK' : `- Stock: ${inv.current_stock}`}
+                              {inv.material_name} (
+                              {formatCurrency(inv.unit_cost)}){' '}
+                              {isDisabled
+                                ? '- OUT OF STOCK'
+                                : `- Stock: ${inv.current_stock}`}
                             </option>
                           );
                         })}
                       </select>
                       <Input
                         value={material.material_name}
-                        onChange={(e) => updateMaterial(index, 'material_name', e.target.value)}
+                        onChange={(e) =>
+                          updateMaterial(index, 'material_name', e.target.value)
+                        }
                         placeholder="Or enter custom material name"
                         className="mt-2"
                       />
@@ -382,7 +436,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                       <Label>Paper Size</Label>
                       <Input
                         value={material.paper_size || ''}
-                        onChange={(e) => updateMaterial(index, 'paper_size', e.target.value)}
+                        onChange={(e) =>
+                          updateMaterial(index, 'paper_size', e.target.value)
+                        }
                         placeholder="e.g., A4, A3, Letter"
                       />
                     </div>
@@ -391,7 +447,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                       <Label>Paper Type</Label>
                       <Input
                         value={material.paper_type || ''}
-                        onChange={(e) => updateMaterial(index, 'paper_type', e.target.value)}
+                        onChange={(e) =>
+                          updateMaterial(index, 'paper_type', e.target.value)
+                        }
                         placeholder="e.g., Glossy, Matte"
                       />
                     </div>
@@ -401,7 +459,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                       <Input
                         type="number"
                         value={material.grammage || ''}
-                        onChange={(e) => updateMaterial(index, 'grammage', e.target.value)}
+                        onChange={(e) =>
+                          updateMaterial(index, 'grammage', e.target.value)
+                        }
                         placeholder="e.g., 80, 120"
                       />
                     </div>
@@ -413,7 +473,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                         min="0.01"
                         step="0.01"
                         value={material.quantity}
-                        onChange={(e) => updateMaterial(index, 'quantity', e.target.value)}
+                        onChange={(e) =>
+                          updateMaterial(index, 'quantity', e.target.value)
+                        }
                         required
                       />
                     </div>
@@ -425,9 +487,14 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                         min="0"
                         step="0.01"
                         value={material.unit_cost}
-                        onChange={(e) => updateMaterial(index, 'unit_cost', e.target.value)}
+                        onChange={(e) =>
+                          updateMaterial(index, 'unit_cost', e.target.value)
+                        }
                         required
-                        disabled={inventoryItems.some(item => item.material_name === material.material_name)}
+                        disabled={inventoryItems.some(
+                          (item) =>
+                            item.material_name === material.material_name
+                        )}
                       />
                     </div>
 
@@ -448,7 +515,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
             {/* Waste Section */}
             <div className="space-y-4 border-t pt-4">
               <div className="flex justify-between items-center">
-                <Label className="text-lg font-semibold text-red-700">Waste & Expenses</Label>
+                <Label className="text-lg font-semibold text-red-700">
+                  Waste & Expenses
+                </Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -462,7 +531,10 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
               </div>
 
               {waste.map((item, index) => (
-                <div key={index} className="p-4 border border-red-100 rounded-lg bg-red-50 space-y-3">
+                <div
+                  key={index}
+                  className="p-4 border border-red-100 rounded-lg bg-red-50 space-y-3"
+                >
                   <div className="flex justify-between items-center">
                     <h4 className="font-medium">Waste {index + 1}</h4>
                     <Button
@@ -480,7 +552,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                       <Label>Type</Label>
                       <select
                         value={item.type}
-                        onChange={(e) => updateWaste(index, 'type', e.target.value)}
+                        onChange={(e) =>
+                          updateWaste(index, 'type', e.target.value)
+                        }
                         className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
                       >
                         <option value="material_waste">Material Waste</option>
@@ -495,7 +569,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                       <Label>Reason</Label>
                       <Input
                         value={item.waste_reason || ''}
-                        onChange={(e) => updateWaste(index, 'waste_reason', e.target.value)}
+                        onChange={(e) =>
+                          updateWaste(index, 'waste_reason', e.target.value)
+                        }
                         placeholder="e.g., Error, Damage"
                       />
                     </div>
@@ -504,7 +580,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                       <Label>Description</Label>
                       <Input
                         value={item.description}
-                        onChange={(e) => updateWaste(index, 'description', e.target.value)}
+                        onChange={(e) =>
+                          updateWaste(index, 'description', e.target.value)
+                        }
                         placeholder="e.g., 5 sheets wasted"
                       />
                     </div>
@@ -516,7 +594,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                         min="0"
                         step="0.01"
                         value={item.quantity || ''}
-                        onChange={(e) => updateWaste(index, 'quantity', e.target.value)}
+                        onChange={(e) =>
+                          updateWaste(index, 'quantity', e.target.value)
+                        }
                       />
                     </div>
 
@@ -527,7 +607,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                         min="0"
                         step="0.01"
                         value={item.unit_cost || ''}
-                        onChange={(e) => updateWaste(index, 'unit_cost', e.target.value)}
+                        onChange={(e) =>
+                          updateWaste(index, 'unit_cost', e.target.value)
+                        }
                       />
                     </div>
 
@@ -548,7 +630,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
             {/* Operational Expenses Section */}
             <div className="space-y-4 border-t pt-4">
               <div className="flex justify-between items-center">
-                <Label className="text-lg font-semibold">Operational Expenses</Label>
+                <Label className="text-lg font-semibold">
+                  Operational Expenses
+                </Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -579,7 +663,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                       <Label>Description *</Label>
                       <Input
                         value={item.description}
-                        onChange={(e) => updateExpense(index, 'description', e.target.value)}
+                        onChange={(e) =>
+                          updateExpense(index, 'description', e.target.value)
+                        }
                         placeholder="e.g., Machine maintenance"
                         required
                       />
@@ -589,7 +675,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                       <Label>Category *</Label>
                       <Input
                         value={item.category}
-                        onChange={(e) => updateExpense(index, 'category', e.target.value)}
+                        onChange={(e) =>
+                          updateExpense(index, 'category', e.target.value)
+                        }
                         placeholder="e.g., Maintenance, Utilities"
                         required
                       />
@@ -602,7 +690,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                         min="0"
                         step="0.01"
                         value={item.amount}
-                        onChange={(e) => updateExpense(index, 'amount', e.target.value)}
+                        onChange={(e) =>
+                          updateExpense(index, 'amount', e.target.value)
+                        }
                         required
                       />
                     </div>
@@ -612,7 +702,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                       <Input
                         type="date"
                         value={item.expense_date}
-                        onChange={(e) => updateExpense(index, 'expense_date', e.target.value)}
+                        onChange={(e) =>
+                          updateExpense(index, 'expense_date', e.target.value)
+                        }
                         required
                       />
                     </div>
@@ -621,7 +713,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                       <Label>Receipt Number</Label>
                       <Input
                         value={item.receipt_number || ''}
-                        onChange={(e) => updateExpense(index, 'receipt_number', e.target.value)}
+                        onChange={(e) =>
+                          updateExpense(index, 'receipt_number', e.target.value)
+                        }
                         placeholder="Optional"
                       />
                     </div>
@@ -630,7 +724,9 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
                       <Label>Notes</Label>
                       <textarea
                         value={item.notes || ''}
-                        onChange={(e) => updateExpense(index, 'notes', e.target.value)}
+                        onChange={(e) =>
+                          updateExpense(index, 'notes', e.target.value)
+                        }
                         placeholder="Additional notes (optional)"
                         className="flex min-h-[80px] w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm"
                         rows={2}
@@ -651,10 +747,7 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={loading || !editReason.trim()}
-            >
+            <Button type="submit" disabled={loading || !editReason.trim()}>
               {loading ? 'Updating...' : 'Update Materials'}
             </Button>
           </div>

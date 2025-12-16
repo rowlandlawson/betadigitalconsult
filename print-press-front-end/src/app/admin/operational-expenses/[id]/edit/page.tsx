@@ -13,4 +13,3 @@ export default function EditExpensePage({ params }: EditExpensePageProps) {
   const { id } = React.use(params);
   return <ExpenseForm mode="edit" expenseId={id} />;
 }
-

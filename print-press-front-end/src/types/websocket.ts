@@ -27,8 +27,8 @@ export interface NewNotificationMessage extends BaseWebSocketMessage {
   notification: Notification;
 }
 
-export type WebSocketMessage = 
-  | ConnectedMessage 
-  | SubscribedMessage 
-  | PongMessage 
+export type WebSocketMessage =
+  | ConnectedMessage
+  | SubscribedMessage
+  | PongMessage
   | NewNotificationMessage;

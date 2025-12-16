@@ -6,24 +6,24 @@ import { usePathname } from 'next/navigation';
 import { cn, getLogoUrl } from '@/lib/utils';
 import Image from 'next/image';
 import { useCompanySettings } from '@/lib/useCompanySettings';
-import { 
-  LayoutDashboard, 
-  Briefcase, 
-  Users, 
-  Package, 
-  CreditCard, 
+import {
+  LayoutDashboard,
+  Briefcase,
+  Users,
+  Package,
+  CreditCard,
   BarChart3,
   Bell,
   Settings,
   PlusCircle,
   TrendingUp,
   AlertTriangle,
-  UserPlus, 
+  UserPlus,
   BarChart,
   X,
   ChevronDown,
   ChevronRight,
-  DollarSign
+  DollarSign,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -48,46 +48,66 @@ const adminNavGroups: NavGroup[] = [
   {
     title: 'Dashboard',
     items: [
-      { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard }
-    ]
+      { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    ],
   },
   {
     title: 'Jobs',
     items: [
       { href: '/admin/jobs', label: 'Jobs', icon: Briefcase },
-      { href: '/admin/jobs/create', label: 'Create Job', icon: PlusCircle }
-    ]
+      { href: '/admin/jobs/create', label: 'Create Job', icon: PlusCircle },
+    ],
   },
   {
     title: 'Customers',
     items: [
       { href: '/admin/customers', label: 'Customers', icon: Users },
-      { href: '/admin/customers/create', label: 'Add Customer', icon: UserPlus },
-      { href: '/admin/customers/stats', label: 'Customer Analytics', icon: BarChart }
-    ]
+      {
+        href: '/admin/customers/create',
+        label: 'Add Customer',
+        icon: UserPlus,
+      },
+      {
+        href: '/admin/customers/stats',
+        label: 'Customer Analytics',
+        icon: BarChart,
+      },
+    ],
   },
   {
-  //   title: 'Inventory',
-  //   items: [
-  //     { href: '/admin/inventory', label: 'Inventory', icon: Package },
-  //     { href: '/admin/inventory/create', label: 'Add Item', icon: PlusCircle },
-  //     { href: '/admin/inventory/alerts', label: 'Stock Alerts', icon: AlertTriangle }
-  //   ]
-  // },
-  title: 'Inventory',
-  items: [
-    { href: '/admin/inventory', label: 'All Items', icon: Package },
-    { href: '/admin/inventory/create', label: 'Add Item', icon: PlusCircle },
-    { href: '/admin/inventory/alerts', label: 'Stock Alerts', icon: AlertTriangle }
-  ]
-},
+    //   title: 'Inventory',
+    //   items: [
+    //     { href: '/admin/inventory', label: 'Inventory', icon: Package },
+    //     { href: '/admin/inventory/create', label: 'Add Item', icon: PlusCircle },
+    //     { href: '/admin/inventory/alerts', label: 'Stock Alerts', icon: AlertTriangle }
+    //   ]
+    // },
+    title: 'Inventory',
+    items: [
+      { href: '/admin/inventory', label: 'All Items', icon: Package },
+      { href: '/admin/inventory/create', label: 'Add Item', icon: PlusCircle },
+      {
+        href: '/admin/inventory/alerts',
+        label: 'Stock Alerts',
+        icon: AlertTriangle,
+      },
+    ],
+  },
   {
     title: 'Payments',
     items: [
       { href: '/admin/payments', label: 'Payments', icon: CreditCard },
-      { href: '/admin/payments/record', label: 'Record Payment', icon: PlusCircle },
-      { href: '/admin/payments/stats', label: 'Payment Stats', icon: TrendingUp }
-    ]
+      {
+        href: '/admin/payments/record',
+        label: 'Record Payment',
+        icon: PlusCircle,
+      },
+      {
+        href: '/admin/payments/stats',
+        label: 'Payment Stats',
+        icon: TrendingUp,
+      },
+    ],
   },
   {
     title: 'System',
@@ -96,9 +116,13 @@ const adminNavGroups: NavGroup[] = [
       { href: '/admin/users', label: 'Users', icon: Users },
       { href: '/admin/notifications', label: 'Notifications', icon: Bell },
       { href: '/admin/settings', label: 'Settings', icon: Settings },
-      { href: '/admin/operational-expenses', label: 'Operational Expenses', icon: DollarSign }
-    ]
-  }
+      {
+        href: '/admin/operational-expenses',
+        label: 'Operational Expenses',
+        icon: DollarSign,
+      },
+    ],
+  },
 ];
 
 const workerNavItems: NavItem[] = [
@@ -106,7 +130,11 @@ const workerNavItems: NavItem[] = [
   { href: '/worker/jobs', label: 'My Jobs', icon: Briefcase },
   { href: '/worker/notifications', label: 'Notifications', icon: Bell },
   { href: '/worker/payments', label: 'Payments', icon: CreditCard },
-  { href: '/worker/payments/record', label: 'Record Payment', icon: PlusCircle },
+  {
+    href: '/worker/payments/record',
+    label: 'Record Payment',
+    icon: PlusCircle,
+  },
 ];
 
 interface NavGroupProps {
@@ -116,11 +144,11 @@ interface NavGroupProps {
   onToggleSidebar?: () => void;
 }
 
-const NavGroup: React.FC<NavGroupProps> = ({ 
-  group, 
-  pathname, 
-  isMobile, 
-  onToggleSidebar 
+const NavGroup: React.FC<NavGroupProps> = ({
+  group,
+  pathname,
+  isMobile,
+  onToggleSidebar,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -139,25 +167,25 @@ const NavGroup: React.FC<NavGroupProps> = ({
           <ChevronRight className="h-4 w-4" />
         )}
       </button>
-      
-      <div className={cn(
-        "space-y-2 overflow-hidden transition-all duration-300",
-        isOpen ? "max-h-96 opacity-100 mt-2" : "max-h-0 opacity-0"
-      )}>
+
+      <div
+        className={cn(
+          'space-y-2 overflow-hidden transition-all duration-300',
+          isOpen ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'
+        )}
+      >
         {group.items.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
-          
+
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center px-4 py-3 text-sm font-medium transition-all duration-200 rounded-lg mx-1",
-                "hover:bg-[#AABD77] hover:bg-opacity-30 hover:text-gray-900", 
-                isActive
-                  ? "bg-[#AABD77] text-white shadow-lg" 
-                  : "text-gray-700"
+                'flex items-center px-4 py-3 text-sm font-medium transition-all duration-200 rounded-lg mx-1',
+                'hover:bg-[#AABD77] hover:bg-opacity-30 hover:text-gray-900',
+                isActive ? 'bg-[#AABD77] text-white shadow-lg' : 'text-gray-700'
               )}
               onClick={() => {
                 if (isMobile && onToggleSidebar) {
@@ -166,10 +194,12 @@ const NavGroup: React.FC<NavGroupProps> = ({
                 }
               }}
             >
-              <Icon className={cn(
-                "h-4 w-4 transition-colors shrink-0",
-                isActive ? "text-white" : "text-gray-600"
-              )} />
+              <Icon
+                className={cn(
+                  'h-4 w-4 transition-colors shrink-0',
+                  isActive ? 'text-white' : 'text-gray-600'
+                )}
+              />
               <span className="ml-3 truncate">{item.label}</span>
             </Link>
           );
@@ -179,14 +209,14 @@ const NavGroup: React.FC<NavGroupProps> = ({
   );
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ 
-  userRole, 
-  isMobileOpen = false, 
-  onToggleSidebar 
+export const Sidebar: React.FC<SidebarProps> = ({
+  userRole,
+  isMobileOpen = false,
+  onToggleSidebar,
 }) => {
   const pathname = usePathname();
   const [isMobile, setIsMobile] = useState(false);
-  
+
   // Check if mobile on mount and resize
   useEffect(() => {
     const checkIfMobile = () => {
@@ -218,19 +248,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [isMobileOpen, isMobile]);
 
   const { settings } = useCompanySettings();
-  const companyLogo = settings.logo ? getLogoUrl(settings.logo) || settings.logo : '/logo.png';
+  const companyLogo = settings.logo
+    ? getLogoUrl(settings.logo) || settings.logo
+    : '/logo.png';
   const companyName = settings.name || 'Company Logo';
 
   const sidebarContent = (
-    <div className={cn(
-      "bg-white text-gray-900 h-full flex flex-col transition-all duration-300 ease-in-out border-r border-gray-200",
-      // Desktop: always visible, fixed width
-      "lg:w-64 lg:static lg:translate-x-0",
-      // Mobile: overlay sidebar
-      "fixed top-0 left-0 z-40 w-64 h-full transform",
-      isMobileOpen ? "translate-x-0" : "-translate-x-full",
-      "lg:translate-x-0"
-    )}>
+    <div
+      className={cn(
+        'bg-white text-gray-900 h-full flex flex-col transition-all duration-300 ease-in-out border-r border-gray-200',
+        // Desktop: always visible, fixed width
+        'lg:w-64 lg:static lg:translate-x-0',
+        // Mobile: overlay sidebar
+        'fixed top-0 left-0 z-40 w-64 h-full transform',
+        isMobileOpen ? 'translate-x-0' : '-translate-x-full',
+        'lg:translate-x-0'
+      )}
+    >
       {/* Header */}
       <div className="p-4 border-b border-[#AABD77] bg-white flex items-center justify-between lg:justify-start shrink-0">
         {/* Responsive logo only - no text */}
@@ -247,7 +281,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             />
           </div>
         </div>
-        
+
         {/* Close button for mobile */}
         <button
           onClick={onToggleSidebar}
@@ -268,7 +302,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             display: none;
           }
         `}</style>
-        
+
         <div className="px-3">
           {userRole === 'admin' ? (
             // Admin navigation with dropdown groups
@@ -289,17 +323,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {workerNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
-                
+
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center px-4 py-3 text-sm font-medium transition-all duration-200 rounded-lg mx-1",
-                      "hover:bg-[#AABD77] hover:bg-opacity-20 hover:text-gray-900", // Removed border classes from hover
+                      'flex items-center px-4 py-3 text-sm font-medium transition-all duration-200 rounded-lg mx-1',
+                      'hover:bg-[#AABD77] hover:bg-opacity-20 hover:text-gray-900', // Removed border classes from hover
                       isActive
-                        ? "bg-[#AABD77] text-white shadow-lg" // Removed border-[#AABD77]
-                        : "text-gray-700"
+                        ? 'bg-[#AABD77] text-white shadow-lg' // Removed border-[#AABD77]
+                        : 'text-gray-700'
                     )}
                     onClick={() => {
                       if (isMobile && onToggleSidebar) {
@@ -308,10 +342,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       }
                     }}
                   >
-                    <Icon className={cn(
-                      "h-5 w-5 transition-colors",
-                      isActive ? "text-white" : "text-gray-600"
-                    )} />
+                    <Icon
+                      className={cn(
+                        'h-5 w-5 transition-colors',
+                        isActive ? 'text-white' : 'text-gray-600'
+                      )}
+                    />
                     <span className="ml-3">{item.label}</span>
                   </Link>
                 );
@@ -326,10 +362,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Mobile overlay with smooth transition */}
-      <div 
+      <div
         className={cn(
-          "fixed inset-0 bg-black z-30 lg:hidden transition-opacity duration-300 ease-in-out",
-          isMobileOpen && isMobile ? "bg-opacity-50" : "bg-opacity-0 pointer-events-none"
+          'fixed inset-0 bg-black z-30 lg:hidden transition-opacity duration-300 ease-in-out',
+          isMobileOpen && isMobile
+            ? 'bg-opacity-50'
+            : 'bg-opacity-0 pointer-events-none'
         )}
         onClick={onToggleSidebar}
       />

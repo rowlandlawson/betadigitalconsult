@@ -9,7 +9,21 @@ import { MonthlyFinancialSummary } from '@/types/reports';
 import { formatCurrency } from '@/lib/utils';
 import { isApiError } from '@/lib/api';
 import { Download, Calendar } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 
 const COLORS = ['#AABD77', '#8FA66B', '#6B7A4F', '#4F5A3A', '#3D4530'];
 
@@ -28,7 +42,10 @@ export const FinancialSummary: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      const summary = await reportsService.getMonthlyFinancialSummary(year, month);
+      const summary = await reportsService.getMonthlyFinancialSummary(
+        year,
+        month
+      );
       setData(summary);
     } catch (err: unknown) {
       console.error('Failed to fetch financial summary:', err);
@@ -46,8 +63,12 @@ export const FinancialSummary: React.FC = () => {
     try {
       const startDate = data?.period.start_date || '';
       const endDate = data?.period.end_date || '';
-      const blob = await reportsService.exportReportData('financial_summary', startDate, endDate);
-      
+      const blob = await reportsService.exportReportData(
+        'financial_summary',
+        startDate,
+        endDate
+      );
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -93,7 +114,7 @@ export const FinancialSummary: React.FC = () => {
     { name: 'Labor', value: data.expenses.labor_costs },
   ];
 
-  const topMaterialsData = data.top_materials.slice(0, 5).map(m => ({
+  const topMaterialsData = data.top_materials.slice(0, 5).map((m) => ({
     name: m.material_name,
     cost: m.total_cost,
     quantity: m.total_quantity,
@@ -166,7 +187,9 @@ export const FinancialSummary: React.FC = () => {
         <Card>
           <CardContent className="p-6">
             <p className="text-sm font-medium text-gray-600">Net Profit</p>
-            <p className={`text-2xl font-bold mt-1 ${data.profit.is_profitable ? 'text-green-600' : 'text-red-600'}`}>
+            <p
+              className={`text-2xl font-bold mt-1 ${data.profit.is_profitable ? 'text-green-600' : 'text-red-600'}`}
+            >
               {formatCurrency(data.profit.net_profit)}
             </p>
             <p className="text-xs text-gray-500 mt-1">
@@ -202,13 +225,18 @@ export const FinancialSummary: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
                 >
                   {expenseData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
@@ -225,7 +253,12 @@ export const FinancialSummary: React.FC = () => {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={topMaterialsData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                <XAxis
+                  dataKey="name"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
                 <YAxis />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Bar dataKey="cost" fill="#AABD77" />
@@ -248,31 +281,45 @@ export const FinancialSummary: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600">Completed</p>
-              <p className="text-xl font-bold text-green-600">{data.job_stats.completed_jobs}</p>
+              <p className="text-xl font-bold text-green-600">
+                {data.job_stats.completed_jobs}
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">In Progress</p>
-              <p className="text-xl font-bold text-blue-600">{data.job_stats.in_progress_jobs}</p>
+              <p className="text-xl font-bold text-blue-600">
+                {data.job_stats.in_progress_jobs}
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Fully Paid</p>
-              <p className="text-xl font-bold text-purple-600">{data.job_stats.fully_paid_jobs}</p>
+              <p className="text-xl font-bold text-purple-600">
+                {data.job_stats.fully_paid_jobs}
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Average Job Value</p>
-              <p className="text-xl font-bold">{formatCurrency(data.job_stats.average_job_value)}</p>
+              <p className="text-xl font-bold">
+                {formatCurrency(data.job_stats.average_job_value)}
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Highest Job Value</p>
-              <p className="text-xl font-bold">{formatCurrency(data.job_stats.highest_job_value)}</p>
+              <p className="text-xl font-bold">
+                {formatCurrency(data.job_stats.highest_job_value)}
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Material Efficiency</p>
-              <p className="text-xl font-bold">{data.efficiency_metrics.material_efficiency.toFixed(2)}x</p>
+              <p className="text-xl font-bold">
+                {data.efficiency_metrics.material_efficiency.toFixed(2)}x
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Waste Percentage</p>
-              <p className="text-xl font-bold text-red-600">{data.efficiency_metrics.waste_percentage.toFixed(1)}%</p>
+              <p className="text-xl font-bold text-red-600">
+                {data.efficiency_metrics.waste_percentage.toFixed(1)}%
+              </p>
             </div>
           </div>
         </CardContent>
@@ -280,4 +327,3 @@ export const FinancialSummary: React.FC = () => {
     </div>
   );
 };
-

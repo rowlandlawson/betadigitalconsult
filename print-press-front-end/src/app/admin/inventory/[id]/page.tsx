@@ -9,8 +9,9 @@ interface InventoryDetailPageProps {
   }>;
 }
 
-export default function InventoryDetailPage({ params }: InventoryDetailPageProps) {
+export default function InventoryDetailPage({
+  params,
+}: InventoryDetailPageProps) {
   const { id } = React.use(params);
   return <InventoryDetail itemId={id} />;
 }
-

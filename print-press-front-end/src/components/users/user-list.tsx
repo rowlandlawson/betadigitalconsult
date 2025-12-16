@@ -7,7 +7,17 @@ import { Input } from '@/components/ui/input';
 import { userService, User } from '@/lib/userService';
 import { formatDate } from '@/lib/utils';
 import { isApiError } from '@/lib/api';
-import { Search, Users, UserPlus, Shield, UserCheck, UserX, Edit, Trash2, Eye } from 'lucide-react';
+import {
+  Search,
+  Users,
+  UserPlus,
+  Shield,
+  UserCheck,
+  UserX,
+  Edit,
+  Trash2,
+  Eye,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UserDetailModal } from './user-detail-modal';
@@ -17,7 +27,9 @@ export const UserList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'worker'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'worker'>(
+    'all'
+  );
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const router = useRouter();
@@ -46,7 +58,11 @@ export const UserList: React.FC = () => {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete user "${name}"? This action cannot be undone.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete user "${name}"? This action cannot be undone.`
+      )
+    ) {
       return;
     }
 
@@ -59,14 +75,15 @@ export const UserList: React.FC = () => {
     }
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.user_name && user.user_name.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+      (user.user_name &&
+        user.user_name.toLowerCase().includes(searchTerm.toLowerCase()));
+
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    
+
     return matchesSearch && matchesRole;
   });
 
@@ -83,7 +100,9 @@ export const UserList: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-600">Manage system users and their permissions</p>
+          <p className="text-gray-600">
+            Manage system users and their permissions
+          </p>
         </div>
         <Link href="/admin/users/create">
           <Button>
@@ -151,7 +170,9 @@ export const UserList: React.FC = () => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Users ({filteredUsers.length})</h3>
+            <h3 className="text-lg font-semibold">
+              Users ({filteredUsers.length})
+            </h3>
           </div>
         </CardHeader>
         <CardContent>
@@ -188,11 +209,13 @@ export const UserList: React.FC = () => {
                       </td>
                       <td className="p-3">{user.email}</td>
                       <td className="p-3">
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          user.role === 'admin' 
-                            ? 'bg-purple-100 text-purple-800' 
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
+                        <span
+                          className={`px-2 py-1 rounded text-xs ${
+                            user.role === 'admin'
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}
+                        >
                           {user.role}
                         </span>
                       </td>
@@ -209,7 +232,11 @@ export const UserList: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td className="p-3">{user.date_joined ? formatDate(user.date_joined) : 'N/A'}</td>
+                      <td className="p-3">
+                        {user.date_joined
+                          ? formatDate(user.date_joined)
+                          : 'N/A'}
+                      </td>
                       <td className="p-3">
                         <div className="flex items-center justify-end gap-2">
                           <Button
@@ -224,7 +251,11 @@ export const UserList: React.FC = () => {
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Link href={`/admin/users/${user.id}/edit`}>
-                            <Button variant="outline" size="sm" title="Edit User">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              title="Edit User"
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                           </Link>
@@ -260,4 +291,3 @@ export const UserList: React.FC = () => {
     </div>
   );
 };
-

@@ -47,9 +47,7 @@ export default function WorkerDashboard() {
       </div>
 
       {error && (
-        <div className="p-4 text-red-600 bg-red-50 rounded-lg">
-          {error}
-        </div>
+        <div className="p-4 text-red-600 bg-red-50 rounded-lg">{error}</div>
       )}
 
       {/* Recent Jobs */}
@@ -63,7 +61,9 @@ export default function WorkerDashboard() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           ) : jobs.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No jobs assigned yet</p>
+            <p className="text-gray-500 text-center py-8">
+              No jobs assigned yet
+            </p>
           ) : (
             <div className="space-y-4">
               {jobs.map((job) => (
@@ -72,16 +72,20 @@ export default function WorkerDashboard() {
                   className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
                 >
                   <div>
-                    <h4 className="font-medium text-gray-900">{job.ticket_id}</h4>
+                    <h4 className="font-medium text-gray-900">
+                      {job.ticket_id}
+                    </h4>
                     <p className="text-sm text-gray-600">{job.description}</p>
                     <div className="flex items-center space-x-4 mt-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        job.status === 'completed' 
-                          ? 'bg-green-100 text-green-800'
-                          : job.status === 'in_progress'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          job.status === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : job.status === 'in_progress'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
                         {job.status.replace('_', ' ')}
                       </span>
                       <span className="text-sm text-gray-500">

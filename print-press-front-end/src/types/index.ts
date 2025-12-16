@@ -23,7 +23,13 @@ export interface Notification {
   user_id: string;
   title: string;
   message: string;
-  type: 'new_job' | 'payment_update' | 'status_change' | 'low_stock' | 'system' | 'alert';
+  type:
+    | 'new_job'
+    | 'payment_update'
+    | 'status_change'
+    | 'low_stock'
+    | 'system'
+    | 'alert';
   related_entity_type?: 'job' | 'payment' | 'inventory' | 'customer' | 'user';
   related_entity_id?: string;
   is_read: boolean;

@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardFooter,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCompanySettings } from '@/lib/useCompanySettings';
@@ -10,9 +15,12 @@ import { toast } from 'sonner';
 import Image from 'next/image';
 
 export const CompanySettingsForm: React.FC = () => {
-  const { settings, loading, updateSettings, uploadLogo } = useCompanySettings();
+  const { settings, loading, updateSettings, uploadLogo } =
+    useCompanySettings();
   const [formData, setFormData] = useState(settings);
-  const [logoPreview, setLogoPreview] = useState<string | null>(settings.logo || null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(
+    settings.logo || null
+  );
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>('');
@@ -23,9 +31,11 @@ export const CompanySettingsForm: React.FC = () => {
     setLogoPreview(settings.logo || null);
   }, [settings]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -40,7 +50,7 @@ export const CompanySettingsForm: React.FC = () => {
         toast.error('Please select a valid image file');
         return;
       }
-      
+
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setError('File size must be less than 5MB');
@@ -50,14 +60,14 @@ export const CompanySettingsForm: React.FC = () => {
 
       setLogoFile(file);
       setError('');
-      
+
       // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setLogoPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
-      
+
       toast.info('Logo selected. Click Save Changes to upload.');
     }
   };
@@ -65,7 +75,7 @@ export const CompanySettingsForm: React.FC = () => {
   const handleRemoveLogo = () => {
     setLogoPreview(null);
     setLogoFile(null);
-    setFormData(prev => ({ ...prev, logo: undefined }));
+    setFormData((prev) => ({ ...prev, logo: undefined }));
     toast.info('Logo removed. Click Save Changes to update.');
   };
 
@@ -74,7 +84,7 @@ export const CompanySettingsForm: React.FC = () => {
     setError('');
     try {
       let finalLogoUrl = formData.logo;
-      
+
       // Upload logo if a new file was selected
       if (logoFile) {
         try {
@@ -89,18 +99,19 @@ export const CompanySettingsForm: React.FC = () => {
           throw uploadErr;
         }
       }
-      
+
       // Update all settings (including logo if it was just uploaded)
       await updateSettings({ ...formData, logo: finalLogoUrl });
       // Success toast already shown in updateSettings
-      
+
       // Reset file input element to allow selecting the same file again
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     } catch (err: unknown) {
       console.error('Failed to save settings:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save settings';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to save settings';
       setError(errorMessage);
       // Error toast already shown in hooks
     } finally {
@@ -109,7 +120,11 @@ export const CompanySettingsForm: React.FC = () => {
   };
 
   const handleReset = () => {
-    if (confirm('Are you sure you want to reset all company settings to defaults?')) {
+    if (
+      confirm(
+        'Are you sure you want to reset all company settings to defaults?'
+      )
+    ) {
       setFormData(settings);
       setLogoPreview(settings.logo || null);
       setLogoFile(null);
@@ -133,13 +148,17 @@ export const CompanySettingsForm: React.FC = () => {
           <Building2 className="h-8 w-8 mr-2" />
           Company Settings
         </h1>
-        <p className="text-gray-600">Manage your company information that appears on receipts and documents</p>
+        <p className="text-gray-600">
+          Manage your company information that appears on receipts and documents
+        </p>
       </div>
 
       <Card>
         <CardHeader>
           <h2 className="text-lg font-semibold">Company Information</h2>
-          <p className="text-sm text-gray-600">This information will be displayed on all job receipts</p>
+          <p className="text-sm text-gray-600">
+            This information will be displayed on all job receipts
+          </p>
         </CardHeader>
 
         <CardContent className="space-y-6">
@@ -162,7 +181,9 @@ export const CompanySettingsForm: React.FC = () => {
               placeholder="Enter company name"
               required
             />
-            <p className="text-xs text-gray-500 mt-1">This will appear as the main heading on receipts</p>
+            <p className="text-xs text-gray-500 mt-1">
+              This will appear as the main heading on receipts
+            </p>
           </div>
 
           {/* Company Tagline */}
@@ -177,7 +198,9 @@ export const CompanySettingsForm: React.FC = () => {
               onChange={handleChange}
               placeholder="e.g., Professional Printing Services"
             />
-            <p className="text-xs text-gray-500 mt-1">A brief description of your business</p>
+            <p className="text-xs text-gray-500 mt-1">
+              A brief description of your business
+            </p>
           </div>
 
           {/* Address */}
@@ -209,7 +232,9 @@ export const CompanySettingsForm: React.FC = () => {
               placeholder="e.g., +234 (0) 802 345 6789"
               required
             />
-            <p className="text-xs text-gray-500 mt-1">Primary contact phone number</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Primary contact phone number
+            </p>
           </div>
 
           {/* Email */}
@@ -278,7 +303,6 @@ export const CompanySettingsForm: React.FC = () => {
               )}
             </div> */}
           </div>
-
         </CardContent>
 
         <CardFooter className="flex justify-between">
@@ -290,10 +314,7 @@ export const CompanySettingsForm: React.FC = () => {
             <RotateCcw className="h-4 w-4 mr-2" />
             Reset to Current
           </Button> */}
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-          >
+          <Button onClick={handleSave} disabled={saving}>
             <Save className="h-4 w-4 mr-2" />
             {saving ? 'Saving...' : 'Save Changes'}
           </Button>

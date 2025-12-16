@@ -61,9 +61,7 @@ export default function WorkerLayout({
       <Sidebar userRole="worker" />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header user={user} onLogout={handleLogout} />
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   );

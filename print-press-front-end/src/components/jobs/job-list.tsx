@@ -26,7 +26,7 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
     page: 1,
     limit: 20,
     total: 0,
-    totalPages: 0
+    totalPages: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
 
@@ -41,9 +41,9 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
         page,
         limit: pagination.limit,
         status: statusFilter,
-        search: searchTerm
+        search: searchTerm,
       });
-      
+
       setJobs(response.jobs);
       setPagination(response.pagination);
     } catch (err: unknown) {
@@ -73,10 +73,11 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
     return () => clearTimeout(timeoutId);
   }, [searchTerm]);
 
-  const filteredJobs = jobs.filter(job =>
-    job.ticket_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    job.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    job.customer_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredJobs = jobs.filter(
+    (job) =>
+      job.ticket_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.customer_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusColor = (status: Job['status']) => {
@@ -125,7 +126,9 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
             disabled={refreshing}
             size="sm"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`}
+            />
             Refresh
           </Button>
           {userRole === 'admin' && (
@@ -140,9 +143,7 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
       </div>
 
       {error && (
-        <div className="p-4 text-red-600 bg-red-50 rounded-lg">
-          {error}
-        </div>
+        <div className="p-4 text-red-600 bg-red-50 rounded-lg">{error}</div>
       )}
 
       {/* Filters and Search */}
@@ -185,7 +186,8 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
         <CardHeader>
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">
-              {userRole === 'admin' ? 'All Jobs' : 'My Jobs'} ({filteredJobs.length})
+              {userRole === 'admin' ? 'All Jobs' : 'My Jobs'} (
+              {filteredJobs.length})
             </h3>
             {pagination.total > 0 && (
               <span className="text-sm text-gray-500">
@@ -213,20 +215,30 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
                 >
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <h4 className="font-semibold text-gray-900">{job.ticket_id}</h4>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
+                      <h4 className="font-semibold text-gray-900">
+                        {job.ticket_id}
+                      </h4>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}
+                      >
                         {job.status.replace('_', ' ')}
                       </span>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(job.payment_status)}`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(job.payment_status)}`}
+                      >
                         {job.payment_status.replace('_', ' ')}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 mb-2">{job.description}</p>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {job.description}
+                    </p>
                     <div className="flex flex-wrap items-center space-x-4 text-sm text-gray-500">
                       <span>Customer: {job.customer_name}</span>
                       <span>Requested: {formatDate(job.date_requested)}</span>
                       {job.delivery_deadline && (
-                        <span>Deadline: {formatDate(job.delivery_deadline)}</span>
+                        <span>
+                          Deadline: {formatDate(job.delivery_deadline)}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -238,9 +250,11 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
                       <p className="text-sm text-gray-500">
                         Paid: {formatCurrency(job.amount_paid)}
                       </p>
-                      <p className={`text-sm font-medium ${
-                        job.balance > 0 ? 'text-red-600' : 'text-green-600'
-                      }`}>
+                      <p
+                        className={`text-sm font-medium ${
+                          job.balance > 0 ? 'text-red-600' : 'text-green-600'
+                        }`}
+                      >
                         Balance: {formatCurrency(job.balance)}
                       </p>
                     </div>

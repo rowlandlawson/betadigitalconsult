@@ -72,12 +72,16 @@ export const ExpenseList: React.FC = () => {
     }
   };
 
-  const filteredExpenses = expenses.filter(expense =>
-    expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    expense.category.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredExpenses = expenses.filter(
+    (expense) =>
+      expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      expense.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalAmount = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalAmount = filteredExpenses.reduce(
+    (sum, expense) => sum + expense.amount,
+    0
+  );
 
   if (loading) {
     return (
@@ -91,7 +95,9 @@ export const ExpenseList: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Operational Expenses</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Operational Expenses
+          </h1>
           <p className="text-gray-600">Track and manage operational expenses</p>
         </div>
         <Link href="/admin/operational-expenses/create">
@@ -133,15 +139,19 @@ export const ExpenseList: React.FC = () => {
               className="px-3 py-2 border border-gray-300 rounded-md"
             >
               <option value="">All Categories</option>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
               ))}
             </select>
             <Input
               type="number"
               placeholder="Month"
               value={month}
-              onChange={(e) => setMonth(e.target.value ? parseInt(e.target.value) : '')}
+              onChange={(e) =>
+                setMonth(e.target.value ? parseInt(e.target.value) : '')
+              }
               className="w-24"
               min="1"
               max="12"
@@ -150,7 +160,9 @@ export const ExpenseList: React.FC = () => {
               type="number"
               placeholder="Year"
               value={year}
-              onChange={(e) => setYear(parseInt(e.target.value) || new Date().getFullYear())}
+              onChange={(e) =>
+                setYear(parseInt(e.target.value) || new Date().getFullYear())
+              }
               className="w-24"
             />
           </div>
@@ -162,8 +174,12 @@ export const ExpenseList: React.FC = () => {
         <CardContent className="p-4">
           <div className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-gray-500" />
-            <span className="text-sm font-medium text-gray-600">Total Expenses:</span>
-            <span className="text-xl font-bold text-gray-900">{formatCurrency(totalAmount)}</span>
+            <span className="text-sm font-medium text-gray-600">
+              Total Expenses:
+            </span>
+            <span className="text-xl font-bold text-gray-900">
+              {formatCurrency(totalAmount)}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -171,7 +187,9 @@ export const ExpenseList: React.FC = () => {
       {/* Expenses List */}
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Expenses ({filteredExpenses.length})</h3>
+          <h3 className="text-lg font-semibold">
+            Expenses ({filteredExpenses.length})
+          </h3>
         </CardHeader>
         <CardContent>
           {filteredExpenses.length === 0 ? (
@@ -196,7 +214,9 @@ export const ExpenseList: React.FC = () => {
                 <tbody>
                   {filteredExpenses.map((expense) => (
                     <tr key={expense.id} className="border-b hover:bg-gray-50">
-                      <td className="p-3">{formatDate(expense.expense_date)}</td>
+                      <td className="p-3">
+                        {formatDate(expense.expense_date)}
+                      </td>
                       <td className="p-3">{expense.description}</td>
                       <td className="p-3">
                         <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs">
@@ -207,10 +227,14 @@ export const ExpenseList: React.FC = () => {
                         {formatCurrency(expense.amount)}
                       </td>
                       <td className="p-3">{expense.receipt_number || 'N/A'}</td>
-                      <td className="p-3">{expense.recorded_by_name || 'N/A'}</td>
+                      <td className="p-3">
+                        {expense.recorded_by_name || 'N/A'}
+                      </td>
                       <td className="p-3">
                         <div className="flex items-center justify-end gap-2">
-                          <Link href={`/admin/operational-expenses/${expense.id}/edit`}>
+                          <Link
+                            href={`/admin/operational-expenses/${expense.id}/edit`}
+                          >
                             <Button variant="outline" size="sm">
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -218,7 +242,9 @@ export const ExpenseList: React.FC = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDelete(expense.id, expense.description)}
+                            onClick={() =>
+                              handleDelete(expense.id, expense.description)
+                            }
                             className="text-red-600 hover:text-red-700"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -236,4 +262,3 @@ export const ExpenseList: React.FC = () => {
     </div>
   );
 };
-

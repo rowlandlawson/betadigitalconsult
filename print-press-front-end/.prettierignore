@@ -1,0 +1,12 @@
+# Next.js
+.next/
+out/
+
+# Node
+node_modules/
+
+# Other
+build/
+dist/
+public/sw.js
+public/manifest.json

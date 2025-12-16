@@ -14,19 +14,33 @@ export interface AdminResetPasswordPayload {
 }
 
 export const passwordService = {
-  async changePassword(payload: ChangePasswordPayload): Promise<{ message: string }> {
-    const response = await api.post<{ message: string }>('/auth/change-password', payload);
+  async changePassword(
+    payload: ChangePasswordPayload
+  ): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>(
+      '/auth/change-password',
+      payload
+    );
     return response.data;
   },
 
-  async requestResetLink(payload: ForgotPasswordPayload): Promise<{ message: string }> {
-    const response = await api.post<{ message: string }>('/auth/forgot-password', payload);
+  async requestResetLink(
+    payload: ForgotPasswordPayload
+  ): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>(
+      '/auth/forgot-password',
+      payload
+    );
     return response.data;
   },
 
-  async adminResetUserPassword(payload: AdminResetPasswordPayload): Promise<{ message: string; resetLink?: string }> {
-    const response = await api.post<{ message: string; resetLink?: string }>('/auth/admin/reset-user-password', payload);
+  async adminResetUserPassword(
+    payload: AdminResetPasswordPayload
+  ): Promise<{ message: string; resetLink?: string }> {
+    const response = await api.post<{ message: string; resetLink?: string }>(
+      '/auth/admin/reset-user-password',
+      payload
+    );
     return response.data;
   },
 };
-

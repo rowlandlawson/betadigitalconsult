@@ -5,7 +5,12 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { User } from '@/types';
-import { refreshAuthToken, logout, getStoredUser, isAuthenticated } from '@/lib/auth';
+import {
+  refreshAuthToken,
+  logout,
+  getStoredUser,
+  isAuthenticated,
+} from '@/lib/auth';
 
 export default function AdminLayout({
   children,
@@ -41,7 +46,7 @@ export default function AdminLayout({
           hasStoredUser: !!storedUser,
           hasToken: !!token,
           hasRefreshToken: !!refreshToken,
-          pathname
+          pathname,
         });
 
         if (!token && !refreshToken) {
@@ -51,9 +56,11 @@ export default function AdminLayout({
         }
 
         if ((!storedUser || !token) && refreshToken) {
-          console.log('🔄 No valid token but has refresh token, attempting refresh...');
+          console.log(
+            '🔄 No valid token but has refresh token, attempting refresh...'
+          );
           const newAuth = await refreshAuthToken();
-          
+
           if (newAuth) {
             console.log('✅ Token refresh successful');
             handleSetUser(newAuth.user as User);
@@ -80,14 +87,16 @@ export default function AdminLayout({
           } else {
             console.log('🔄 Token may be expired, attempting refresh...');
             const newAuth = await refreshAuthToken();
-            
+
             if (newAuth && newAuth.user.role === 'admin') {
               console.log('✅ Token refresh successful after expiration');
               handleSetUser(newAuth.user as User);
               setLoading(false);
               return;
             } else {
-              console.log('❌ Token refresh failed or user not admin, redirecting to login');
+              console.log(
+                '❌ Token refresh failed or user not admin, redirecting to login'
+              );
               router.push('/adm/login');
               return;
             }
@@ -96,7 +105,6 @@ export default function AdminLayout({
 
         console.log('❌ Authentication failed, redirecting to login');
         router.push('/adm/login');
-        
       } catch (error) {
         console.error('❌ Auth check error:', error);
         router.push('/adm/login');
@@ -149,7 +157,7 @@ export default function AdminLayout({
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#AABD77] mx-auto"></div>
           <p className="mt-4 text-gray-600">Authentication required...</p>
-          <button 
+          <button
             onClick={() => router.push('/adm/login')}
             className="mt-4 px-4 py-2 bg-[#AABD77] text-white rounded hover:bg-[#acc565]"
           >
@@ -162,20 +170,18 @@ export default function AdminLayout({
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar 
-        userRole="admin" 
+      <Sidebar
+        userRole="admin"
         isMobileOpen={isSidebarOpen}
         onToggleSidebar={toggleSidebar}
       />
       <div className="flex-1 flex flex-col overflow-hidden lg:ml-0 min-w-0">
-        <Header 
-          user={user} 
+        <Header
+          user={user}
           onLogout={handleLogout}
           onToggleSidebar={toggleSidebar}
         />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );

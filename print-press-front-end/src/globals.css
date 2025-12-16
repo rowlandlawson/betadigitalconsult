@@ -7,7 +7,9 @@
   --fg: #0f172a; /* gray-900 */
 }
 
-html, body, #__next {
+html,
+body,
+#__next {
   height: 100%;
 }
 
@@ -20,7 +22,14 @@ body {
   margin: 0;
   color: var(--fg);
   background-color: var(--bg);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial;
 }
 
 /* small utilities / default container */
@@ -34,6 +43,6 @@ body {
 
 /* accessible focus outline */
 :focus {
-  outline: 2px solid rgba(59,130,246,0.6);
+  outline: 2px solid rgba(59, 130, 246, 0.6);
   outline-offset: 2px;
 }

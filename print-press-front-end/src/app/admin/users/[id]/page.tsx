@@ -7,7 +7,15 @@ import { Button } from '@/components/ui/button';
 import { userService, User } from '@/lib/userService';
 import { isApiError } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-import { Edit, ArrowLeft, Shield, Users, UserCheck, UserX, Key } from 'lucide-react';
+import {
+  Edit,
+  ArrowLeft,
+  Shield,
+  Users,
+  UserCheck,
+  UserX,
+  Key,
+} from 'lucide-react';
 import Link from 'next/link';
 import { ResetPasswordModal } from '@/components/users/reset-password-modal';
 
@@ -57,7 +65,10 @@ export default function UserDetailPage() {
           <div className="text-red-600 text-center">
             <p className="text-lg font-semibold">Error loading user</p>
             <p className="text-sm">{error || 'User not found'}</p>
-            <Button onClick={() => router.push('/admin/users')} className="mt-4">
+            <Button
+              onClick={() => router.push('/admin/users')}
+              className="mt-4"
+            >
               Back to Users
             </Button>
           </div>
@@ -116,12 +127,18 @@ export default function UserDetailPage() {
             </div>
             <div>
               <p className="text-sm text-gray-600">Role</p>
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
-                user.role === 'admin' 
-                  ? 'bg-purple-100 text-purple-800' 
-                  : 'bg-blue-100 text-blue-800'
-              }`}>
-                {user.role === 'admin' ? <Shield className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                  user.role === 'admin'
+                    ? 'bg-purple-100 text-purple-800'
+                    : 'bg-blue-100 text-blue-800'
+                }`}
+              >
+                {user.role === 'admin' ? (
+                  <Shield className="h-3 w-3" />
+                ) : (
+                  <Users className="h-3 w-3" />
+                )}
                 {user.role}
               </span>
             </div>
@@ -149,7 +166,9 @@ export default function UserDetailPage() {
             </div>
             <div>
               <p className="text-sm text-gray-600">Date Joined</p>
-              <p className="font-medium">{user.date_joined ? formatDate(user.date_joined) : 'N/A'}</p>
+              <p className="font-medium">
+                {user.date_joined ? formatDate(user.date_joined) : 'N/A'}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -163,11 +182,17 @@ export default function UserDetailPage() {
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm text-gray-600">Hourly Rate</p>
-                <p className="font-medium">{user.hourly_rate ? `$${user.hourly_rate.toFixed(2)}` : 'N/A'}</p>
+                <p className="font-medium">
+                  {user.hourly_rate ? `$${user.hourly_rate.toFixed(2)}` : 'N/A'}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Monthly Salary</p>
-                <p className="font-medium">{user.monthly_salary ? `$${user.monthly_salary.toFixed(2)}` : 'N/A'}</p>
+                <p className="font-medium">
+                  {user.monthly_salary
+                    ? `$${user.monthly_salary.toFixed(2)}`
+                    : 'N/A'}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Payment Method</p>
@@ -201,4 +226,3 @@ export default function UserDetailPage() {
     </div>
   );
 }
-

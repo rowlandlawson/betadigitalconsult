@@ -36,7 +36,9 @@ export const NotificationBell: React.FC = () => {
 
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const response = await api.get<UnreadCountResponse>('/notifications/unread-count');
+      const response = await api.get<UnreadCountResponse>(
+        '/notifications/unread-count'
+      );
       setUnreadCount(response.data.count);
     } catch (err: unknown) {
       console.error('Failed to fetch unread count:', err);
@@ -48,7 +50,9 @@ export const NotificationBell: React.FC = () => {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const response = await api.get<NotificationsResponse>('/notifications?limit=10');
+      const response = await api.get<NotificationsResponse>(
+        '/notifications?limit=10'
+      );
       setNotifications(response.data.notifications);
     } catch (err: unknown) {
       console.error('Failed to fetch notifications:', err);
@@ -61,9 +65,9 @@ export const NotificationBell: React.FC = () => {
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
       await api.patch(`/notifications/${notificationId}/read`);
-      setUnreadCount(prev => Math.max(0, prev - 1));
-      setNotifications(prev =>
-        prev.map(notif =>
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+      setNotifications((prev) =>
+        prev.map((notif) =>
           notif.id === notificationId ? { ...notif, is_read: true } : notif
         )
       );
@@ -79,8 +83,8 @@ export const NotificationBell: React.FC = () => {
     try {
       await api.patch('/notifications/mark-all-read');
       setUnreadCount(0);
-      setNotifications(prev =>
-        prev.map(notif => ({ ...notif, is_read: true }))
+      setNotifications((prev) =>
+        prev.map((notif) => ({ ...notif, is_read: true }))
       );
     } catch (err: unknown) {
       console.error('Failed to mark all as read:', err);
@@ -127,17 +131,19 @@ export const NotificationBell: React.FC = () => {
 
         const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000';
         ws = new WebSocket(`${wsUrl}/ws/notifications?token=${token}`);
-        
+
         ws.onopen = () => {
           console.log('🔌 WebSocket connection established');
           setWsConnected(true);
           setError('');
-          
+
           // Send subscription message
-          ws?.send(JSON.stringify({
-            type: 'subscribe',
-            channels: ['notifications']
-          }));
+          ws?.send(
+            JSON.stringify({
+              type: 'subscribe',
+              channels: ['notifications'],
+            })
+          );
 
           // Start ping interval to keep connection alive
           pingInterval = setInterval(() => {
@@ -151,29 +157,35 @@ export const NotificationBell: React.FC = () => {
           try {
             const data: WebSocketMessage = JSON.parse(event.data);
             console.log('📨 WebSocket message received:', data);
-            
+
             switch (data.type) {
               case 'connected':
                 console.log('✅ WebSocket authenticated:', data.message);
                 break;
-                
+
               case 'subscribed':
                 console.log('✅ Subscribed to channels:', data.channels);
                 break;
-                
+
               case 'pong':
                 console.log('🏓 Pong received:', data.timestamp);
                 break;
-                
+
               case 'new_notification':
                 if (data.notification) {
                   // Update state in response to external system (WebSocket)
-                  setUnreadCount(prev => prev + 1);
-                  setNotifications(prev => [data.notification as Notification, ...prev]);
-                  console.log('🔔 New notification received:', data.notification.title);
+                  setUnreadCount((prev) => prev + 1);
+                  setNotifications((prev) => [
+                    data.notification as Notification,
+                    ...prev,
+                  ]);
+                  console.log(
+                    '🔔 New notification received:',
+                    data.notification.title
+                  );
                 }
                 break;
-                
+
               default:
                 console.log('Unknown WebSocket message type:', data.type);
             }
@@ -189,10 +201,14 @@ export const NotificationBell: React.FC = () => {
         };
 
         ws.onclose = (event: CloseEvent) => {
-          console.log('🔌 WebSocket connection closed:', event.code, event.reason);
+          console.log(
+            '🔌 WebSocket connection closed:',
+            event.code,
+            event.reason
+          );
           setWsConnected(false);
           clearInterval(pingInterval);
-          
+
           // Attempt to reconnect after 5 seconds if not a normal closure
           if (event.code !== 1000) {
             reconnectTimeout = setTimeout(() => {
@@ -201,7 +217,6 @@ export const NotificationBell: React.FC = () => {
             }, 5000);
           }
         };
-
       } catch (wsError) {
         console.error('❌ Failed to setup WebSocket:', wsError);
         setError('Failed to connect to notification server');
@@ -255,10 +270,17 @@ export const NotificationBell: React.FC = () => {
       {isOpen && (
         <React.Fragment>
           {/* Mobile backdrop */}
-          <div key="backdrop" className="fixed inset-0 bg-black/50 bg-opacity-70 z-40 lg:hidden" onClick={() => setIsOpen(false)} />
-          
+          <div
+            key="backdrop"
+            className="fixed inset-0 bg-black/50 bg-opacity-70 z-40 lg:hidden"
+            onClick={() => setIsOpen(false)}
+          />
+
           {/* Dropdown */}
-          <div key="dropdown" className="fixed lg:absolute right-0 lg:right-0 mt-2 w-screen lg:w-80 max-w-[calc(100vw-2rem)] lg:max-w-none bg-white rounded-lg shadow-lg border border-gray-200 z-50 lg:z-50 mx-4 lg:mx-0 top-16 lg:top-full">
+          <div
+            key="dropdown"
+            className="fixed lg:absolute right-0 lg:right-0 mt-2 w-screen lg:w-80 max-w-[calc(100vw-2rem)] lg:max-w-none bg-white rounded-lg shadow-lg border border-gray-200 z-50 lg:z-50 mx-4 lg:mx-0 top-16 lg:top-full"
+          >
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -279,13 +301,11 @@ export const NotificationBell: React.FC = () => {
                 )}
               </div>
             </div>
-            
+
             {error && (
-              <div className="p-4 text-red-600 bg-red-50 text-sm">
-                {error}
-              </div>
+              <div className="p-4 text-red-600 bg-red-50 text-sm">{error}</div>
             )}
-            
+
             <div className="max-h-100 lg:max-h-96 overflow-y-auto">
               {notifications.length === 0 ? (
                 <div className="p-4 text-center text-gray-500">
@@ -312,15 +332,17 @@ export const NotificationBell: React.FC = () => {
                           {notification.message}
                         </p>
                         <div className="flex items-center space-x-2 mt-2 flex-wrap gap-1">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            notification.type === 'low_stock' 
-                              ? 'bg-red-100 text-red-800'
-                              : notification.type === 'new_job'
-                              ? 'bg-green-100 text-green-800'
-                              : notification.type === 'payment_update'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                              notification.type === 'low_stock'
+                                ? 'bg-red-100 text-red-800'
+                                : notification.type === 'new_job'
+                                  ? 'bg-green-100 text-green-800'
+                                  : notification.type === 'payment_update'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
                             {notification.type.replace('_', ' ')}
                           </span>
                           {notification.priority === 'high' && (
@@ -335,7 +357,8 @@ export const NotificationBell: React.FC = () => {
                       )}
                     </div>
                     <p className="text-xs text-gray-500 mt-2">
-                      {new Date(notification.created_at).toLocaleDateString()} at{' '}
+                      {new Date(notification.created_at).toLocaleDateString()}{' '}
+                      at{' '}
                       {new Date(notification.created_at).toLocaleTimeString()}
                     </p>
                   </div>

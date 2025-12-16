@@ -18,7 +18,9 @@ export const CustomerStats: React.FC = () => {
 
   const fetchCustomerStats = async () => {
     try {
-      const response = await api.get<CustomerStatsType>('/customers/customers-stats');
+      const response = await api.get<CustomerStatsType>(
+        '/customers/customers-stats'
+      );
       setStats(response.data);
     } catch (err: unknown) {
       console.error('Failed to fetch customer stats:', err);
@@ -52,7 +54,9 @@ export const CustomerStats: React.FC = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Customer Analytics</h1>
-        <p className="text-gray-600">Insights into your customer base and performance</p>
+        <p className="text-gray-600">
+          Insights into your customer base and performance
+        </p>
       </div>
 
       {/* Summary Stats */}
@@ -64,7 +68,9 @@ export const CustomerStats: React.FC = () => {
                 <Users className="h-6 w-6 text-blue-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Customers</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Total Customers
+                </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {stats.stats.total_customers}
                 </p>
@@ -80,7 +86,9 @@ export const CustomerStats: React.FC = () => {
                 <TrendingUp className="h-6 w-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active Customers</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Active Customers
+                </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {stats.stats.active_customers}
                 </p>
@@ -96,7 +104,9 @@ export const CustomerStats: React.FC = () => {
                 <Star className="h-6 w-6 text-purple-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Repeat Customers</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Repeat Customers
+                </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {stats.stats.repeat_customers}
                 </p>
@@ -112,7 +122,9 @@ export const CustomerStats: React.FC = () => {
                 <Award className="h-6 w-6 text-orange-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Highest Spender</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Highest Spender
+                </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {formatCurrency(stats.stats.highest_spending)}
                 </p>
@@ -138,13 +150,17 @@ export const CustomerStats: React.FC = () => {
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Average Spend per Customer</span>
+                <span className="text-gray-600">
+                  Average Spend per Customer
+                </span>
                 <span className="font-semibold text-green-600">
                   {formatCurrency(stats.stats.avg_spent_per_customer)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Avg. Spend (Active Customers)</span>
+                <span className="text-gray-600">
+                  Avg. Spend (Active Customers)
+                </span>
                 <span className="font-semibold text-green-600">
                   {formatCurrency(stats.stats.avg_spent_per_active_customer)}
                 </span>
@@ -152,13 +168,28 @@ export const CustomerStats: React.FC = () => {
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Customer Retention Rate</span>
                 <span className="font-semibold text-blue-600">
-                  {stats.stats.total_customers > 0 ? ((stats.stats.repeat_customers / stats.stats.total_customers) * 100).toFixed(1) : 0}%
+                  {stats.stats.total_customers > 0
+                    ? (
+                        (stats.stats.repeat_customers /
+                          stats.stats.total_customers) *
+                        100
+                      ).toFixed(1)
+                    : 0}
+                  %
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">New Customer Rate</span>
                 <span className="font-semibold text-purple-600">
-                  {stats.stats.total_customers > 0 ? (((stats.stats.total_customers - stats.stats.active_customers) / stats.stats.total_customers) * 100).toFixed(1) : 0}%
+                  {stats.stats.total_customers > 0
+                    ? (
+                        ((stats.stats.total_customers -
+                          stats.stats.active_customers) /
+                          stats.stats.total_customers) *
+                        100
+                      ).toFixed(1)
+                    : 0}
+                  %
                 </span>
               </div>
             </div>
@@ -173,7 +204,10 @@ export const CustomerStats: React.FC = () => {
           <CardContent>
             <div className="space-y-4">
               {stats.top_customers.map((customer, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+                >
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                       <span className="text-sm font-semibold text-blue-600">
@@ -181,8 +215,12 @@ export const CustomerStats: React.FC = () => {
                       </span>
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{customer.name}</p>
-                      <p className="text-sm text-gray-500">{customer.total_jobs_count} jobs</p>
+                      <p className="font-medium text-gray-900">
+                        {customer.name}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {customer.total_jobs_count} jobs
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -190,7 +228,10 @@ export const CustomerStats: React.FC = () => {
                       {formatCurrency(customer.total_amount_spent)}
                     </p>
                     <p className="text-sm text-gray-500">
-                      {formatCurrency(customer.total_amount_spent / customer.total_jobs_count)} avg.
+                      {formatCurrency(
+                        customer.total_amount_spent / customer.total_jobs_count
+                      )}{' '}
+                      avg.
                     </p>
                   </div>
                 </div>
@@ -246,9 +287,14 @@ export const CustomerStats: React.FC = () => {
               </div>
               <p className="font-semibold text-orange-900">Active Rate</p>
               <p className="text-2xl font-bold text-orange-600">
-                {stats.stats.total_customers > 0 ? 
-                  Math.round((stats.stats.active_customers / stats.stats.total_customers) * 100) : 0
-                }%
+                {stats.stats.total_customers > 0
+                  ? Math.round(
+                      (stats.stats.active_customers /
+                        stats.stats.total_customers) *
+                        100
+                    )
+                  : 0}
+                %
               </p>
               <p className="text-sm text-orange-500">With 1+ jobs</p>
             </div>

@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardFooter,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +29,7 @@ interface JobFormData {
 export const CreateJobForm: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [isNetworkError, setIsNetworkError] = useState(false);
@@ -46,14 +51,19 @@ export const CreateJobForm: React.FC = () => {
     const customerPhone = searchParams.get('customer_phone');
     const customerEmail = searchParams.get('customer_email');
 
-    console.log('URL Params:', { customer, customerName, customerPhone, customerEmail });
+    console.log('URL Params:', {
+      customer,
+      customerName,
+      customerPhone,
+      customerEmail,
+    });
 
     if (customer) {
       setCustomerId(customer);
     }
 
     if (customerName || customerPhone || customerEmail) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         customer_name: customerName || prev.customer_name,
         customer_phone: customerPhone || prev.customer_phone,
@@ -68,13 +78,13 @@ export const CreateJobForm: React.FC = () => {
     if (!data.description.trim()) return 'Job description is required';
     if (data.total_cost <= 0) return 'Total cost must be greater than 0';
     if (!data.date_requested) return 'Date requested is required';
-    
+
     return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationError = validateForm(formData);
     if (validationError) {
       toast.error('Validation Error', { description: validationError });
@@ -92,32 +102,38 @@ export const CreateJobForm: React.FC = () => {
       const submitData = {
         ...formData,
         // Only include customer_id if it is a real string, otherwise undefined
-        customer_id: customerId && customerId.trim() !== '' ? customerId : undefined,
+        customer_id:
+          customerId && customerId.trim() !== '' ? customerId : undefined,
         // Ensure numeric values are numbers
         total_cost: Number(formData.total_cost),
         // Send undefined if strings are empty to avoid DB errors
-        delivery_deadline: formData.delivery_deadline === '' ? undefined : formData.delivery_deadline,
-        customer_email: formData.customer_email === '' ? undefined : formData.customer_email,
+        delivery_deadline:
+          formData.delivery_deadline === ''
+            ? undefined
+            : formData.delivery_deadline,
+        customer_email:
+          formData.customer_email === '' ? undefined : formData.customer_email,
       };
 
       console.log('Submitting job data:', submitData);
-      
+
       await jobService.createJob(submitData);
-      
+
       toast.success('Job Created Successfully');
       router.push('/admin/jobs');
     } catch (err: any) {
       console.error('Failed to create job:', err);
-      
+
       let toastTitle = 'Failed to create job';
       let userInstruction = 'Please check your inputs and try again.';
 
       // --- 1. HANDLE NETWORK ERRORS (No Internet / Server Down) ---
       if (!err.response) {
         toastTitle = 'Network Error';
-        userInstruction = 'Unable to connect to the server. Please check your internet connection.';
+        userInstruction =
+          'Unable to connect to the server. Please check your internet connection.';
         setIsNetworkError(true);
-      } 
+      }
       // --- 2. HANDLE SERVER/DATABASE ERRORS ---
       else if (err.response && err.response.data) {
         const backendError = err.response.data;
@@ -125,37 +141,55 @@ export const CreateJobForm: React.FC = () => {
         const fullErrorString = JSON.stringify(backendError).toLowerCase();
 
         // SCENARIO: Duplicate Email (Postgres Code 23505)
-        if (fullErrorString.includes('email') && (fullErrorString.includes('already exists') || fullErrorString.includes('duplicate'))) {
+        if (
+          fullErrorString.includes('email') &&
+          (fullErrorString.includes('already exists') ||
+            fullErrorString.includes('duplicate'))
+        ) {
           toastTitle = 'Email Already Exists';
-          userInstruction = 'This email is already registered to another customer. Please use a different email.';
+          userInstruction =
+            'This email is already registered to another customer. Please use a different email.';
         }
         // SCENARIO: Duplicate Phone
-        else if (fullErrorString.includes('phone') && (fullErrorString.includes('already exists') || fullErrorString.includes('duplicate'))) {
+        else if (
+          fullErrorString.includes('phone') &&
+          (fullErrorString.includes('already exists') ||
+            fullErrorString.includes('duplicate'))
+        ) {
           toastTitle = 'Phone Number Exists';
-          userInstruction = 'This phone number is already registered. Please check the number or select the existing customer.';
+          userInstruction =
+            'This phone number is already registered. Please check the number or select the existing customer.';
         }
         // SCENARIO: Invalid Date
-        else if (fullErrorString.includes('invalid input syntax') && fullErrorString.includes('date')) {
+        else if (
+          fullErrorString.includes('invalid input syntax') &&
+          fullErrorString.includes('date')
+        ) {
           toastTitle = 'Invalid Date Format';
-          userInstruction = 'Please ensure the "Delivery Deadline" is a valid date or leave it empty.';
+          userInstruction =
+            'Please ensure the "Delivery Deadline" is a valid date or leave it empty.';
         }
         // SCENARIO: Text too long
         else if (fullErrorString.includes('value too long')) {
           toastTitle = 'Input Too Long';
-          userInstruction = 'One of your text inputs is too long for the database. Please shorten it.';
+          userInstruction =
+            'One of your text inputs is too long for the database. Please shorten it.';
         }
         // SCENARIO: Fallback for generic backend message
-        else if (backendError.error && backendError.error !== 'Internal server error') {
+        else if (
+          backendError.error &&
+          backendError.error !== 'Internal server error'
+        ) {
           userInstruction = backendError.error;
         }
       }
 
       // Show Toast Notification
       toast.error(toastTitle, { description: userInstruction });
-      
+
       // Show Persistent Error Box
       setError(userInstruction);
-      
+
       // Scroll to top so user sees the error
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
@@ -163,10 +197,12 @@ export const CreateJobForm: React.FC = () => {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value, type } = e.target;
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
       [name]: type === 'number' ? parseFloat(value) || 0 : value,
     }));
@@ -177,26 +213,33 @@ export const CreateJobForm: React.FC = () => {
       <CardHeader>
         <h2 className="text-2xl font-bold text-gray-900">Create New Job</h2>
         <p className="text-gray-600">
-          {customerId ? 'Creating job for existing customer' : 'Enter job details and customer information'}
+          {customerId
+            ? 'Creating job for existing customer'
+            : 'Enter job details and customer information'}
         </p>
       </CardHeader>
-      
+
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6">
-          
           {/* Enhanced Error Display */}
           {error && (
-            <div className={`p-4 rounded-md border flex items-start space-x-3 ${
-              isNetworkError ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'
-            }`}>
+            <div
+              className={`p-4 rounded-md border flex items-start space-x-3 ${
+                isNetworkError
+                  ? 'bg-yellow-50 border-yellow-200'
+                  : 'bg-red-50 border-red-200'
+              }`}
+            >
               {isNetworkError ? (
                 <WifiOff className="h-5 w-5 text-yellow-600 mt-0.5" />
               ) : (
                 <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
               )}
-              <div className={`text-sm font-medium ${
-                isNetworkError ? 'text-yellow-700' : 'text-red-700'
-              }`}>
+              <div
+                className={`text-sm font-medium ${
+                  isNetworkError ? 'text-yellow-700' : 'text-red-700'
+                }`}
+              >
                 {error}
               </div>
             </div>
@@ -204,8 +247,10 @@ export const CreateJobForm: React.FC = () => {
 
           {/* Customer Information Section */}
           <div className="bg-blue-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-blue-900 mb-3">Customer Information</h3>
-            
+            <h3 className="text-lg font-semibold text-blue-900 mb-3">
+              Customer Information
+            </h3>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="customer_name">Customer Name *</Label>
@@ -220,7 +265,7 @@ export const CreateJobForm: React.FC = () => {
                   className="mt-1"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="customer_phone">Customer Phone *</Label>
                 <Input
@@ -252,8 +297,10 @@ export const CreateJobForm: React.FC = () => {
 
           {/* Job Details Section */}
           <div className="bg-white p-4 rounded-lg border">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Details</h3>
-            
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              Job Details
+            </h3>
+
             <div className="space-y-4">
               <div>
                 <Label htmlFor="description">Job Description *</Label>
@@ -285,7 +332,7 @@ export const CreateJobForm: React.FC = () => {
                     className="mt-1"
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="date_requested">Date Requested *</Label>
                   <Input
@@ -314,7 +361,7 @@ export const CreateJobForm: React.FC = () => {
             </div>
           </div>
         </CardContent>
-        
+
         <CardFooter className="flex justify-between border-t pt-6">
           <Button
             type="button"
@@ -324,11 +371,7 @@ export const CreateJobForm: React.FC = () => {
           >
             Cancel
           </Button>
-          <Button
-            type="submit"
-            disabled={loading}
-            className="min-w-24"
-          >
+          <Button type="submit" disabled={loading} className="min-w-24">
             {loading ? 'Creating...' : 'Create Job'}
           </Button>
         </CardFooter>

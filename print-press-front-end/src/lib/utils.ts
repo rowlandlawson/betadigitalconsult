@@ -71,7 +71,9 @@ export function getLogoUrl(logoPath: string | null | undefined): string | null {
 
   // If it starts with /uploads, use the backend URL (backend serves static files at /uploads)
   if (normalizedPath.startsWith('/uploads')) {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') ||
+      'http://localhost:5000';
     return `${backendUrl}${normalizedPath}`;
   }
 

@@ -9,7 +9,16 @@ import { Label } from '@/components/ui/label';
 import { inventoryApi } from '@/lib/inventoryService';
 import { InventoryItem } from '@/types/inventory';
 import { formatCurrency } from '@/lib/utils';
-import { Search, Plus, Package, AlertTriangle, ChevronLeft, ChevronRight, Eye, ShoppingCart } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Package,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  ShoppingCart,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PurchaseItemModal } from './purchase-item-modal';
@@ -66,37 +75,48 @@ export const InventoryList: React.FC = () => {
 
   const getStockStatusColor = (status?: string) => {
     switch (status) {
-      case 'CRITICAL': return 'bg-red-100 text-red-800 border-red-200';
-      case 'LOW': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'HEALTHY': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'CRITICAL':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'LOW':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'HEALTHY':
+        return 'bg-green-100 text-green-800 border-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const getStockStatusIcon = (status?: string) => {
     switch (status) {
-      case 'CRITICAL': return <AlertTriangle className="h-4 w-4 text-red-600" />;
-      case 'LOW': return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-      default: return <Package className="h-4 w-4 text-green-600" />;
+      case 'CRITICAL':
+        return <AlertTriangle className="h-4 w-4 text-red-600" />;
+      case 'LOW':
+        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+      default:
+        return <Package className="h-4 w-4 text-green-600" />;
     }
   };
 
   const renderAttributes = (item: InventoryItem) => {
     const attributes = item.attributes || {};
     const commonAttributes = [];
-    
+
     // Show common attributes based on category
     if (item.category === 'Paper') {
-      if (attributes.paper_size) commonAttributes.push(`Size: ${attributes.paper_size}`);
-      if (attributes.paper_type) commonAttributes.push(`Type: ${attributes.paper_type}`);
+      if (attributes.paper_size)
+        commonAttributes.push(`Size: ${attributes.paper_size}`);
+      if (attributes.paper_type)
+        commonAttributes.push(`Type: ${attributes.paper_type}`);
       if (attributes.grammage) commonAttributes.push(`${attributes.grammage}g`);
     } else if (item.category === 'Ink') {
       if (attributes.color) commonAttributes.push(`Color: ${attributes.color}`);
-      if (attributes.volume_ml) commonAttributes.push(`${attributes.volume_ml}ml`);
+      if (attributes.volume_ml)
+        commonAttributes.push(`${attributes.volume_ml}ml`);
     } else if (item.category === 'Plates') {
-      if (attributes.plate_size) commonAttributes.push(`Size: ${attributes.plate_size}`);
+      if (attributes.plate_size)
+        commonAttributes.push(`Size: ${attributes.plate_size}`);
     }
-    
+
     return commonAttributes.length > 0 ? commonAttributes.join(' • ') : '-';
   };
 
@@ -104,19 +124,25 @@ export const InventoryList: React.FC = () => {
   const pagination = data?.pagination;
 
   const totalValue = inventory.reduce((sum: number, item: InventoryItem) => {
-    const stockValue = (item.current_stock * item.unit_cost) || 0;
+    const stockValue = item.current_stock * item.unit_cost || 0;
     return sum + (isNaN(stockValue) ? 0 : stockValue);
   }, 0);
-  const lowStockCount = inventory.filter((item: InventoryItem) => 
-    item.stock_status === 'LOW' || item.stock_status === 'CRITICAL').length;
+  const lowStockCount = inventory.filter(
+    (item: InventoryItem) =>
+      item.stock_status === 'LOW' || item.stock_status === 'CRITICAL'
+  ).length;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
-          <p className="text-gray-600">Track and manage all materials and supplies</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Inventory Management
+          </h1>
+          <p className="text-gray-600">
+            Track and manage all materials and supplies
+          </p>
         </div>
         <div className="flex gap-2">
           <Link href="/admin/inventory/alerts">
@@ -139,7 +165,9 @@ export const InventoryList: React.FC = () => {
         </div>
       </div>
 
-      {error && <div className="p-4 text-red-600 bg-red-50 rounded-lg">{error}</div>}
+      {error && (
+        <div className="p-4 text-red-600 bg-red-50 rounded-lg">{error}</div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -151,7 +179,9 @@ export const InventoryList: React.FC = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Items</p>
-                <p className="text-2xl font-bold text-gray-900">{pagination?.total || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {pagination?.total || 0}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -164,9 +194,15 @@ export const InventoryList: React.FC = () => {
                 <AlertTriangle className="h-6 w-6 text-red-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Critical Stock</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Critical Stock
+                </p>
                 <p className="text-2xl font-bold text-red-600">
-                  {inventory.filter((item: InventoryItem) => item.stock_status === 'CRITICAL').length}
+                  {
+                    inventory.filter(
+                      (item: InventoryItem) => item.stock_status === 'CRITICAL'
+                    ).length
+                  }
                 </p>
               </div>
             </div>
@@ -205,7 +241,9 @@ export const InventoryList: React.FC = () => {
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="w-full sm:w-40">
-                <Label htmlFor="category-filter" className="sr-only">Category</Label>
+                <Label htmlFor="category-filter" className="sr-only">
+                  Category
+                </Label>
                 <select
                   id="category-filter"
                   value={categoryFilter}
@@ -213,8 +251,10 @@ export const InventoryList: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
                 >
                   <option value="">All Categories</option>
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -236,9 +276,13 @@ export const InventoryList: React.FC = () => {
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Inventory Items ({pagination?.total || 0})</h3>
+            <h3 className="text-lg font-semibold">
+              Inventory Items ({pagination?.total || 0})
+            </h3>
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span>Page {page} of {Math.ceil((pagination?.total || 0) / limit)}</span>
+              <span>
+                Page {page} of {Math.ceil((pagination?.total || 0) / limit)}
+              </span>
             </div>
           </div>
         </CardHeader>
@@ -250,8 +294,12 @@ export const InventoryList: React.FC = () => {
           ) : inventory.length === 0 ? (
             <div className="text-center py-12">
               <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg mb-2">No inventory items found</p>
-              <p className="text-gray-400 mb-6">Try adjusting your search or add a new item</p>
+              <p className="text-gray-500 text-lg mb-2">
+                No inventory items found
+              </p>
+              <p className="text-gray-400 mb-6">
+                Try adjusting your search or add a new item
+              </p>
               <Link href="/admin/inventory/create">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
@@ -264,23 +312,44 @@ export const InventoryList: React.FC = () => {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Material</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Category</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Properties</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Stock</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Status</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Value</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
+                      Material
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
+                      Category
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
+                      Properties
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
+                      Stock
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
+                      Status
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
+                      Value
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {inventory.map((item: InventoryItem) => (
-                    <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <tr
+                      key={item.id}
+                      className="border-b border-gray-100 hover:bg-gray-50"
+                    >
                       <td className="py-3 px-4">
                         <div>
-                          <p className="font-medium text-gray-900">{item.material_name}</p>
+                          <p className="font-medium text-gray-900">
+                            {item.material_name}
+                          </p>
                           {item.supplier && (
-                            <p className="text-sm text-gray-500">{item.supplier}</p>
+                            <p className="text-sm text-gray-500">
+                              {item.supplier}
+                            </p>
                           )}
                         </div>
                       </td>
@@ -290,7 +359,9 @@ export const InventoryList: React.FC = () => {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <p className="text-sm text-gray-600">{renderAttributes(item)}</p>
+                        <p className="text-sm text-gray-600">
+                          {renderAttributes(item)}
+                        </p>
                       </td>
                       <td className="py-3 px-4">
                         <div>
@@ -302,7 +373,9 @@ export const InventoryList: React.FC = () => {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center">
-                          <div className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStockStatusColor(item.stock_status)}`}>
+                          <div
+                            className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStockStatusColor(item.stock_status)}`}
+                          >
                             {getStockStatusIcon(item.stock_status)}
                             <span>{item.stock_status || 'HEALTHY'}</span>
                           </div>
@@ -310,9 +383,14 @@ export const InventoryList: React.FC = () => {
                       </td>
                       <td className="py-3 px-4">
                         <div>
-                          <p className="font-medium">{formatCurrency(item.current_stock * item.unit_cost)}</p>
+                          <p className="font-medium">
+                            {formatCurrency(
+                              item.current_stock * item.unit_cost
+                            )}
+                          </p>
                           <p className="text-xs text-gray-500">
-                            {formatCurrency(item.unit_cost)}/{item.unit_of_measure}
+                            {formatCurrency(item.unit_cost)}/
+                            {item.unit_of_measure}
                           </p>
                         </div>
                       </td>
@@ -324,8 +402,8 @@ export const InventoryList: React.FC = () => {
                               View
                             </Button>
                           </Link>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             className="h-8"
                             onClick={() => {
                               setSelectedItem(item);
@@ -344,12 +422,12 @@ export const InventoryList: React.FC = () => {
             </div>
           )}
         </CardContent>
-        
+
         {/* Pagination */}
         {pagination && pagination.total > limit && (
           <div className="flex justify-between items-center p-4 border-t">
             <Button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
               variant="outline"
               size="sm"
@@ -358,10 +436,12 @@ export const InventoryList: React.FC = () => {
               Previous
             </Button>
             <div className="text-sm text-gray-600">
-              Showing {((page - 1) * limit) + 1} - {Math.min(page * limit, pagination.total)} of {pagination.total} items
+              Showing {(page - 1) * limit + 1} -{' '}
+              {Math.min(page * limit, pagination.total)} of {pagination.total}{' '}
+              items
             </div>
             <Button
-              onClick={() => setPage(p => p + 1)}
+              onClick={() => setPage((p) => p + 1)}
               disabled={page * limit >= pagination.total}
               variant="outline"
               size="sm"

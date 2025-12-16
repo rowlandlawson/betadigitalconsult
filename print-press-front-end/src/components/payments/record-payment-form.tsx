@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardFooter,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api, ApiError, isApiError } from '@/lib/api';
@@ -15,18 +20,20 @@ interface RecordPaymentFormProps {
   userRole: 'admin' | 'worker';
 }
 
-export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }) => {
+export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({
+  userRole,
+}) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preSelectedJobId = searchParams.get('job');
-  
+
   const [loading, setLoading] = useState(false);
   const [searchingJob, setSearchingJob] = useState(false);
   const [error, setError] = useState<string>('');
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const [formData, setFormData] = useState<PaymentFormData>({
     job_id: preSelectedJobId || '',
     amount: 0,
@@ -45,10 +52,13 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
     try {
       const response = await api.get<{ job: Job }>(`/jobs/${jobId}`);
       setSelectedJob(response.data.job);
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         job_id: jobId,
-        amount: Math.min(response.data.job.balance, response.data.job.balance > 0 ? response.data.job.balance : 0),
+        amount: Math.min(
+          response.data.job.balance,
+          response.data.job.balance > 0 ? response.data.job.balance : 0
+        ),
       }));
     } catch (err: unknown) {
       console.error('Failed to fetch job details:', err);
@@ -64,7 +74,9 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
 
     setSearchingJob(true);
     try {
-      const response = await api.get<{ jobs: Job[] }>(`/jobs?search=${encodeURIComponent(query)}&limit=5`);
+      const response = await api.get<{ jobs: Job[] }>(
+        `/jobs?search=${encodeURIComponent(query)}&limit=5`
+      );
       setJobs(response.data.jobs);
     } catch (err: unknown) {
       console.error('Failed to search jobs:', err);
@@ -75,10 +87,13 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
 
   const handleJobSelect = (job: Job) => {
     setSelectedJob(job);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       job_id: job.id,
-      amount: Math.min(job.balance, job.balance > 0 ? job.balance : job.total_cost),
+      amount: Math.min(
+        job.balance,
+        job.balance > 0 ? job.balance : job.total_cost
+      ),
     }));
     setJobs([]);
     setSearchQuery(`${job.ticket_id} - ${job.customer_name}`);
@@ -86,7 +101,7 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedJob) {
       setError('Please select a job');
       return;
@@ -98,7 +113,9 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
     }
 
     if (formData.amount > selectedJob.balance && selectedJob.balance > 0) {
-      setError(`Payment amount cannot exceed balance of ${formatCurrency(selectedJob.balance)}`);
+      setError(
+        `Payment amount cannot exceed balance of ${formatCurrency(selectedJob.balance)}`
+      );
       return;
     }
 
@@ -107,7 +124,7 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
 
     try {
       const response = await api.post('/payments', formData);
-      
+
       // Show success message and redirect
       const receiptUrl = `/${userRole}/payments/receipt/${response.data.payment.id}`;
       router.push(receiptUrl);
@@ -123,10 +140,14 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
     const { name, value, type } = e.target;
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
       [name]: type === 'number' ? parseFloat(value) || 0 : value,
     }));
@@ -134,13 +155,15 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
 
   const calculateSuggestedAmount = () => {
     if (!selectedJob) return 0;
-    
+
     const balance = selectedJob.balance;
     if (balance <= 0) return selectedJob.total_cost;
-    
+
     if (balance === selectedJob.total_cost) {
       // First payment - suggest 50% or full amount for small jobs
-      return selectedJob.total_cost <= 5000 ? selectedJob.total_cost : selectedJob.total_cost * 0.5;
+      return selectedJob.total_cost <= 5000
+        ? selectedJob.total_cost
+        : selectedJob.total_cost * 0.5;
     } else {
       // Subsequent payment - suggest the remaining balance
       return balance;
@@ -149,7 +172,7 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
 
   const applySuggestedAmount = () => {
     const suggested = calculateSuggestedAmount();
-    setFormData(prev => ({ ...prev, amount: suggested }));
+    setFormData((prev) => ({ ...prev, amount: suggested }));
   };
 
   return (
@@ -158,7 +181,7 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
         <h2 className="text-2xl font-bold text-gray-900">Record Payment</h2>
         <p className="text-gray-600">Record a new payment for a job</p>
       </CardHeader>
-      
+
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6">
           {error && (
@@ -185,7 +208,7 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
                 className="pl-10"
               />
             </div>
-            
+
             {/* Job Search Results */}
             {jobs.length > 0 && (
               <div className="mt-2 border border-gray-200 rounded-lg bg-white shadow-lg z-10 max-h-60 overflow-y-auto">
@@ -197,13 +220,23 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-medium text-gray-900">{job.ticket_id}</p>
-                        <p className="text-sm text-gray-600">{job.customer_name}</p>
-                        <p className="text-sm text-gray-500 truncate">{job.description}</p>
+                        <p className="font-medium text-gray-900">
+                          {job.ticket_id}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {job.customer_name}
+                        </p>
+                        <p className="text-sm text-gray-500 truncate">
+                          {job.description}
+                        </p>
                       </div>
                       <div className="text-right text-sm">
-                        <p className="font-semibold text-gray-900">{formatCurrency(job.total_cost)}</p>
-                        <p className="text-gray-500">Balance: {formatCurrency(job.balance)}</p>
+                        <p className="font-semibold text-gray-900">
+                          {formatCurrency(job.total_cost)}
+                        </p>
+                        <p className="text-gray-500">
+                          Balance: {formatCurrency(job.balance)}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -224,9 +257,13 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
               <h4 className="font-semibold text-blue-900 mb-2">Selected Job</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-blue-700 font-medium">{selectedJob.ticket_id}</p>
+                  <p className="text-blue-700 font-medium">
+                    {selectedJob.ticket_id}
+                  </p>
                   <p className="text-blue-600">{selectedJob.customer_name}</p>
-                  <p className="text-blue-500 truncate">{selectedJob.description}</p>
+                  <p className="text-blue-500 truncate">
+                    {selectedJob.description}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-blue-700 font-semibold">
@@ -235,9 +272,13 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
                   <p className="text-green-600">
                     Paid: {formatCurrency(selectedJob.amount_paid)}
                   </p>
-                  <p className={`font-semibold ${
-                    selectedJob.balance > 0 ? 'text-red-600' : 'text-green-600'
-                  }`}>
+                  <p
+                    className={`font-semibold ${
+                      selectedJob.balance > 0
+                        ? 'text-red-600'
+                        : 'text-green-600'
+                    }`}
+                  >
                     Balance: {formatCurrency(selectedJob.balance)}
                   </p>
                 </div>
@@ -274,7 +315,7 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
                 </Button>
               </div>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Payment Type *
@@ -311,16 +352,18 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
                 <option value="pos">POS</option>
               </select>
             </div>
-            
+
             {selectedJob && (
               <div className="flex items-end">
                 <div className="text-sm text-gray-600">
                   <p>After payment:</p>
                   <p className="font-semibold text-green-600">
-                    New Paid: {formatCurrency(selectedJob.amount_paid + formData.amount)}
+                    New Paid:{' '}
+                    {formatCurrency(selectedJob.amount_paid + formData.amount)}
                   </p>
                   <p className="font-semibold">
-                    New Balance: {formatCurrency(selectedJob.balance - formData.amount)}
+                    New Balance:{' '}
+                    {formatCurrency(selectedJob.balance - formData.amount)}
                   </p>
                 </div>
               </div>
@@ -341,7 +384,7 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({ userRole }
             />
           </div>
         </CardContent>
-        
+
         <CardFooter className="flex justify-between">
           <Button
             type="button"

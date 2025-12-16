@@ -1,4 +1,3 @@
-
 import type { Metadata } from 'next';
 import '@/globals.css';
 import { ToasterProvider } from '@/components/ui/toaster-provider';
@@ -24,23 +23,27 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Print Press" />
         <link rel="apple-touch-icon" href="/logo.png" />
-        
+
         {/* Load Inter from Google Fonts to avoid next/font turbopack internal import issues */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body className="antialiased">
-        <div className="min-h-screen bg-gray-50 font-sans">
-          {children}
-        </div>
+        <div className="min-h-screen bg-gray-50 font-sans">{children}</div>
         <ToasterProvider />
         <PWAInstallPrompt />
       </body>
     </html>
   );
 }
-
 
 // import type { Metadata } from "next";
 // import { Geist, Geist_Mono } from "next/font/google";

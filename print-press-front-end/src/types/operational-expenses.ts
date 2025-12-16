@@ -44,4 +44,3 @@ export interface CreateExpenseData {
 }
 
 export interface UpdateExpenseData extends Partial<CreateExpenseData> {}
-

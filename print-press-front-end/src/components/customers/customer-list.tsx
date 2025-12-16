@@ -49,24 +49,25 @@ export const CustomerList: React.FC = () => {
   };
 
   // Safe filtering with null checks
-  const filteredCustomers = (customers || []).filter(customer =>
-    customer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.phone?.includes(searchTerm) ||
-    customer.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCustomers = (customers || []).filter(
+    (customer) =>
+      customer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.phone?.includes(searchTerm) ||
+      customer.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getCustomerTier = (customer: Customer) => {
     const totalSpent = customer.total_amount_spent;
     const jobCount = customer.total_jobs_count;
-    
+
     if (totalSpent > 1000000 && jobCount > 10) return 'VIP';
-    
+
     if (totalSpent > 500000 && jobCount > 8) return 'Premium';
-    
+
     if (totalSpent > 50000 && jobCount > 3) return 'Regular';
-    
+
     if (jobCount > 1) return 'Returning';
-    
+
     // New: First-time customer
     return 'New';
   };
@@ -79,9 +80,9 @@ export const CustomerList: React.FC = () => {
         return 'bg-blue-100 text-blue-800';
       case 'Regular':
         return 'bg-green-100 text-green-800';
-      case 'Returning':  // Add if using the sophisticated system
+      case 'Returning': // Add if using the sophisticated system
         return 'bg-yellow-100 text-yellow-800';
-      case 'Prospect':   // Add if using the sophisticated system
+      case 'Prospect': // Add if using the sophisticated system
         return 'bg-orange-100 text-orange-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -101,7 +102,9 @@ export const CustomerList: React.FC = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-          <p className="text-gray-600">Manage and track all customer relationships</p>
+          <p className="text-gray-600">
+            Manage and track all customer relationships
+          </p>
         </div>
         <Link href="/admin/customers/create">
           <Button>
@@ -112,76 +115,85 @@ export const CustomerList: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 text-red-600 bg-red-50 rounded-lg">
-          {error}
-        </div>
+        <div className="p-4 text-red-600 bg-red-50 rounded-lg">{error}</div>
       )}
 
       {/* Summary Cards */}
-     {/* Summary Cards */}
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Users className="h-6 w-6 text-blue-600" />
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Users className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">
+                  Total Customers
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {customers.length}
+                </p>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Customers</p>
-              <p className="text-2xl font-bold text-gray-900">{customers.length}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Users className="h-6 w-6 text-green-600" />
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Users className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">
+                  Active Customers
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {customers.filter((c) => c.total_jobs_count > 0).length}
+                </p>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Active Customers</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {customers.filter(c => c.total_jobs_count > 0).length}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-purple-600" />
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <TrendingUp className="h-6 w-6 text-purple-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">
+                  Repeat Customers
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {customers.filter((c) => c.total_jobs_count > 5).length}
+                </p>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Repeat Customers</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {customers.filter(c => c.total_jobs_count > 5).length}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <Calendar className="h-6 w-6 text-orange-600" />
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <Calendar className="h-6 w-6 text-orange-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Avg. Jobs</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {(
+                    customers.reduce((sum, c) => sum + c.total_jobs_count, 0) /
+                    (customers.length || 1)
+                  ).toFixed(1)}
+                </p>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Avg. Jobs</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {(customers.reduce((sum, c) => sum + c.total_jobs_count, 0) / (customers.length || 1)).toFixed(1)}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Search */}
       <Card>
@@ -219,8 +231,12 @@ export const CustomerList: React.FC = () => {
                 >
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <h4 className="font-semibold text-gray-900">{customer.name}</h4>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTierColor(getCustomerTier(customer))}`}>
+                      <h4 className="font-semibold text-gray-900">
+                        {customer.name}
+                      </h4>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTierColor(getCustomerTier(customer))}`}
+                      >
                         {getCustomerTier(customer)}
                       </span>
                       {customer.total_jobs_count > 5 && (
@@ -229,7 +245,7 @@ export const CustomerList: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
                       <div className="flex items-center">
                         <Phone className="h-4 w-4 mr-2 text-gray-400" />
@@ -250,50 +266,59 @@ export const CustomerList: React.FC = () => {
                         {customer.total_jobs_count} jobs
                       </div>
                     </div>
-                    
+
                     {/* Customer Stats */}
                     <div className="flex items-center space-x-6 mt-3 text-sm">
                       <div>
-                        <span className="font-medium text-gray-600">Total Spent:</span>
+                        <span className="font-medium text-gray-600">
+                          Total Spent:
+                        </span>
                         <span className="ml-2 font-semibold text-green-600">
                           {formatCurrency(customer.total_amount_spent)}
                         </span>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-600">Avg. per Job:</span>
+                        <span className="font-medium text-gray-600">
+                          Avg. per Job:
+                        </span>
                         <span className="ml-2 font-semibold text-blue-600">
-                          {formatCurrency(customer.total_jobs_count > 0 ? customer.total_amount_spent / customer.total_jobs_count : 0)}
+                          {formatCurrency(
+                            customer.total_jobs_count > 0
+                              ? customer.total_amount_spent /
+                                  customer.total_jobs_count
+                              : 0
+                          )}
                         </span>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-600">First Job:</span>
+                        <span className="font-medium text-gray-600">
+                          First Job:
+                        </span>
                         <span className="ml-2 font-semibold text-gray-600">
                           {formatDate(customer.first_interaction_date)}
                         </span>
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-4 mt-4 lg:mt-0">
                     <Link href={`/admin/customers/${customer.id}`}>
                       <Button variant="outline" size="sm">
                         View Profile
                       </Button>
                     </Link>
-                    <Link 
+                    <Link
                       href={{
                         pathname: '/admin/jobs/create',
-                        query: { 
+                        query: {
                           customer: customer.id,
                           customer_name: customer.name,
                           customer_phone: customer.phone,
-                          customer_email: customer.email || ''
-                        }
+                          customer_email: customer.email || '',
+                        },
                       }}
                     >
-                      <Button size="sm">
-                        New Job
-                      </Button>
+                      <Button size="sm">New Job</Button>
                     </Link>
                   </div>
                 </div>

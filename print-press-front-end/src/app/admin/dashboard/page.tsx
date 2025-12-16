@@ -1,14 +1,20 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { api, dashboardApi, DashboardStats } from '@/lib/api';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
-import { 
-  TrendingUp, 
+import {
+  TrendingUp,
   TrendingDown,
-  Users, 
+  Users,
   Package,
   AlertTriangle,
   DollarSign,
@@ -17,16 +23,16 @@ import {
   BarChart3,
   RefreshCw,
   ShoppingBag,
-  FileText
+  FileText,
 } from 'lucide-react';
 import Link from 'next/link';
 
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 
 // Type for individual stat card
@@ -41,17 +47,20 @@ interface StatCard {
 }
 
 // Add missing utility functions
-const calculatePercentageChange = (current: number, previous: number): number => {
+const calculatePercentageChange = (
+  current: number,
+  previous: number
+): number => {
   if (previous === 0) return current > 0 ? 100 : 0;
   return ((current - previous) / previous) * 100;
 };
 
 const getStatusColor = (status: string): string => {
   const colors: Record<string, string> = {
-    'completed': 'bg-green-100 text-green-800',
-    'in_progress': 'bg-blue-100 text-blue-800',
-    'pending': 'bg-yellow-100 text-yellow-800',
-    'cancelled': 'bg-red-100 text-red-800'
+    completed: 'bg-green-100 text-green-800',
+    in_progress: 'bg-blue-100 text-blue-800',
+    pending: 'bg-yellow-100 text-yellow-800',
+    cancelled: 'bg-red-100 text-red-800',
   };
   return colors[status] || 'bg-gray-100 text-gray-800';
 };
@@ -60,18 +69,20 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [lastUpdated, setLastUpdated] = useState<string>(new Date().toISOString());
+  const [lastUpdated, setLastUpdated] = useState<string>(
+    new Date().toISOString()
+  );
   const [period, setPeriod] = useState('month');
 
   const fetchDashboardStats = async (currentPeriod: string) => {
     setLoading(true);
     setError('');
-    
+
     try {
       console.log(`Fetching dashboard statistics for period: ${currentPeriod}`);
       const data = await dashboardApi.getDashboardStats(currentPeriod);
       console.log('Dashboard data received:', data);
-      
+
       setStats(data);
       setLastUpdated(formatDateTime(data.summary.updated_at));
     } catch (err: unknown) {
@@ -87,7 +98,10 @@ export default function AdminDashboard() {
   }, [period]);
 
   useEffect(() => {
-    const interval = setInterval(() => fetchDashboardStats(period), 5 * 60 * 1000);
+    const interval = setInterval(
+      () => fetchDashboardStats(period),
+      5 * 60 * 1000
+    );
     return () => clearInterval(interval);
   }, [period]);
 
@@ -103,7 +117,7 @@ export default function AdminDashboard() {
         icon: <DollarSign className="h-5 w-5" />,
         color: 'bg-blue-100 text-blue-600',
         description: 'Total revenue generated',
-        link: '/admin/payments'
+        link: '/admin/payments',
       },
       {
         title: 'Total Jobs',
@@ -111,7 +125,7 @@ export default function AdminDashboard() {
         icon: <Package className="h-5 w-5" />,
         color: 'bg-green-100 text-green-600',
         description: `${stats.jobs.completed} completed, ${stats.jobs.active} active`,
-        link: '/admin/jobs'
+        link: '/admin/jobs',
       },
       {
         title: 'Active Customers',
@@ -120,17 +134,20 @@ export default function AdminDashboard() {
         icon: <Users className="h-5 w-5" />,
         color: 'bg-purple-100 text-purple-600',
         description: `${stats.customers.new_this_month} new this month`,
-        link: '/admin/customers'
+        link: '/admin/customers',
       },
       {
         title: 'Stock Alerts',
         value: stats.inventory.low_stock + stats.inventory.critical_stock,
         icon: <AlertTriangle className="h-5 w-5" />,
-        color: stats.inventory.critical_stock > 0 ? 'bg-red-100 text-red-600' : 
-               stats.inventory.low_stock > 0 ? 'bg-yellow-100 text-yellow-600' : 
-               'bg-green-100 text-green-600',
+        color:
+          stats.inventory.critical_stock > 0
+            ? 'bg-red-100 text-red-600'
+            : stats.inventory.low_stock > 0
+              ? 'bg-yellow-100 text-yellow-600'
+              : 'bg-green-100 text-green-600',
         description: `${stats.inventory.critical_stock} critical, ${stats.inventory.low_stock} low`,
-        link: '/admin/inventory/alerts'
+        link: '/admin/inventory/alerts',
       },
       {
         title: 'Completed Jobs',
@@ -139,7 +156,7 @@ export default function AdminDashboard() {
         icon: <CheckCircle className="h-5 w-5" />,
         color: 'bg-emerald-100 text-emerald-600',
         description: `${stats.jobs.completion_rate.toFixed(1)}% completion rate`,
-        link: '/admin/jobs?status=completed'
+        link: '/admin/jobs?status=completed',
       },
       {
         title: 'Outstanding Payments',
@@ -147,8 +164,8 @@ export default function AdminDashboard() {
         icon: <Clock className="h-5 w-5" />,
         color: 'bg-orange-100 text-orange-600',
         description: `${stats.payments.collection_rate.toFixed(1)}% collection rate`,
-        link: '/admin/payments?status=unpaid'
-      }
+        link: '/admin/payments?status=unpaid',
+      },
     ];
   };
 
@@ -156,12 +173,16 @@ export default function AdminDashboard() {
     const cardContent = (
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <div className={`p-2 rounded-lg ${stat.color}`}>
-            {stat.icon}
-          </div>
+          <div className={`p-2 rounded-lg ${stat.color}`}>{stat.icon}</div>
           {stat.change !== undefined && (
-            <div className={`flex items-center text-sm ${stat.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {stat.change >= 0 ? <TrendingUp className="h-4 w-4 mr-1" /> : <TrendingDown className="h-4 w-4 mr-1" />}
+            <div
+              className={`flex items-center text-sm ${stat.change >= 0 ? 'text-green-600' : 'text-red-600'}`}
+            >
+              {stat.change >= 0 ? (
+                <TrendingUp className="h-4 w-4 mr-1" />
+              ) : (
+                <TrendingDown className="h-4 w-4 mr-1" />
+              )}
               {Math.abs(stat.change).toFixed(1)}%
             </div>
           )}
@@ -179,9 +200,7 @@ export default function AdminDashboard() {
         </Card>
       </Link>
     ) : (
-      <Card className="h-full">
-        {cardContent}
-      </Card>
+      <Card className="h-full">{cardContent}</Card>
     );
   };
 
@@ -191,7 +210,9 @@ export default function AdminDashboard() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600">Welcome to your print management dashboard</p>
+            <p className="text-gray-600">
+              Welcome to your print management dashboard
+            </p>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -215,7 +236,9 @@ export default function AdminDashboard() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600">Welcome to your print management dashboard</p>
+            <p className="text-gray-600">
+              Welcome to your print management dashboard
+            </p>
           </div>
         </div>
         <Card className="border-red-200 bg-red-50">
@@ -223,9 +246,11 @@ export default function AdminDashboard() {
             <div className="flex items-center">
               <AlertTriangle className="h-6 w-6 text-red-600 mr-3" />
               <div>
-                <h3 className="font-semibold text-red-800">Unable to load dashboard</h3>
+                <h3 className="font-semibold text-red-800">
+                  Unable to load dashboard
+                </h3>
                 <p className="text-red-700">{error}</p>
-                <Button 
+                <Button
                   onClick={() => fetchDashboardStats(period)}
                   variant="outline"
                   className="mt-3 border-red-300 text-red-700 hover:bg-red-100"
@@ -247,7 +272,9 @@ export default function AdminDashboard() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Welcome to your print management dashboard</p>
+          <p className="text-gray-600">
+            Welcome to your print management dashboard
+          </p>
           {lastUpdated && (
             <p className="text-sm text-gray-500 mt-1">
               Last updated: {lastUpdated}
@@ -255,16 +282,18 @@ export default function AdminDashboard() {
           )}
         </div>
         <div className="flex items-center gap-3">
-          <Button 
+          <Button
             onClick={() => fetchDashboardStats(period)}
             variant="outline"
             size="sm"
             disabled={loading}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`}
+            />
             Refresh
           </Button>
-           <Select value={period} onValueChange={setPeriod}>
+          <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Select period" />
             </SelectTrigger>
@@ -288,9 +317,7 @@ export default function AdminDashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {getStatCards().map((stat, index) => (
-          <div key={index}>
-            {renderStatCard(stat)}
-          </div>
+          <div key={index}>{renderStatCard(stat)}</div>
         ))}
       </div>
 
@@ -304,33 +331,50 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {stats?.recent_activities && stats.recent_activities.length > 0 ? (
+              {stats?.recent_activities &&
+              stats.recent_activities.length > 0 ? (
                 stats.recent_activities.map((activity, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50"
+                  >
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <div className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(activity.status)}`}>
+                        <div
+                          className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(activity.status)}`}
+                        >
                           {activity.status.replace('_', ' ')}
                         </div>
                         <span className="text-sm font-medium text-gray-900">
                           {activity.ticket_id}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 truncate">{activity.description}</p>
+                      <p className="text-sm text-gray-600 truncate">
+                        {activity.description}
+                      </p>
                       <p className="text-xs text-gray-500">
-                        {activity.customer_name} • {formatDate(activity.created_at)}
+                        {activity.customer_name} •{' '}
+                        {formatDate(activity.created_at)}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium">{formatCurrency(activity.total_cost)}</p>
-                      <p className={`text-xs ${activity.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        {activity.balance > 0 ? `Owing: ${formatCurrency(activity.balance)}` : 'Paid'}
+                      <p className="font-medium">
+                        {formatCurrency(activity.total_cost)}
+                      </p>
+                      <p
+                        className={`text-xs ${activity.balance > 0 ? 'text-red-600' : 'text-green-600'}`}
+                      >
+                        {activity.balance > 0
+                          ? `Owing: ${formatCurrency(activity.balance)}`
+                          : 'Paid'}
                       </p>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-gray-500 text-center py-4">No recent activities</p>
+                <p className="text-gray-500 text-center py-4">
+                  No recent activities
+                </p>
               )}
             </div>
             <div className="mt-4 pt-4 border-t">
@@ -348,29 +392,44 @@ export default function AdminDashboard() {
           {/* Top Customers */}
           <Card>
             <CardHeader>
-                          <CardTitle>Top Customers</CardTitle>
-                          <CardDescription>By total paid</CardDescription>            </CardHeader>
+              <CardTitle>Top Customers</CardTitle>
+              <CardDescription>By total paid</CardDescription>{' '}
+            </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {stats?.top_customers && stats.top_customers.length > 0 ? (
                   stats.top_customers.map((customer, index) => (
-                    <div key={customer.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg">
+                    <div
+                      key={customer.id}
+                      className="flex items-center justify-between p-3 border border-gray-100 rounded-lg"
+                    >
                       <div className="flex items-center gap-3">
                         <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
                           <Users className="h-4 w-4 text-indigo-600" />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{customer.name}</p>
-                          <p className="text-xs text-gray-500">{customer.contact_person}</p>
+                          <p className="font-medium text-gray-900">
+                            {customer.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {customer.contact_person}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
-                                          <p className="font-medium">{formatCurrency(customer.total_paid)}</p>
-                                          <p className="text-xs text-gray-500">{customer.total_jobs} jobs</p>                      </div>
+                        <p className="font-medium">
+                          {formatCurrency(customer.total_paid)}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {customer.total_jobs} jobs
+                        </p>{' '}
+                      </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 text-center py-4">No customer data available</p>
+                  <p className="text-gray-500 text-center py-4">
+                    No customer data available
+                  </p>
                 )}
               </div>
             </CardContent>

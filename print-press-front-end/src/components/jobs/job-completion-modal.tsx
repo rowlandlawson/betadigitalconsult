@@ -1,7 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,7 +46,11 @@ export interface OperationalExpenseEntry {
 interface JobCompletionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (materials: MaterialEntry[], waste: WasteEntry[], expenses: OperationalExpenseEntry[]) => Promise<void>;
+  onConfirm: (
+    materials: MaterialEntry[],
+    waste: WasteEntry[],
+    expenses: OperationalExpenseEntry[]
+  ) => Promise<void>;
   loading: boolean;
 }
 
@@ -48,7 +58,7 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  loading
+  loading,
 }) => {
   const [materials, setMaterials] = useState<MaterialEntry[]>([]);
   const [waste, setWaste] = useState<WasteEntry[]>([]);
@@ -71,25 +81,29 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
   }, [isOpen]);
 
   const addMaterialRow = () => {
-    setMaterials(prev => [
-      ...prev, 
-      { 
-        material_name: '', 
-        quantity: 1, 
-        unit_cost: 0, 
-        total_cost: 0, 
-        update_inventory: true 
-      }
+    setMaterials((prev) => [
+      ...prev,
+      {
+        material_name: '',
+        quantity: 1,
+        unit_cost: 0,
+        total_cost: 0,
+        update_inventory: true,
+      },
     ]);
   };
 
   const removeMaterialRow = (index: number) => {
-    setMaterials(prev => prev.filter((_, i) => i !== index));
+    setMaterials((prev) => prev.filter((_, i) => i !== index));
   };
 
   // --- FIXED UPDATE FUNCTION ---
-  const updateMaterial = (index: number, field: keyof MaterialEntry, value: any) => {
-    setMaterials(prevMaterials => {
+  const updateMaterial = (
+    index: number,
+    field: keyof MaterialEntry,
+    value: any
+  ) => {
+    setMaterials((prevMaterials) => {
       // 1. Create a deep copy of the array and the specific item we are editing
       const newMaterials = [...prevMaterials];
       const updatedItem = { ...newMaterials[index] };
@@ -97,9 +111,11 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
       // 2. Handle specific field logic
       if (field === 'material_name') {
         updatedItem.material_name = value;
-        
+
         // Find the selected item in inventory to get the cost
-        const selectedItem = inventoryItems.find(item => item.material_name === value);
+        const selectedItem = inventoryItems.find(
+          (item) => item.material_name === value
+        );
         if (selectedItem) {
           updatedItem.unit_cost = parseFloat(selectedItem.unit_cost);
         }
@@ -122,20 +138,20 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
   };
 
   const addWasteRow = () => {
-    setWaste(prev => [
-      ...prev, 
-      { 
-        type: 'material_waste', 
-        description: '', 
-        quantity: 1, 
-        total_cost: 0, 
-        waste_reason: '' 
-      }
+    setWaste((prev) => [
+      ...prev,
+      {
+        type: 'material_waste',
+        description: '',
+        quantity: 1,
+        total_cost: 0,
+        waste_reason: '',
+      },
     ]);
   };
 
   const addExpenseRow = () => {
-    setExpenses(prev => [
+    setExpenses((prev) => [
       ...prev,
       {
         description: '',
@@ -143,37 +159,41 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
         amount: 0,
         expense_date: new Date().toISOString().split('T')[0],
         receipt_number: '',
-        notes: ''
-      }
+        notes: '',
+      },
     ]);
   };
 
   const removeExpenseRow = (index: number) => {
-    setExpenses(prev => prev.filter((_, i) => i !== index));
+    setExpenses((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const updateExpense = (index: number, field: keyof OperationalExpenseEntry, value: any) => {
-    setExpenses(prev => {
+  const updateExpense = (
+    index: number,
+    field: keyof OperationalExpenseEntry,
+    value: any
+  ) => {
+    setExpenses((prev) => {
       const newExpenses = [...prev];
       const updatedItem = { ...newExpenses[index] };
-      
+
       if (field === 'amount') {
         updatedItem.amount = parseFloat(value) || 0;
       } else {
         (updatedItem as any)[field] = value;
       }
-      
+
       newExpenses[index] = updatedItem;
       return newExpenses;
     });
   };
 
   const removeWasteRow = (index: number) => {
-    setWaste(prev => prev.filter((_, i) => i !== index));
+    setWaste((prev) => prev.filter((_, i) => i !== index));
   };
 
   const updateWaste = (index: number, field: keyof WasteEntry, value: any) => {
-    setWaste(prevWaste => {
+    setWaste((prevWaste) => {
       const newWaste = [...prevWaste];
       const updatedItem = { ...newWaste[index] };
 
@@ -196,7 +216,11 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
             updatedItem.quantity = 1;
           }
         }
-      } else if (field === 'quantity' || field === 'unit_cost' || field === 'total_cost') {
+      } else if (
+        field === 'quantity' ||
+        field === 'unit_cost' ||
+        field === 'total_cost'
+      ) {
         (updatedItem as any)[field] = parseFloat(value) || 0;
       } else {
         (updatedItem as any)[field] = value;
@@ -226,7 +250,8 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
         <DialogHeader>
           <DialogTitle>Complete Job Details</DialogTitle>
           <p className="text-sm text-gray-500">
-            Select materials used from inventory. The cost will be calculated automatically based on inventory prices.
+            Select materials used from inventory. The cost will be calculated
+            automatically based on inventory prices.
           </p>
         </DialogHeader>
 
@@ -235,30 +260,43 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-medium">Materials Used</h3>
-              <Button type="button" variant="outline" size="sm" onClick={addMaterialRow}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addMaterialRow}
+              >
                 <Plus className="h-4 w-4 mr-2" /> Add Material
               </Button>
             </div>
-            
+
             {materials.map((item, index) => (
-              <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border p-3 rounded-md bg-gray-50">
+              <div
+                key={index}
+                className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border p-3 rounded-md bg-gray-50"
+              >
                 <div className="md:col-span-4">
                   <Label className="text-xs">Material</Label>
                   <select
                     className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     value={item.material_name}
-                    onChange={(e) => updateMaterial(index, 'material_name', e.target.value)}
+                    onChange={(e) =>
+                      updateMaterial(index, 'material_name', e.target.value)
+                    }
                   >
                     <option value="">-- Select --</option>
-                    {inventoryItems.map(inv => {
+                    {inventoryItems.map((inv) => {
                       const isDisabled = inv.current_stock <= 0;
                       return (
-                        <option 
-                          key={inv.id} 
+                        <option
+                          key={inv.id}
                           value={inv.material_name}
                           disabled={isDisabled}
                         >
-                          {inv.material_name} ({formatCurrency(inv.unit_cost)}) {isDisabled ? '- OUT OF STOCK' : `- Stock: ${inv.current_stock}`}
+                          {inv.material_name} ({formatCurrency(inv.unit_cost)}){' '}
+                          {isDisabled
+                            ? '- OUT OF STOCK'
+                            : `- Stock: ${inv.current_stock}`}
                         </option>
                       );
                     })}
@@ -266,44 +304,68 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-xs">Qty</Label>
-                  <Input 
-                    type="number" 
+                  <Input
+                    type="number"
                     min="1"
                     step="0.1"
                     value={item.quantity}
-                    onChange={(e) => updateMaterial(index, 'quantity', e.target.value)}
+                    onChange={(e) =>
+                      updateMaterial(index, 'quantity', e.target.value)
+                    }
                   />
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-xs">Unit Cost</Label>
-                  <Input 
-                    type="number" 
+                  <Input
+                    type="number"
                     value={item.unit_cost}
                     readOnly
                     className="bg-gray-100 text-gray-600"
                   />
                 </div>
                 <div className="md:col-span-3">
-                  <Label className="text-xs font-bold block">Total: {formatCurrency(item.total_cost)}</Label>
+                  <Label className="text-xs font-bold block">
+                    Total: {formatCurrency(item.total_cost)}
+                  </Label>
                   <div className="flex items-center space-x-2 mt-3">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       id={`inv-${index}`}
                       checked={item.update_inventory}
-                      onChange={(e) => updateMaterial(index, 'update_inventory', e.target.checked)}
+                      onChange={(e) =>
+                        updateMaterial(
+                          index,
+                          'update_inventory',
+                          e.target.checked
+                        )
+                      }
                       className="h-4 w-4 rounded border-gray-300"
                     />
-                    <label htmlFor={`inv-${index}`} className="text-xs text-gray-600 cursor-pointer">Deduct Stock</label>
+                    <label
+                      htmlFor={`inv-${index}`}
+                      className="text-xs text-gray-600 cursor-pointer"
+                    >
+                      Deduct Stock
+                    </label>
                   </div>
                 </div>
                 <div className="md:col-span-1 flex justify-end md:justify-center">
-                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => removeMaterialRow(index)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => removeMaterialRow(index)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             ))}
-             {materials.length === 0 && <p className="text-sm text-gray-500 italic text-center py-4 bg-gray-50 rounded border border-dashed">No materials added yet.</p>}
+            {materials.length === 0 && (
+              <p className="text-sm text-gray-500 italic text-center py-4 bg-gray-50 rounded border border-dashed">
+                No materials added yet.
+              </p>
+            )}
           </div>
 
           <hr />
@@ -311,20 +373,33 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
           {/* Waste Section */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium text-red-700">Waste & Expenses</h3>
-              <Button type="button" variant="outline" size="sm" onClick={addWasteRow} className="text-red-600 border-red-200 hover:bg-red-50">
+              <h3 className="text-lg font-medium text-red-700">
+                Waste & Expenses
+              </h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addWasteRow}
+                className="text-red-600 border-red-200 hover:bg-red-50"
+              >
                 <AlertTriangle className="h-4 w-4 mr-2" /> Add Waste
               </Button>
             </div>
 
             {waste.map((item, index) => (
-              <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border border-red-100 p-3 rounded-md bg-red-50">
+              <div
+                key={index}
+                className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border border-red-100 p-3 rounded-md bg-red-50"
+              >
                 <div className="md:col-span-3">
                   <Label className="text-xs">Material (optional)</Label>
                   <select
                     className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
                     value={item.material_id || ''}
-                    onChange={(e) => updateWaste(index, 'material_id', e.target.value)}
+                    onChange={(e) =>
+                      updateWaste(index, 'material_id', e.target.value)
+                    }
                   >
                     <option value="">-- Select material --</option>
                     {inventoryItems.map((inv) => (
@@ -334,47 +409,62 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
                     ))}
                   </select>
                 </div>
-                 <div className="md:col-span-3">
+                <div className="md:col-span-3">
                   <Label className="text-xs">Reason</Label>
-                  <Input 
+                  <Input
                     value={item.waste_reason}
-                    onChange={(e) => updateWaste(index, 'waste_reason', e.target.value)}
+                    onChange={(e) =>
+                      updateWaste(index, 'waste_reason', e.target.value)
+                    }
                     placeholder="e.g. Error"
                   />
                 </div>
                 <div className="md:col-span-3">
                   <Label className="text-xs">Description</Label>
-                  <Input 
+                  <Input
                     value={item.description}
-                    onChange={(e) => updateWaste(index, 'description', e.target.value)}
+                    onChange={(e) =>
+                      updateWaste(index, 'description', e.target.value)
+                    }
                     placeholder="e.g. 5 sheets"
                   />
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-xs">Qty</Label>
-                  <Input 
-                    type="number" 
+                  <Input
+                    type="number"
                     value={item.quantity}
-                    onChange={(e) => updateWaste(index, 'quantity', e.target.value)}
+                    onChange={(e) =>
+                      updateWaste(index, 'quantity', e.target.value)
+                    }
                   />
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-xs">Cost Lost</Label>
-                  <Input 
-                    type="number" 
+                  <Input
+                    type="number"
                     value={item.total_cost}
                     readOnly
                     className="bg-gray-100 text-gray-600"
                   />
                 </div>
                 <div className="md:col-span-1 flex justify-end md:justify-center">
-                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-100" onClick={() => removeWasteRow(index)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                    onClick={() => removeWasteRow(index)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             ))}
-             {waste.length === 0 && <p className="text-sm text-gray-500 italic text-center py-4 bg-gray-50 rounded border border-dashed">No waste recorded.</p>}
+            {waste.length === 0 && (
+              <p className="text-sm text-gray-500 italic text-center py-4 bg-gray-50 rounded border border-dashed">
+                No waste recorded.
+              </p>
+            )}
           </div>
 
           <hr />
@@ -382,65 +472,100 @@ export const JobCompletionModal: React.FC<JobCompletionModalProps> = ({
           {/* Operational Expenses Section */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium text-orange-700">Operational Expenses</h3>
-              <Button type="button" variant="outline" size="sm" onClick={addExpenseRow} className="text-orange-600 border-orange-200 hover:bg-orange-50">
+              <h3 className="text-lg font-medium text-orange-700">
+                Operational Expenses
+              </h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addExpenseRow}
+                className="text-orange-600 border-orange-200 hover:bg-orange-50"
+              >
                 <Plus className="h-4 w-4 mr-2" /> Add Expense
               </Button>
             </div>
 
             {expenses.map((item, index) => (
-              <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border border-orange-100 p-3 rounded-md bg-orange-50">
+              <div
+                key={index}
+                className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border border-orange-100 p-3 rounded-md bg-orange-50"
+              >
                 <div className="md:col-span-4">
                   <Label className="text-xs">Description</Label>
-                  <Input 
+                  <Input
                     value={item.description}
-                    onChange={(e) => updateExpense(index, 'description', e.target.value)}
+                    onChange={(e) =>
+                      updateExpense(index, 'description', e.target.value)
+                    }
                     placeholder="e.g. Equipment maintenance"
                   />
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-xs">Category</Label>
-                  <Input 
+                  <Input
                     value={item.category}
-                    onChange={(e) => updateExpense(index, 'category', e.target.value)}
+                    onChange={(e) =>
+                      updateExpense(index, 'category', e.target.value)
+                    }
                     placeholder="e.g. Maintenance"
                   />
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-xs">Amount</Label>
-                  <Input 
+                  <Input
                     type="number"
                     value={item.amount}
-                    onChange={(e) => updateExpense(index, 'amount', e.target.value)}
+                    onChange={(e) =>
+                      updateExpense(index, 'amount', e.target.value)
+                    }
                   />
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-xs">Date</Label>
-                  <Input 
+                  <Input
                     type="date"
                     value={item.expense_date}
-                    onChange={(e) => updateExpense(index, 'expense_date', e.target.value)}
+                    onChange={(e) =>
+                      updateExpense(index, 'expense_date', e.target.value)
+                    }
                   />
                 </div>
                 <div className="md:col-span-1 flex justify-end md:justify-center">
-                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-100" onClick={() => removeExpenseRow(index)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-red-500 hover:text-red-700 hover:bg-red-100"
+                    onClick={() => removeExpenseRow(index)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             ))}
-            {expenses.length === 0 && <p className="text-sm text-gray-500 italic text-center py-4 bg-gray-50 rounded border border-dashed">No expenses recorded.</p>}
-          </div>
-          
-          <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg flex justify-between items-center">
-            <span className="font-semibold text-blue-900">Total Additional Cost:</span>
-            <span className="font-bold text-lg text-blue-900">{formatCurrency(totalMaterialCost + totalWasteCost + totalExpenseCost)}</span>
+            {expenses.length === 0 && (
+              <p className="text-sm text-gray-500 italic text-center py-4 bg-gray-50 rounded border border-dashed">
+                No expenses recorded.
+              </p>
+            )}
           </div>
 
+          <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg flex justify-between items-center">
+            <span className="font-semibold text-blue-900">
+              Total Additional Cost:
+            </span>
+            <span className="font-bold text-lg text-blue-900">
+              {formatCurrency(
+                totalMaterialCost + totalWasteCost + totalExpenseCost
+              )}
+            </span>
+          </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
           <Button onClick={handleConfirm} disabled={loading}>
             {loading ? 'Processing...' : 'Save & Complete Job'}
           </Button>

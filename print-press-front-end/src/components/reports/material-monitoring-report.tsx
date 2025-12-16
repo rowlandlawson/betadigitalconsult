@@ -24,7 +24,8 @@ export const MaterialMonitoringReport: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      const dashboard = await reportsService.getMaterialMonitoringDashboard(months);
+      const dashboard =
+        await reportsService.getMaterialMonitoringDashboard(months);
       setData(dashboard);
     } catch (err: unknown) {
       console.error('Failed to fetch material monitoring:', err);
@@ -65,10 +66,14 @@ export const MaterialMonitoringReport: React.FC = () => {
 
   const getStockStatusColor = (status: string) => {
     switch (status) {
-      case 'CRITICAL': return 'bg-red-100 text-red-800';
-      case 'LOW': return 'bg-yellow-100 text-yellow-800';
-      case 'HEALTHY': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'CRITICAL':
+        return 'bg-red-100 text-red-800';
+      case 'LOW':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'HEALTHY':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -78,7 +83,9 @@ export const MaterialMonitoringReport: React.FC = () => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Material Monitoring Dashboard</h3>
+            <h3 className="text-lg font-semibold">
+              Material Monitoring Dashboard
+            </h3>
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">Period:</label>
               <Input
@@ -102,8 +109,12 @@ export const MaterialMonitoringReport: React.FC = () => {
             <div className="flex items-center gap-2">
               <Package className="h-5 w-5 text-gray-500" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Materials Tracked</p>
-                <p className="text-2xl font-bold text-gray-900">{data.summary.total_materials_tracked}</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Materials Tracked
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {data.summary.total_materials_tracked}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -114,8 +125,12 @@ export const MaterialMonitoringReport: React.FC = () => {
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-500" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Critical Stock</p>
-                <p className="text-2xl font-bold text-red-600">{data.summary.critical_stock_items}</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Critical Stock
+                </p>
+                <p className="text-2xl font-bold text-red-600">
+                  {data.summary.critical_stock_items}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -126,7 +141,9 @@ export const MaterialMonitoringReport: React.FC = () => {
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-gray-500" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Waste Cost</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Total Waste Cost
+                </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {formatCurrency(data.summary.total_waste_cost)}
                 </p>
@@ -140,7 +157,9 @@ export const MaterialMonitoringReport: React.FC = () => {
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-green-500" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Avg Material Return</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Avg Material Return
+                </p>
                 <p className="text-2xl font-bold text-green-600">
                   {data.summary.average_material_return.toFixed(1)}%
                 </p>
@@ -176,10 +195,16 @@ export const MaterialMonitoringReport: React.FC = () => {
                     <td className="p-2 text-right">{item.current_stock}</td>
                     <td className="p-2 text-right">{item.threshold}</td>
                     <td className="p-2">{item.unit_of_measure}</td>
-                    <td className="p-2 text-right font-medium">{formatCurrency(item.stock_value)}</td>
-                    <td className="p-2 text-right">{item.stock_percentage.toFixed(1)}%</td>
+                    <td className="p-2 text-right font-medium">
+                      {formatCurrency(item.stock_value)}
+                    </td>
+                    <td className="p-2 text-right">
+                      {item.stock_percentage.toFixed(1)}%
+                    </td>
                     <td className="p-2">
-                      <span className={`px-2 py-1 rounded text-xs ${getStockStatusColor(item.stock_status)}`}>
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${getStockStatusColor(item.stock_status)}`}
+                      >
                         {item.stock_status}
                       </span>
                     </td>
@@ -215,7 +240,9 @@ export const MaterialMonitoringReport: React.FC = () => {
                     <td className="p-2 font-medium">{item.material_name}</td>
                     <td className="p-2 text-right">{item.jobs_count}</td>
                     <td className="p-2 text-right">{item.total_quantity}</td>
-                    <td className="p-2 text-right">{formatCurrency(item.total_cost)}</td>
+                    <td className="p-2 text-right">
+                      {formatCurrency(item.total_cost)}
+                    </td>
                     <td className="p-2 text-right font-medium text-green-600">
                       {formatCurrency(item.generated_profit)}
                     </td>
@@ -257,8 +284,12 @@ export const MaterialMonitoringReport: React.FC = () => {
                     <td className="p-2 text-right font-medium text-red-600">
                       {formatCurrency(item.total_cost)}
                     </td>
-                    <td className="p-2 text-right">{formatCurrency(item.average_cost)}</td>
-                    <td className="p-2 text-right">{item.percentage_of_total.toFixed(1)}%</td>
+                    <td className="p-2 text-right">
+                      {formatCurrency(item.average_cost)}
+                    </td>
+                    <td className="p-2 text-right">
+                      {item.percentage_of_total.toFixed(1)}%
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -269,4 +300,3 @@ export const MaterialMonitoringReport: React.FC = () => {
     </div>
   );
 };
-

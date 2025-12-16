@@ -1,12 +1,12 @@
 // lib/jobService.ts
 import { api } from './api';
-import { 
-  Job, 
-  JobWithDetails, 
-  JobFormData, 
+import {
+  Job,
+  JobWithDetails,
+  JobFormData,
   PaginatedJobsResponse,
   MaterialUsed,
-  WasteExpense 
+  WasteExpense,
 } from '@/types/jobs';
 
 export const jobService = {
@@ -18,7 +18,7 @@ export const jobService = {
   }): Promise<PaginatedJobsResponse> {
     try {
       const queryParams = new URLSearchParams();
-      
+
       if (params?.page) queryParams.append('page', params.page.toString());
       if (params?.limit) queryParams.append('limit', params.limit.toString());
       if (params?.status) queryParams.append('status', params.status);
@@ -35,19 +35,23 @@ export const jobService = {
   async getJobById(id: string): Promise<JobWithDetails> {
     try {
       const response = await api.get(`/jobs/${id}`);
-      
+
       // Log the response structure for debugging
       console.log('Job API Response:', response.data);
-      
+
       if (!response.data || !response.data.job) {
         throw new Error('Invalid response structure from server');
       }
 
       const jobData = response.data.job;
-      
+
       // Map waste from backend response (backend uses 'waste', frontend expects 'waste_expenses')
-      const wasteExpenses = jobData.waste_expenses || response.data.waste_expenses || response.data.waste || [];
-      
+      const wasteExpenses =
+        jobData.waste_expenses ||
+        response.data.waste_expenses ||
+        response.data.waste ||
+        [];
+
       return {
         ...jobData,
         materials: jobData.materials || response.data.materials || [],
@@ -57,40 +61,47 @@ export const jobService = {
         edit_history: jobData.edit_history || response.data.edit_history || [],
         customer: jobData.customer || response.data.customer || null,
         worker: jobData.worker || response.data.worker || null,
-        
+
         // Ensure calculated fields exist
         total_paid: jobData.total_paid || response.data.total_paid || 0,
-        balance: jobData.balance !== undefined ? jobData.balance : 
-                (parseFloat(jobData.total_cost) - parseFloat(jobData.total_paid || 0)),
-        
+        balance:
+          jobData.balance !== undefined
+            ? jobData.balance
+            : parseFloat(jobData.total_cost) -
+              parseFloat(jobData.total_paid || 0),
+
         // Ensure cost breakdown fields exist
-        materials_cost: jobData.materials_cost || response.data.materials_cost || 0,
+        materials_cost:
+          jobData.materials_cost || response.data.materials_cost || 0,
         waste_cost: jobData.waste_cost || response.data.waste_cost || 0,
-        operational_cost: jobData.operational_cost || response.data.operational_cost || 0,
+        operational_cost:
+          jobData.operational_cost || response.data.operational_cost || 0,
         labor_cost: jobData.labor_cost || response.data.labor_cost || 0,
         profit: jobData.profit || response.data.profit || 0,
       };
     } catch (error: any) {
       console.error(`Error fetching job ${id}:`, error);
-      
+
       // Enhanced error logging
       if (error.response) {
         console.error('Server response:', {
           status: error.response.status,
           data: error.response.data,
-          headers: error.response.headers
+          headers: error.response.headers,
         });
       } else if (error.request) {
         console.error('No response received:', error.request);
       } else {
         console.error('Request setup error:', error.message);
       }
-      
+
       throw this.handleApiError(error);
     }
   },
 
-  async createJob(jobData: JobFormData): Promise<{ job: Job; message: string }> {
+  async createJob(
+    jobData: JobFormData
+  ): Promise<{ job: Job; message: string }> {
     try {
       const response = await api.post('/jobs', jobData);
       return response.data;
@@ -101,16 +112,16 @@ export const jobService = {
   },
 
   async updateJobStatus(
-    jobId: string, 
-    status: Job['status'], 
-    materials?: MaterialUsed[], 
+    jobId: string,
+    status: Job['status'],
+    materials?: MaterialUsed[],
     waste?: WasteExpense[]
   ): Promise<void> {
     try {
-      await api.patch(`/jobs/${jobId}/status`, { 
-        status, 
-        materials: materials || [], 
-        waste: waste || [] 
+      await api.patch(`/jobs/${jobId}/status`, {
+        status,
+        materials: materials || [],
+        waste: waste || [],
       });
     } catch (error: any) {
       console.error(`Error updating job ${jobId} status:`, error);
@@ -153,9 +164,9 @@ export const jobService = {
     editReason: string,
     waste?: any[],
     expenses?: any[]
-  ): Promise<{ 
-    materials: MaterialUsed[]; 
-    waste?: any[]; 
+  ): Promise<{
+    materials: MaterialUsed[];
+    waste?: any[];
     expenses?: any[];
     editHistory: any[];
     message: string;
@@ -165,7 +176,7 @@ export const jobService = {
         materials,
         waste: waste || [],
         expenses: expenses || [],
-        edit_reason: editReason
+        edit_reason: editReason,
       });
       return response.data;
     } catch (error: any) {
@@ -181,7 +192,7 @@ export const jobService = {
       // that falls out of the range of 2xx
       const { status, data } = error.response;
       let message = 'An error occurred';
-      
+
       if (data?.error) {
         message = data.error;
       } else if (status === 404) {
@@ -193,7 +204,7 @@ export const jobService = {
       } else if (status === 403) {
         message = 'You do not have permission to perform this action.';
       }
-      
+
       const apiError = new Error(message);
       apiError.name = `HTTP_${status}`;
       (apiError as any).status = status;
@@ -201,7 +212,9 @@ export const jobService = {
       return apiError;
     } else if (error.request) {
       // The request was made but no response was received
-      const networkError = new Error('No response from server. Please check your network connection.');
+      const networkError = new Error(
+        'No response from server. Please check your network connection.'
+      );
       networkError.name = 'NetworkError';
       return networkError;
     } else {
@@ -218,5 +231,5 @@ export const jobService = {
     } catch {
       return false;
     }
-  }
+  },
 };

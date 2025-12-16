@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardFooter,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api, isApiError } from '@/lib/api';
@@ -31,16 +36,18 @@ export const EditJobForm: React.FC<EditJobFormProps> = ({ jobId }) => {
     const fetchJob = async () => {
       try {
         // Use JobWithDetails instead of Job
-        const response = await api.get<{ job: JobWithDetails }>(`/jobs/${jobId}`);
+        const response = await api.get<{ job: JobWithDetails }>(
+          `/jobs/${jobId}`
+        );
         const job = response.data.job; // Access the job from the response
-        
+
         // Safe date handling
-        const dateRequested = job.date_requested 
-          ? job.date_requested.split('T')[0] 
+        const dateRequested = job.date_requested
+          ? job.date_requested.split('T')[0]
           : new Date().toISOString().split('T')[0];
-        
-        const deliveryDeadline = job.delivery_deadline 
-          ? job.delivery_deadline.split('T')[0] 
+
+        const deliveryDeadline = job.delivery_deadline
+          ? job.delivery_deadline.split('T')[0]
           : '';
 
         setFormData({
@@ -73,13 +80,13 @@ export const EditJobForm: React.FC<EditJobFormProps> = ({ jobId }) => {
     if (!data.description.trim()) return 'Job description is required';
     if (data.total_cost <= 0) return 'Total cost must be greater than 0';
     if (!data.date_requested) return 'Date requested is required';
-    
+
     return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationError = validateForm(formData);
     if (validationError) {
       setError(validationError);
@@ -104,10 +111,12 @@ export const EditJobForm: React.FC<EditJobFormProps> = ({ jobId }) => {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value, type } = e.target;
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
       [name]: type === 'number' ? parseFloat(value) || 0 : value,
     }));
@@ -125,9 +134,11 @@ export const EditJobForm: React.FC<EditJobFormProps> = ({ jobId }) => {
     <Card className="w-full max-w-2xl">
       <CardHeader>
         <h2 className="text-2xl font-bold text-gray-900">Edit Job</h2>
-        <p className="text-gray-600">Update job details and customer information</p>
+        <p className="text-gray-600">
+          Update job details and customer information
+        </p>
       </CardHeader>
-      
+
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6">
           {error && (
@@ -147,7 +158,7 @@ export const EditJobForm: React.FC<EditJobFormProps> = ({ jobId }) => {
               onChange={handleChange}
               placeholder="Enter customer name"
             />
-            
+
             <Input
               label="Customer Phone *"
               name="customer_phone"
@@ -196,7 +207,7 @@ export const EditJobForm: React.FC<EditJobFormProps> = ({ jobId }) => {
               onChange={handleChange}
               placeholder="0.00"
             />
-            
+
             <Input
               label="Date Requested *"
               name="date_requested"
@@ -215,7 +226,7 @@ export const EditJobForm: React.FC<EditJobFormProps> = ({ jobId }) => {
             onChange={handleChange}
           />
         </CardContent>
-        
+
         <CardFooter className="flex justify-between">
           <Button
             type="button"
@@ -225,11 +236,7 @@ export const EditJobForm: React.FC<EditJobFormProps> = ({ jobId }) => {
           >
             Cancel
           </Button>
-          <Button
-            type="submit"
-            loading={submitting}
-            disabled={submitting}
-          >
+          <Button type="submit" loading={submitting} disabled={submitting}>
             Update Job
           </Button>
         </CardFooter>

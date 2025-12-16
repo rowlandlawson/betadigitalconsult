@@ -16,7 +16,11 @@ interface HeaderProps {
   onToggleSidebar?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ user, onLogout, onToggleSidebar }) => {
+export const Header: React.FC<HeaderProps> = ({
+  user,
+  onLogout,
+  onToggleSidebar,
+}) => {
   const { settings } = useCompanySettings();
   const companyName = settings.name || 'Company';
   return (
@@ -32,7 +36,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout, onToggleSidebar 
             >
               <Menu className="h-5 w-5" />
             </button>
-            
+
             <div className="min-w-0 flex-1">
               <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 truncate">
                 Welcome back, {user.name}
@@ -46,11 +50,11 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout, onToggleSidebar 
               {companyName}
             </span>
           </div>
-          
+
           {/* Right side - Notification and user info */}
           <div className="flex items-center space-x-2 sm:space-x-4">
             <NotificationBell />
-            
+
             <div className="flex items-center space-x-2 sm:space-x-3">
               {/* User avatar and info - hidden on mobile, visible on sm and up */}
               <div className="hidden sm:flex items-center space-x-2">
@@ -71,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout, onToggleSidebar 
               <div className="sm:hidden w-8 h-8 bg-[#AABD77] rounded-full flex items-center justify-center shrink-0">
                 <User className="h-4 w-4 text-white" />
               </div>
-              
+
               {/* Logout button */}
               <Button
                 variant="ghost"

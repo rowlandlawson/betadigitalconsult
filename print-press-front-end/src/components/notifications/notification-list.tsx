@@ -7,7 +7,18 @@ import { notificationService } from '@/lib/notificationService';
 import { Notification } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { isApiError } from '@/lib/api';
-import { Bell, Check, CheckCheck, Filter, AlertCircle, Package, CreditCard, Briefcase, Users, Settings } from 'lucide-react';
+import {
+  Bell,
+  Check,
+  CheckCheck,
+  Filter,
+  AlertCircle,
+  Package,
+  CreditCard,
+  Briefcase,
+  Users,
+  Settings,
+} from 'lucide-react';
 import { NotificationItem } from './notification-item';
 
 type NotificationType = Notification['type'] | 'all';
@@ -16,7 +27,10 @@ export const NotificationList: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [filter, setFilter] = useState<{ type: NotificationType; unreadOnly: boolean }>({
+  const [filter, setFilter] = useState<{
+    type: NotificationType;
+    unreadOnly: boolean;
+  }>({
     type: 'all',
     unreadOnly: false,
   });
@@ -64,12 +78,12 @@ export const NotificationList: React.FC = () => {
     }
   };
 
-  const filteredNotifications = notifications.filter(notif => {
+  const filteredNotifications = notifications.filter((notif) => {
     if (filter.type === 'all') return true;
     return notif.type === filter.type;
   });
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const getTypeIcon = (type: Notification['type']) => {
     switch (type) {
@@ -123,7 +137,9 @@ export const NotificationList: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Notifications</h1>
           <p className="text-gray-600">
-            {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
+            {unreadCount > 0
+              ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`
+              : 'All caught up!'}
           </p>
         </div>
         {unreadCount > 0 && (
@@ -138,7 +154,9 @@ export const NotificationList: React.FC = () => {
         <Card>
           <CardContent className="p-6">
             <div className="text-red-600 text-center">
-              <p className="text-lg font-semibold">Error loading notifications</p>
+              <p className="text-lg font-semibold">
+                Error loading notifications
+              </p>
               <p className="text-sm">{error}</p>
             </div>
           </CardContent>
@@ -151,7 +169,9 @@ export const NotificationList: React.FC = () => {
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filter by:</span>
+              <span className="text-sm font-medium text-gray-700">
+                Filter by:
+              </span>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -170,7 +190,9 @@ export const NotificationList: React.FC = () => {
                 Jobs
               </Button>
               <Button
-                variant={filter.type === 'payment_update' ? 'default' : 'outline'}
+                variant={
+                  filter.type === 'payment_update' ? 'default' : 'outline'
+                }
                 size="sm"
                 onClick={() => setFilter({ ...filter, type: 'payment_update' })}
               >
@@ -196,7 +218,9 @@ export const NotificationList: React.FC = () => {
               <Button
                 variant={filter.unreadOnly ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setFilter({ ...filter, unreadOnly: !filter.unreadOnly })}
+                onClick={() =>
+                  setFilter({ ...filter, unreadOnly: !filter.unreadOnly })
+                }
               >
                 Unread Only
               </Button>
@@ -231,4 +255,3 @@ export const NotificationList: React.FC = () => {
     </div>
   );
 };
-

@@ -1,7 +1,13 @@
-import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse, AxiosRequestConfig } from 'axios';
+import axios, {
+  AxiosError,
+  InternalAxiosRequestConfig,
+  AxiosResponse,
+  AxiosRequestConfig,
+} from 'axios';
 import { getValidToken, logout, refreshAuthToken } from './auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -38,7 +44,9 @@ interface RetryableAxiosRequestConfig extends InternalAxiosRequestConfig {
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
-  async (config: InternalAxiosRequestConfig): Promise<InternalAxiosRequestConfig> => {
+  async (
+    config: InternalAxiosRequestConfig
+  ): Promise<InternalAxiosRequestConfig> => {
     const token = await getValidToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -61,11 +69,13 @@ api.interceptors.response.use(
         // If already refreshing, add to queue
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
-        }).then(() => {
-          return api(originalRequest);
-        }).catch(err => {
-          return Promise.reject(err);
-        });
+        })
+          .then(() => {
+            return api(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
       }
 
       originalRequest._retry = true;
@@ -74,7 +84,7 @@ api.interceptors.response.use(
       try {
         // Try to refresh the token
         const newAuth = await refreshAuthToken();
-        
+
         if (newAuth) {
           // Retry the original request with new token
           originalRequest.headers.Authorization = `Bearer ${newAuth.accessToken}`;
@@ -126,7 +136,7 @@ export const apiCall = async <T>(
       method,
       url,
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       data: data ? JSON.stringify(data) : undefined,
@@ -224,43 +234,56 @@ export interface QuickStats {
 // Dashboard API methods
 export const dashboardApi = {
   // Get comprehensive dashboard statistics
-  getDashboardStats: async (period: string = 'month'): Promise<DashboardStats> => {
+  getDashboardStats: async (
+    period: string = 'month'
+  ): Promise<DashboardStats> => {
     try {
       // Use the apiCall helper to fetch stats for the given period
-      return await apiCall<DashboardStats>('GET', `/reports/dashboard-stats?period=${period}`);
+      return await apiCall<DashboardStats>(
+        'GET',
+        `/reports/dashboard-stats?period=${period}`
+      );
     } catch (error) {
       console.error('Failed to fetch dashboard stats:', error);
-      
+
       // Throw a more specific error if needed
       if (axios.isAxiosError(error)) {
-        throw new Error(`Dashboard stats failed: ${error.response?.data?.message || error.message}`);
+        throw new Error(
+          `Dashboard stats failed: ${error.response?.data?.message || error.message}`
+        );
       }
       throw error;
     }
   },
-  
+
   // Get simplified stats for quick loading
   getQuickStats: async (): Promise<QuickStats> => {
     try {
       // Use the apiCall helper for consistent error handling
-      const data = await apiCall<DashboardStats>('GET', '/reports/dashboard-stats');
-      
+      const data = await apiCall<DashboardStats>(
+        'GET',
+        '/reports/dashboard-stats'
+      );
+
       return {
         total_revenue: data.payments.total_revenue,
         total_jobs: data.jobs.total,
         active_customers: data.customers.total,
-        low_stock_items: data.inventory.low_stock + data.inventory.critical_stock,
+        low_stock_items:
+          data.inventory.low_stock + data.inventory.critical_stock,
         completed_jobs: data.jobs.completed,
         pending_payments: data.payments.total_outstanding,
-        monthly_growth: data.performance_metrics.monthly_revenue_growth
+        monthly_growth: data.performance_metrics.monthly_revenue_growth,
       };
     } catch (error) {
       console.error('Failed to fetch quick stats:', error);
-      
+
       // Provide fallback or rethrow
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         // If endpoint doesn't exist, return empty stats
-        console.warn('Dashboard stats endpoint not found, returning empty stats');
+        console.warn(
+          'Dashboard stats endpoint not found, returning empty stats'
+        );
         return {
           total_revenue: 0,
           total_jobs: 0,
@@ -268,19 +291,21 @@ export const dashboardApi = {
           low_stock_items: 0,
           completed_jobs: 0,
           pending_payments: 0,
-          monthly_growth: 0
+          monthly_growth: 0,
         };
       }
       throw error;
     }
   },
-  
+
   // Optional: Add a method to refresh specific parts of dashboard data
-  refreshDashboardData: async (forceRefresh: boolean = false): Promise<DashboardStats> => {
-    const url = forceRefresh 
-      ? '/reports/dashboard-stats?refresh=true' 
+  refreshDashboardData: async (
+    forceRefresh: boolean = false
+  ): Promise<DashboardStats> => {
+    const url = forceRefresh
+      ? '/reports/dashboard-stats?refresh=true'
       : '/reports/dashboard-stats';
-    
+
     return await apiCall<DashboardStats>('GET', url);
-  }
+  },
 };

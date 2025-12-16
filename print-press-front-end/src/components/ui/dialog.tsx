@@ -26,7 +26,11 @@ interface DialogFooterProps {
   children: React.ReactNode;
 }
 
-export const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) => {
+export const Dialog: React.FC<DialogProps> = ({
+  open,
+  onOpenChange,
+  children,
+}) => {
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -48,11 +52,11 @@ export const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) 
   if (!open) return null;
 
   return createPortal(
-    <div 
+    <div
       className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
       onClick={() => onOpenChange(false)}
     >
-      <div 
+      <div
         className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
@@ -63,20 +67,15 @@ export const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) 
   );
 };
 
-export const DialogContent: React.FC<DialogContentProps> = ({ children, className = '' }) => {
-  return (
-    <div className={className}>
-      {children}
-    </div>
-  );
+export const DialogContent: React.FC<DialogContentProps> = ({
+  children,
+  className = '',
+}) => {
+  return <div className={className}>{children}</div>;
 };
 
 export const DialogHeader: React.FC<DialogHeaderProps> = ({ children }) => {
-  return (
-    <div className="p-6 border-b">
-      {children}
-    </div>
-  );
+  return <div className="p-6 border-b">{children}</div>;
 };
 
 export const DialogTitle: React.FC<DialogTitleProps> = ({ children }) => {

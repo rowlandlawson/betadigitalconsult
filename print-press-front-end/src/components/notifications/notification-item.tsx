@@ -40,23 +40,32 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h4 className={`font-medium ${!notification.is_read ? 'text-gray-900' : 'text-gray-700'}`}>
+                <h4
+                  className={`font-medium ${!notification.is_read ? 'text-gray-900' : 'text-gray-700'}`}
+                >
                   {notification.title}
                 </h4>
                 {!notification.is_read && (
                   <span className="h-2 w-2 bg-blue-600 rounded-full"></span>
                 )}
               </div>
-              <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
+              <p className="text-sm text-gray-600 mb-2">
+                {notification.message}
+              </p>
               <div className="flex items-center gap-4 text-xs text-gray-500">
                 <span>{formatDate(notification.created_at)}</span>
                 {notification.priority && (
-                  <span className={`px-2 py-0.5 rounded ${
-                    notification.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                    notification.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                    notification.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
+                  <span
+                    className={`px-2 py-0.5 rounded ${
+                      notification.priority === 'urgent'
+                        ? 'bg-red-100 text-red-800'
+                        : notification.priority === 'high'
+                          ? 'bg-orange-100 text-orange-800'
+                          : notification.priority === 'medium'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
                     {notification.priority}
                   </span>
                 )}
@@ -91,4 +100,3 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
 
   return <div onClick={handleClick}>{content}</div>;
 };
-

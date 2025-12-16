@@ -63,7 +63,11 @@ export function PasswordSettingsPanel() {
         newPassword: changeForm.newPassword,
       });
       toast.success(response.message || 'Password updated successfully.');
-      setChangeForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setChangeForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
     } catch (error) {
       toast.error(extractErrorMessage(error));
     } finally {
@@ -81,7 +85,9 @@ export function PasswordSettingsPanel() {
 
     setRecoveryLoading(true);
     try {
-      const response = await passwordService.requestResetLink({ identifier: recoveryIdentifier.trim() });
+      const response = await passwordService.requestResetLink({
+        identifier: recoveryIdentifier.trim(),
+      });
       toast.success(response.message || 'Recovery link sent.');
       setRecoveryIdentifier('');
     } catch (error) {
@@ -101,7 +107,9 @@ export function PasswordSettingsPanel() {
 
     setAdminResetLoading(true);
     try {
-      const response = await passwordService.adminResetUserPassword({ userId: adminResetUserId.trim() });
+      const response = await passwordService.adminResetUserPassword({
+        userId: adminResetUserId.trim(),
+      });
       toast.success(response.message || 'Admin reset link generated.');
       if (response.resetLink) {
         console.info('🔐 Password reset link:', response.resetLink);
@@ -121,7 +129,8 @@ export function PasswordSettingsPanel() {
         <div>
           <h2 className="text-2xl font-semibold">Password & Recovery</h2>
           <p className="text-sm text-gray-600">
-            Update your password and send recovery links without leaving the admin console.
+            Update your password and send recovery links without leaving the
+            admin console.
           </p>
         </div>
       </div>
@@ -136,32 +145,53 @@ export function PasswordSettingsPanel() {
         <CardContent>
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Current Password
+              </label>
               <Input
                 type="password"
                 value={changeForm.currentPassword}
-                onChange={(event) => setChangeForm((prev) => ({ ...prev, currentPassword: event.target.value }))}
+                onChange={(event) =>
+                  setChangeForm((prev) => ({
+                    ...prev,
+                    currentPassword: event.target.value,
+                  }))
+                }
                 placeholder="Enter current password"
                 required
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  New Password
+                </label>
                 <Input
                   type="password"
                   value={changeForm.newPassword}
-                  onChange={(event) => setChangeForm((prev) => ({ ...prev, newPassword: event.target.value }))}
+                  onChange={(event) =>
+                    setChangeForm((prev) => ({
+                      ...prev,
+                      newPassword: event.target.value,
+                    }))
+                  }
                   placeholder="Enter new password"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm New Password
+                </label>
                 <Input
                   type="password"
                   value={changeForm.confirmPassword}
-                  onChange={(event) => setChangeForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
+                  onChange={(event) =>
+                    setChangeForm((prev) => ({
+                      ...prev,
+                      confirmPassword: event.target.value,
+                    }))
+                  }
                   placeholder="Re-type new password"
                   required
                 />
@@ -181,7 +211,8 @@ export function PasswordSettingsPanel() {
           <div>
             <h3 className="text-lg font-semibold">Password Recovery</h3>
             <p className="text-sm text-gray-500">
-              Send reset links for yourself or workers. Links are logged to the server console right now.
+              Send reset links for yourself or workers. Links are logged to the
+              server console right now.
             </p>
           </div>
         </CardHeader>
@@ -197,7 +228,11 @@ export function PasswordSettingsPanel() {
                 onChange={(event) => setRecoveryIdentifier(event.target.value)}
                 placeholder="e.g. admin@company.com or johndoe"
               />
-              <Button type="submit" variant="outline" disabled={recoveryLoading}>
+              <Button
+                type="submit"
+                variant="outline"
+                disabled={recoveryLoading}
+              >
                 {recoveryLoading ? 'Sending...' : 'Send Link'}
               </Button>
             </div>
@@ -215,7 +250,9 @@ export function PasswordSettingsPanel() {
                 placeholder="Paste user ID"
               />
               <Button type="submit" disabled={adminResetLoading}>
-                {adminResetLoading ? 'Generating...' : (
+                {adminResetLoading ? (
+                  'Generating...'
+                ) : (
                   <span className="flex items-center gap-2">
                     <RefreshCw className="h-4 w-4" />
                     Generate Link
@@ -229,4 +266,3 @@ export function PasswordSettingsPanel() {
     </div>
   );
 }
-

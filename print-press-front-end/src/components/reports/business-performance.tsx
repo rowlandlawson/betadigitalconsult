@@ -8,7 +8,18 @@ import { BusinessPerformance } from '@/types/reports';
 import { formatCurrency } from '@/lib/utils';
 import { isApiError } from '@/lib/api';
 import { TrendingUp, Users, Briefcase } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from 'recharts';
 
 export const BusinessPerformance: React.FC = () => {
   const [data, setData] = useState<BusinessPerformance | null>(null);
@@ -63,20 +74,29 @@ export const BusinessPerformance: React.FC = () => {
     return null;
   }
 
-  const revenueChartData = data.revenue_trends.map(item => ({
-    period: new Date(item.period).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+  const revenueChartData = data.revenue_trends.map((item) => ({
+    period: new Date(item.period).toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric',
+    }),
     revenue: parseFloat(item.total_revenue.toString()),
     collected: parseFloat(item.collected_revenue.toString()),
   }));
 
-  const customerChartData = data.customer_trends.map(item => ({
-    period: new Date(item.period).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+  const customerChartData = data.customer_trends.map((item) => ({
+    period: new Date(item.period).toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric',
+    }),
     new: item.new_customers,
     repeat: item.repeat_customers,
   }));
 
-  const efficiencyChartData = data.efficiency_metrics.map(item => ({
-    period: new Date(item.period).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+  const efficiencyChartData = data.efficiency_metrics.map((item) => ({
+    period: new Date(item.period).toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric',
+    }),
     completionRate: parseFloat(item.completion_rate.toString()),
     avgHours: parseFloat(item.avg_completion_hours.toString()),
   }));
@@ -122,7 +142,9 @@ export const BusinessPerformance: React.FC = () => {
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-blue-500" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Average Revenue</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Average Revenue
+                </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {formatCurrency(data.performance_indicators.average_revenue)}
                 </p>
@@ -136,7 +158,9 @@ export const BusinessPerformance: React.FC = () => {
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-purple-500" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Customer Growth Rate</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Customer Growth Rate
+                </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {data.performance_indicators.customer_growth_rate.toFixed(1)}%
                 </p>
@@ -150,7 +174,9 @@ export const BusinessPerformance: React.FC = () => {
             <div className="flex items-center gap-2">
               <Briefcase className="h-5 w-5 text-green-500" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Periods</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Total Periods
+                </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {data.performance_indicators.total_periods}
                 </p>
@@ -173,8 +199,20 @@ export const BusinessPerformance: React.FC = () => {
               <YAxis />
               <Tooltip formatter={(value: number) => formatCurrency(value)} />
               <Legend />
-              <Line type="monotone" dataKey="revenue" stroke="#AABD77" strokeWidth={2} name="Total Revenue" />
-              <Line type="monotone" dataKey="collected" stroke="#8FA66B" strokeWidth={2} name="Collected Revenue" />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="#AABD77"
+                strokeWidth={2}
+                name="Total Revenue"
+              />
+              <Line
+                type="monotone"
+                dataKey="collected"
+                stroke="#8FA66B"
+                strokeWidth={2}
+                name="Collected Revenue"
+              />
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
@@ -256,12 +294,21 @@ export const BusinessPerformance: React.FC = () => {
                 {data.revenue_trends.map((item, idx) => (
                   <tr key={idx} className="border-b hover:bg-gray-50">
                     <td className="p-2 font-medium">
-                      {new Date(item.period).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      {new Date(item.period).toLocaleDateString('en-US', {
+                        month: 'short',
+                        year: 'numeric',
+                      })}
                     </td>
                     <td className="p-2 text-right">{item.job_count}</td>
-                    <td className="p-2 text-right font-medium">{formatCurrency(item.total_revenue)}</td>
-                    <td className="p-2 text-right">{formatCurrency(item.collected_revenue)}</td>
-                    <td className="p-2 text-right">{formatCurrency(item.average_job_value)}</td>
+                    <td className="p-2 text-right font-medium">
+                      {formatCurrency(item.total_revenue)}
+                    </td>
+                    <td className="p-2 text-right">
+                      {formatCurrency(item.collected_revenue)}
+                    </td>
+                    <td className="p-2 text-right">
+                      {formatCurrency(item.average_job_value)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -272,4 +319,3 @@ export const BusinessPerformance: React.FC = () => {
     </div>
   );
 };
-

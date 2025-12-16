@@ -1,5 +1,5 @@
 import { api } from './api';
-import { User } from '@/types';
+export type { User } from '@/types';
 
 export interface UsersResponse {
   users: User[];
@@ -40,12 +40,17 @@ export const userService = {
     return response.data.user;
   },
 
-  async createUser(userData: CreateUserData): Promise<{ user: User; message: string }> {
+  async createUser(
+    userData: CreateUserData
+  ): Promise<{ user: User; message: string }> {
     const response = await api.post('/users', userData);
     return response.data;
   },
 
-  async updateUser(id: string, userData: UpdateUserData): Promise<{ user: User; message: string }> {
+  async updateUser(
+    id: string,
+    userData: UpdateUserData
+  ): Promise<{ user: User; message: string }> {
     const response = await api.put(`/users/${id}`, userData);
     return response.data;
   },
@@ -60,6 +65,5 @@ export const userService = {
 
   async resetUserPassword(id: string, newPassword: string): Promise<void> {
     await api.post(`/users/${id}/reset-password`, { newPassword });
-  }
+  },
 };
-

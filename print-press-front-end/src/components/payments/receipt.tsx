@@ -18,7 +18,11 @@ interface ReceiptProps {
   onBack?: () => void;
 }
 
-export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = true, onBack }) => {
+export const Receipt: React.FC<ReceiptProps> = ({
+  paymentId,
+  showBackButton = true,
+  onBack,
+}) => {
   const router = useRouter();
   const { settings } = useCompanySettings();
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
@@ -27,7 +31,9 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
 
   const fetchReceipt = useCallback(async () => {
     try {
-      const response = await api.get<ReceiptData>(`/payments/receipt/${paymentId}`);
+      const response = await api.get<ReceiptData>(
+        `/payments/receipt/${paymentId}`
+      );
       setReceipt(response.data);
     } catch (err: unknown) {
       console.error('Failed to fetch receipt:', err);
@@ -52,13 +58,16 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
   const downloadReceipt = async () => {
     try {
       const response = await api.get(`/payments/receipt/${paymentId}/pdf`, {
-        responseType: 'blob'
+        responseType: 'blob',
       });
-      
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `receipt-${receipt?.receipt.receipt_number}.pdf`);
+      link.setAttribute(
+        'download',
+        `receipt-${receipt?.receipt.receipt_number}.pdf`
+      );
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -113,10 +122,7 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
       {/* Action Buttons */}
       <div className="flex justify-between items-center mb-6 print:hidden">
         {showBackButton ? (
-          <Button
-            variant="outline"
-            onClick={handleBackClick}
-          >
+          <Button variant="outline" onClick={handleBackClick}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Payments
           </Button>
@@ -124,10 +130,7 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
           <span />
         )}
         <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            onClick={downloadReceipt}
-          >
+          <Button variant="outline" onClick={downloadReceipt}>
             <Download className="h-4 w-4 mr-2" />
             Download PDF
           </Button>
@@ -142,14 +145,16 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
       <Card className="print:shadow-none print:border-0 relative">
         {/* Watermark Logo - Larger */}
         <div className="absolute inset-0 pointer-events-none opacity-15 print:opacity-20 z-0 flex items-center justify-center">
-          <div className="relative w-96 h-96 md:w-[500px] md:h-[500px]"> {/* Larger size with responsive breakpoints */}
+          <div className="relative w-96 h-96 md:w-[500px] md:h-[500px]">
+            {' '}
+            {/* Larger size with responsive breakpoints */}
             <Image
               src={companyLogo}
               alt="Watermark"
               fill
               className="object-contain"
               style={{
-                transform: 'rotate(-15deg) scale(1.2)' // Larger scale
+                transform: 'rotate(-15deg) scale(1.2)', // Larger scale
               }}
               unoptimized
             />
@@ -171,8 +176,8 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
                     height={80}
                     className="w-full h-full object-contain p-1"
                     unoptimized
-                    onError={(e) => { 
-                      (e.target as HTMLImageElement).style.display = 'none'; 
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
                     }}
                   />
                 </div>
@@ -191,10 +196,14 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
                 {(companyPhone || companyEmail) && (
                   <div className="flex flex-col sm:flex-row sm:justify-center md:justify-end gap-2 sm:gap-4 mt-2">
                     {companyPhone && (
-                      <span className="text-sm text-gray-500">{companyPhone}</span>
+                      <span className="text-sm text-gray-500">
+                        {companyPhone}
+                      </span>
                     )}
                     {companyEmail && (
-                      <span className="text-sm text-gray-500">{companyEmail}</span>
+                      <span className="text-sm text-gray-500">
+                        {companyEmail}
+                      </span>
                     )}
                   </div>
                 )}
@@ -224,34 +233,48 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
           {/* Receipt Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Receipt Information</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Receipt Information
+              </h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Receipt Number:</span>
-                  <span className="font-semibold">{receiptData.receipt_number}</span>
+                  <span className="font-semibold">
+                    {receiptData.receipt_number}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Date Issued:</span>
-                  <span className="font-semibold">{formatDate(receiptData.date)}</span>
+                  <span className="font-semibold">
+                    {formatDate(receiptData.date)}
+                  </span>
                 </div>
               </div>
             </div>
 
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Customer Information
+              </h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Customer Name:</span>
-                  <span className="font-semibold">{receiptData.customer.name}</span>
+                  <span className="font-semibold">
+                    {receiptData.customer.name}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Phone:</span>
-                  <span className="font-semibold">{receiptData.customer.phone}</span>
+                  <span className="font-semibold">
+                    {receiptData.customer.phone}
+                  </span>
                 </div>
                 {receiptData.customer.email && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Email:</span>
-                    <span className="font-semibold">{receiptData.customer.email}</span>
+                    <span className="font-semibold">
+                      {receiptData.customer.email}
+                    </span>
                   </div>
                 )}
               </div>
@@ -260,7 +283,9 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
 
           {/* Job Information */}
           <div className="border border-gray-200 rounded-lg p-4 mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Details</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              Job Details
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-gray-600">Ticket ID</p>
@@ -272,12 +297,16 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
               </div>
               <div>
                 <p className="text-gray-600">Date Requested</p>
-                <p className="font-semibold">{formatDate(receiptData.job.date_requested)}</p>
+                <p className="font-semibold">
+                  {formatDate(receiptData.job.date_requested)}
+                </p>
               </div>
               {receiptData.job.delivery_deadline && (
                 <div>
                   <p className="text-gray-600">Delivery Deadline</p>
-                  <p className="font-semibold">{formatDate(receiptData.job.delivery_deadline)}</p>
+                  <p className="font-semibold">
+                    {formatDate(receiptData.job.delivery_deadline)}
+                  </p>
                 </div>
               )}
             </div>
@@ -285,7 +314,9 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
 
           {/* Payment Summary */}
           <div className="border border-gray-200 rounded-lg p-4 mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Payment Summary</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              Payment Summary
+            </h3>
             <div className="space-y-3">
               <div className="flex justify-between text-lg">
                 <span className="text-gray-600">Amount Paid:</span>
@@ -314,14 +345,20 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
               <div className="flex justify-between">
                 <span className="text-gray-600">Previously Paid:</span>
                 <span className="font-semibold">
-                  {formatCurrency(receiptData.payment.amount_paid - receiptData.payment.amount)}
+                  {formatCurrency(
+                    receiptData.payment.amount_paid - receiptData.payment.amount
+                  )}
                 </span>
               </div>
               <div className="flex justify-between text-lg border-t border-gray-200 pt-2">
                 <span className="text-gray-600">Remaining Balance:</span>
-                <span className={`font-bold ${
-                  receiptData.payment.balance > 0 ? 'text-red-600' : 'text-green-600'
-                }`}>
+                <span
+                  className={`font-bold ${
+                    receiptData.payment.balance > 0
+                      ? 'text-red-600'
+                      : 'text-green-600'
+                  }`}
+                >
                   {formatCurrency(receiptData.payment.balance)}
                 </span>
               </div>
@@ -331,20 +368,29 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
           {/* Payment History */}
           {receiptData.payment_history.length > 0 && (
             <div className="border border-gray-200 rounded-lg p-4 mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Payment History</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                Payment History
+              </h3>
               <div className="space-y-2">
                 {receiptData.payment_history.map((payment, index) => (
-                  <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                  <div
+                    key={index}
+                    className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
+                  >
                     <div>
                       <p className="font-medium text-gray-900">
-                        {formatCurrency(payment.amount)} - {payment.payment_type.replace('_', ' ')}
+                        {formatCurrency(payment.amount)} -{' '}
+                        {payment.payment_type.replace('_', ' ')}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {formatDate(payment.date)} • {payment.payment_method.toUpperCase()}
+                        {formatDate(payment.date)} •{' '}
+                        {payment.payment_method.toUpperCase()}
                         {payment.notes && ` • ${payment.notes}`}
                       </p>
                     </div>
-                    <span className="text-sm text-gray-500">{payment.receipt_number}</span>
+                    <span className="text-sm text-gray-500">
+                      {payment.receipt_number}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -354,7 +400,9 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
           {/* Notes */}
           {receiptData.payment.notes && (
             <div className="mt-6 p-4 bg-gray-50 rounded-lg mb-6">
-              <h4 className="font-semibold text-gray-900 mb-2">Payment Notes</h4>
+              <h4 className="font-semibold text-gray-900 mb-2">
+                Payment Notes
+              </h4>
               <p className="text-gray-600">{receiptData.payment.notes}</p>
             </div>
           )}
@@ -363,36 +411,54 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
           <div className="text-center mt-8 pt-6 border-t border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Contact Information</h4>
-                {companyPhone && <p className="text-gray-600">{companyPhone}</p>}
-                {companyEmail && <p className="text-gray-600">{companyEmail}</p>}
+                <h4 className="font-semibold text-gray-900 mb-2">
+                  Contact Information
+                </h4>
+                {companyPhone && (
+                  <p className="text-gray-600">{companyPhone}</p>
+                )}
+                {companyEmail && (
+                  <p className="text-gray-600">{companyEmail}</p>
+                )}
               </div>
               <div>
                 <h4 className="font-semibold text-gray-900 mb-2">Address</h4>
-                {companyAddress && <p className="text-gray-600">{companyAddress}</p>}
+                {companyAddress && (
+                  <p className="text-gray-600">{companyAddress}</p>
+                )}
               </div>
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Business Hours</h4>
+                <h4 className="font-semibold text-gray-900 mb-2">
+                  Business Hours
+                </h4>
                 <p className="text-gray-600">Mon - Fri: 8:00 AM - 6:00 PM</p>
                 <p className="text-gray-600">Sat: 9:00 AM - 4:00 PM</p>
               </div>
             </div>
-            
+
             {/* Receipt number and details in footer */}
             <div className="border-t border-gray-200 pt-4 mt-4">
               <p className="text-gray-500 text-sm">
-                Receipt #: <span className="font-semibold">{receiptData.receipt_number}</span> | 
-                Issued: <span className="font-semibold">{formatDate(receiptData.date)}</span> | 
-                Customer: <span className="font-semibold">{receiptData.customer.name}</span>
+                Receipt #:{' '}
+                <span className="font-semibold">
+                  {receiptData.receipt_number}
+                </span>{' '}
+                | Issued:{' '}
+                <span className="font-semibold">
+                  {formatDate(receiptData.date)}
+                </span>{' '}
+                | Customer:{' '}
+                <span className="font-semibold">
+                  {receiptData.customer.name}
+                </span>
               </p>
               <p className="text-gray-400 text-xs mt-2">
                 This is an computer-generated receipt. No signature required.
                 {(companyPhone || companyEmail) && (
                   <>
-                    {' '}For inquiries, please contact: {[
-                      companyPhone,
-                      companyEmail
-                    ].filter(Boolean).join(' • ')}
+                    {' '}
+                    For inquiries, please contact:{' '}
+                    {[companyPhone, companyEmail].filter(Boolean).join(' • ')}
                   </>
                 )}
               </p>
@@ -417,7 +483,7 @@ export const Receipt: React.FC<ReceiptProps> = ({ paymentId, showBackButton = tr
             top: 0;
             width: 100%;
           }
-          
+
           /* Ensure watermark prints properly */
           .opacity-15 {
             opacity: 0.15 !important;

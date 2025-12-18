@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { inventoryApi } from '@/lib/inventoryService';
 import { InventoryItem } from '@/types/inventory';
 import { formatCurrency } from '@/lib/utils';
+import { isApiError } from '@/lib/api';
 import {
   ArrowLeft,
   Package,
@@ -35,8 +36,12 @@ export const InventoryDetail: React.FC<InventoryDetailProps> = ({ itemId }) => {
       try {
         const { item: itemData } = await inventoryApi.getInventoryItem(itemId);
         setItem(itemData);
-      } catch (err: any) {
-        setError(err.response?.data?.error || 'Failed to load inventory item');
+      } catch (err: unknown) {
+        if (isApiError(err)) {
+          setError(err.error);
+        } else {
+          setError('Failed to load inventory item');
+        }
       } finally {
         setLoading(false);
       }

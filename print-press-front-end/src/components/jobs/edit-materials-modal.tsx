@@ -4,14 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardFooter,
-} from '@/components/ui/card';
-import {
   AlertCircle,
-  History,
   Plus,
   Trash2,
   X,
@@ -56,7 +49,6 @@ interface EditMaterialsModalProps {
   initialWaste?: WasteEntry[];
   initialExpenses?: OperationalExpenseEntry[];
   jobId: string;
-  userRole: 'admin' | 'worker';
 }
 
 export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
@@ -67,7 +59,6 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
   initialWaste = [],
   initialExpenses = [],
   jobId,
-  userRole,
 }) => {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [waste, setWaste] = useState<WasteEntry[]>([]);
@@ -75,9 +66,15 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
   const [editReason, setEditReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showHistory, setShowHistory] = useState(false);
-  const [editHistory, setEditHistory] = useState<MaterialEditHistory[]>([]);
-  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<Array<{
+    id: string;
+    material_name: string;
+    unit_cost: number;
+    paper_size?: string;
+    paper_type?: string;
+    grammage?: number;
+    current_stock: number;
+  }>>([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -95,7 +92,7 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
     try {
       const response = await api.get('/inventory');
       setInventoryItems(response.data.inventory || []);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to fetch inventory:', error);
     }
   };
@@ -105,7 +102,7 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
       // You'll need to implement this in your jobService
       // const history = await jobService.getMaterialEditHistory(jobId);
       // setEditHistory(history);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to load edit history:', error);
     }
   };
@@ -117,7 +114,7 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
         material_name: '',
         paper_size: '',
         paper_type: '',
-        grammage: undefined, // Changed from empty string to undefined
+        grammage: undefined,
         quantity: 1,
         unit_cost: 0,
         total_cost: 0,
@@ -129,7 +126,7 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
     setMaterials((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const updateMaterial = (index: number, field: keyof Material, value: any) => {
+  const updateMaterial = (index: number, field: keyof Material, value: string | number | undefined) => {
     setMaterials((prev: Material[]) => {
       const updated: Material[] = [...prev];
       const newMaterial: Material = { ...updated[index] };
@@ -138,15 +135,15 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
       if (field === 'grammage') {
         newMaterial[field] = value === '' ? undefined : Number(value);
       } else if (field === 'quantity' || field === 'unit_cost') {
-        // Explicitly assign numeric fields to avoid implicit any/never issues
+        // Explicitly assign numeric fields
         if (field === 'quantity') {
           newMaterial.quantity = Number(value) || 0;
         } else {
           newMaterial.unit_cost = Number(value) || 0;
         }
-      } else {
-        // Safely assign other fields using a type assertion
-        (newMaterial as any)[field] = value;
+      } else if (field === 'material_name' || field === 'paper_size' || field === 'paper_type') {
+        // String fields
+        newMaterial[field] = value as string;
       }
 
       // If material name changes, check inventory and autofill/reset data
@@ -200,31 +197,44 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
     setWaste((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const updateWaste = (index: number, field: keyof WasteEntry, value: any) => {
+  const updateWaste = (
+    index: number,
+    field: keyof WasteEntry,
+    value: string | number
+  ) => {
     setWaste((prevWaste) => {
       const newWaste = [...prevWaste];
-      const updatedItem = { ...newWaste[index] };
+      const updatedItem: WasteEntry = { ...newWaste[index] };
 
       if (
         field === 'quantity' ||
         field === 'total_cost' ||
         field === 'unit_cost'
       ) {
-        (updatedItem as any)[field] = parseFloat(value) || 0;
-        // Auto-calculate total_cost if quantity or unit_cost changes
+        const numValue =
+          typeof value === 'string' ? parseFloat(value) || 0 : value;
+
+        if (field === 'quantity') {
+          updatedItem.quantity = numValue;
+        } else if (field === 'unit_cost') {
+          updatedItem.unit_cost = numValue;
+        } else {
+          updatedItem.total_cost = numValue;
+        }
+
         if (field === 'quantity' || field === 'unit_cost') {
-          const quantity =
-            field === 'quantity'
-              ? parseFloat(value) || 0
-              : updatedItem.quantity || 0;
-          const unit_cost =
-            field === 'unit_cost'
-              ? parseFloat(value) || 0
-              : updatedItem.unit_cost || 0;
+          const quantity = updatedItem.quantity || 0;
+          const unit_cost = updatedItem.unit_cost || 0;
           updatedItem.total_cost = quantity * unit_cost;
         }
-      } else {
-        (updatedItem as any)[field] = value;
+      } else if (field === 'type') {
+        updatedItem.type = value as WasteEntry['type'];
+      } else if (
+        field === 'description' ||
+        field === 'waste_reason' ||
+        field === 'material_id'
+      ) {
+        updatedItem[field] = value as string;
       }
 
       newWaste[index] = updatedItem;
@@ -253,16 +263,16 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
   const updateExpense = (
     index: number,
     field: keyof OperationalExpenseEntry,
-    value: any
+    value: string | number
   ) => {
     setExpenses((prev) => {
       const newExpenses = [...prev];
       const updatedItem = { ...newExpenses[index] };
 
       if (field === 'amount') {
-        updatedItem.amount = parseFloat(value) || 0;
-      } else {
-        (updatedItem as any)[field] = value;
+        updatedItem.amount = typeof value === 'string' ? parseFloat(value) || 0 : value;
+      } else if (field === 'description' || field === 'category' || field === 'expense_date' || field === 'receipt_number' || field === 'notes') {
+        updatedItem[field] = value as string;
       }
 
       newExpenses[index] = updatedItem;
@@ -316,9 +326,10 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
         response.data.expenses || expenses
       );
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update materials:', error);
-      setError(error.response?.data?.error || 'Failed to update materials');
+      const apiError = error as { response?: { data?: { error?: string } } };
+      setError(apiError.response?.data?.error || 'Failed to update materials');
     } finally {
       setLoading(false);
     }

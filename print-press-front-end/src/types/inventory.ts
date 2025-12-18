@@ -14,7 +14,7 @@ export interface InventoryItem {
   unit_of_measure: string;
   unit_cost: number;
   threshold: number;
-  attributes: Record<string, any>; // New: JSONB attributes
+  attributes: Record<string, string | number | boolean | null>; // New: JSONB attributes
   supplier?: string;
   selling_price?: number;
   reorder_quantity?: number;
@@ -49,7 +49,7 @@ export interface AttributeTemplate {
   label: string;
   type: 'text' | 'number' | 'select';
   placeholder?: string;
-  default?: any;
+  default?: string | number | boolean | null;
   options?: string[];
   required?: boolean;
 }
@@ -65,7 +65,7 @@ export interface InventoryFormData {
   unit_of_measure: string;
   unit_cost: number;
   threshold: number;
-  attributes: Record<string, any>;
+  attributes: Record<string, string | number | boolean | null>;
   supplier?: string;
   selling_price?: number;
   reorder_quantity?: number;

@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { inventoryApi } from '@/lib/inventoryService';
 import { InventoryItem } from '@/types/inventory';
 import { formatCurrency } from '@/lib/utils';
+import { isApiError } from '@/lib/api';
 import { Minus, RefreshCw } from 'lucide-react';
 
 export const MaterialUsageTracker: React.FC = () => {
@@ -32,8 +33,12 @@ export const MaterialUsageTracker: React.FC = () => {
     try {
       const response = await inventoryApi.getInventory(1, 1000); // Fetch all for dropdown
       setInventory(response.inventory);
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Failed to load inventory' });
+    } catch (err: unknown) {
+      if (isApiError(err)) {
+        setMessage({ type: 'error', text: err.error });
+      } else {
+        setMessage({ type: 'error', text: 'Failed to load inventory' });
+      }
     } finally {
       setLoading(false);
     }
@@ -72,10 +77,12 @@ export const MaterialUsageTracker: React.FC = () => {
       setSheetsUsed('');
       setNotes('');
       fetchInventory(); // Refresh list
-    } catch (err: any) {
-      const errorMsg =
-        err.response?.data?.error || 'Failed to record material usage.';
-      setMessage({ type: 'error', text: errorMsg });
+    } catch (err: unknown) {
+      if (isApiError(err)) {
+        setMessage({ type: 'error', text: err.error });
+      } else {
+        setMessage({ type: 'error', text: 'Failed to record material usage.' });
+      }
     } finally {
       setSubmitting(false);
     }

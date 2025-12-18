@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MaterialEditHistory } from '@/types/jobs';
@@ -10,31 +10,29 @@ import { api } from '@/lib/api';
 
 interface EditHistoryDisplayProps {
   jobId: string;
-  userRole: 'admin' | 'worker';
 }
 
 export const EditHistoryDisplay: React.FC<EditHistoryDisplayProps> = ({
   jobId,
-  userRole,
 }) => {
   const [editHistory, setEditHistory] = useState<MaterialEditHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    fetchEditHistory();
-  }, [jobId]);
-
-  const fetchEditHistory = async () => {
+  const fetchEditHistory = useCallback(async () => {
     try {
       const response = await api.get(`/jobs/${jobId}/material-edit-history`);
       setEditHistory(response.data.editHistory || []);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to fetch edit history:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [jobId]);
+
+  useEffect(() => {
+    fetchEditHistory();
+  }, [fetchEditHistory]);
 
   const toggleExpand = (id: string) => {
     const newExpanded = new Set(expandedItems);

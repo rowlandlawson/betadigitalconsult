@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { inventoryApi } from '@/lib/inventoryService';
 import { InventoryItem } from '@/types/inventory';
 import { X } from 'lucide-react';
+import { isApiError } from '@/lib/api';
 import { toast } from 'sonner';
 
 interface PurchaseItemModalProps {
@@ -131,11 +132,15 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
       );
       onSuccess?.();
       onClose();
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.error || 'Failed to record purchase';
-      setError(errorMessage);
-      toast.error(errorMessage);
+    } catch (err: unknown) {
+      if (isApiError(err)) {
+        setError(err.error);
+        toast.error(err.error);
+      } else {
+        const errorMessage = 'Failed to record purchase';
+        setError(errorMessage);
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }

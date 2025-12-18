@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { jobService } from '@/lib/jobService';
 import { AlertCircle, WifiOff } from 'lucide-react';
+import { isApiError } from '@/lib/api';
 import { toast } from 'sonner';
 
 interface JobFormData {
@@ -121,67 +122,21 @@ export const CreateJobForm: React.FC = () => {
 
       toast.success('Job Created Successfully');
       router.push('/admin/jobs');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to create job:', err);
 
       let toastTitle = 'Failed to create job';
       let userInstruction = 'Please check your inputs and try again.';
 
-      // --- 1. HANDLE NETWORK ERRORS (No Internet / Server Down) ---
-      if (!err.response) {
+      if (isApiError(err)) {
+        userInstruction = err.error;
+      } else if (!(err && typeof err === 'object' && 'response' in err)) {
         toastTitle = 'Network Error';
         userInstruction =
           'Unable to connect to the server. Please check your internet connection.';
         setIsNetworkError(true);
-      }
-      // --- 2. HANDLE SERVER/DATABASE ERRORS ---
-      else if (err.response && err.response.data) {
-        const backendError = err.response.data;
-        // Convert error object to string to search for keywords (handles 'details', 'message', 'error')
-        const fullErrorString = JSON.stringify(backendError).toLowerCase();
-
-        // SCENARIO: Duplicate Email (Postgres Code 23505)
-        if (
-          fullErrorString.includes('email') &&
-          (fullErrorString.includes('already exists') ||
-            fullErrorString.includes('duplicate'))
-        ) {
-          toastTitle = 'Email Already Exists';
-          userInstruction =
-            'This email is already registered to another customer. Please use a different email.';
-        }
-        // SCENARIO: Duplicate Phone
-        else if (
-          fullErrorString.includes('phone') &&
-          (fullErrorString.includes('already exists') ||
-            fullErrorString.includes('duplicate'))
-        ) {
-          toastTitle = 'Phone Number Exists';
-          userInstruction =
-            'This phone number is already registered. Please check the number or select the existing customer.';
-        }
-        // SCENARIO: Invalid Date
-        else if (
-          fullErrorString.includes('invalid input syntax') &&
-          fullErrorString.includes('date')
-        ) {
-          toastTitle = 'Invalid Date Format';
-          userInstruction =
-            'Please ensure the "Delivery Deadline" is a valid date or leave it empty.';
-        }
-        // SCENARIO: Text too long
-        else if (fullErrorString.includes('value too long')) {
-          toastTitle = 'Input Too Long';
-          userInstruction =
-            'One of your text inputs is too long for the database. Please shorten it.';
-        }
-        // SCENARIO: Fallback for generic backend message
-        else if (
-          backendError.error &&
-          backendError.error !== 'Internal server error'
-        ) {
-          userInstruction = backendError.error;
-        }
+      } else if (err instanceof Error) {
+        userInstruction = err.message;
       }
 
       // Show Toast Notification

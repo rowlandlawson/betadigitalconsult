@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { ReportsDashboard } from '@/components/reports/reports-dashboard';
 
 export default function ReportsPage() {

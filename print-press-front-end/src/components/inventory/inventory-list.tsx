@@ -21,10 +21,20 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useDebounce } from '@/hooks/useDebounce';
+import { isApiError } from '@/lib/api';
 import { PurchaseItemModal } from './purchase-item-modal';
 
+interface PaginatedInventoryResponse {
+  inventory: InventoryItem[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+  };
+}
+
 export const InventoryList: React.FC = () => {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<PaginatedInventoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,9 +59,13 @@ export const InventoryList: React.FC = () => {
         debouncedSearchTerm
       );
       setData(response);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch inventory:', err);
-      setError(err.response?.data?.error || 'Failed to load inventory');
+      if (isApiError(err)) {
+        setError(err.error);
+      } else {
+        setError('Failed to load inventory');
+      }
     } finally {
       setLoading(false);
     }
@@ -66,8 +80,11 @@ export const InventoryList: React.FC = () => {
       try {
         const response = await inventoryApi.getCategories();
         setCategories(response.categories);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Failed to fetch categories:', err);
+        if (isApiError(err)) {
+          console.error(err.error);
+        }
       }
     };
     fetchCategories();

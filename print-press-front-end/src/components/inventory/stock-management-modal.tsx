@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { inventoryApi } from '@/lib/inventoryService';
 import { InventoryItem } from '@/types/inventory';
 import { toast } from 'sonner';
+import { isApiError } from '@/lib/api';
 
 interface StockManagementModalProps {
   isOpen: boolean;
@@ -76,9 +77,12 @@ export const StockManagementModal: React.FC<StockManagementModalProps> = ({
       toast.success('Stock updated and unit cost recalculated');
       onSuccess?.();
       onClose();
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || 'Failed to update stock';
-      toast.error(msg);
+    } catch (err: unknown) {
+      if (isApiError(err)) {
+        toast.error(err.error);
+      } else {
+        toast.error('Failed to update stock');
+      }
     } finally {
       setLoading(false);
     }

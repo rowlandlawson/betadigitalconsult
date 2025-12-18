@@ -9,6 +9,47 @@ import {
   WasteExpense,
 } from '@/types/jobs';
 
+// Define proper error types
+interface ApiErrorResponse {
+  status?: number;
+  data?: {
+    error?: string;
+    [key: string]: unknown;
+  };
+}
+
+interface ApiError extends Error {
+  response?: ApiErrorResponse;
+  request?: unknown;
+}
+
+interface UpdateJobMaterialsResponse {
+  materials: MaterialUsed[];
+  waste?: WasteExpense[];
+  expenses?: Expense[];
+  editHistory: EditHistory[];
+  message: string;
+}
+
+// Define additional types you may need
+interface Expense {
+  id?: string;
+  description: string;
+  amount: number;
+  date: string;
+  category?: string;
+}
+
+interface EditHistory {
+  id: string;
+  job_id: string;
+  user_id: string;
+  user_name: string;
+  changes: Record<string, unknown>;
+  reason: string;
+  created_at: string;
+}
+
 export const jobService = {
   async getAllJobs(params?: {
     page?: number;
@@ -26,9 +67,9 @@ export const jobService = {
 
       const response = await api.get(`/jobs?${queryParams.toString()}`);
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching all jobs:', error);
-      throw this.handleApiError(error);
+      throw this.handleApiError(error as ApiError);
     }
   },
 
@@ -46,7 +87,7 @@ export const jobService = {
       const jobData = response.data.job;
 
       // Map waste from backend response (backend uses 'waste', frontend expects 'waste_expenses')
-      const wasteExpenses =
+      const wasteExpenses: WasteExpense[] =
         jobData.waste_expenses ||
         response.data.waste_expenses ||
         response.data.waste ||
@@ -79,23 +120,25 @@ export const jobService = {
         labor_cost: jobData.labor_cost || response.data.labor_cost || 0,
         profit: jobData.profit || response.data.profit || 0,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error fetching job ${id}:`, error);
 
+      const apiError = error as ApiError;
+      
       // Enhanced error logging
-      if (error.response) {
+      if (apiError.response) {
         console.error('Server response:', {
-          status: error.response.status,
-          data: error.response.data,
-          headers: error.response.headers,
+          status: apiError.response.status,
+          data: apiError.response.data,
+          headers: apiError.response.headers,
         });
-      } else if (error.request) {
-        console.error('No response received:', error.request);
+      } else if (apiError.request) {
+        console.error('No response received:', apiError.request);
       } else {
-        console.error('Request setup error:', error.message);
+        console.error('Request setup error:', apiError.message);
       }
 
-      throw this.handleApiError(error);
+      throw this.handleApiError(apiError);
     }
   },
 
@@ -105,9 +148,9 @@ export const jobService = {
     try {
       const response = await api.post('/jobs', jobData);
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating job:', error);
-      throw this.handleApiError(error);
+      throw this.handleApiError(error as ApiError);
     }
   },
 
@@ -123,9 +166,9 @@ export const jobService = {
         materials: materials || [],
         waste: waste || [],
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error updating job ${jobId} status:`, error);
-      throw this.handleApiError(error);
+      throw this.handleApiError(error as ApiError);
     }
   },
 
@@ -133,18 +176,18 @@ export const jobService = {
     try {
       const response = await api.put(`/jobs/${jobId}`, jobData);
       return response.data.job;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error updating job ${jobId}:`, error);
-      throw this.handleApiError(error);
+      throw this.handleApiError(error as ApiError);
     }
   },
 
   async deleteJob(jobId: string): Promise<void> {
     try {
       await api.delete(`/jobs/${jobId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error deleting job ${jobId}:`, error);
-      throw this.handleApiError(error);
+      throw this.handleApiError(error as ApiError);
     }
   },
 
@@ -152,9 +195,9 @@ export const jobService = {
     try {
       const response = await api.get(`/jobs/ticket/${ticketId}`);
       return response.data.job;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error fetching job by ticket ${ticketId}:`, error);
-      throw this.handleApiError(error);
+      throw this.handleApiError(error as ApiError);
     }
   },
 
@@ -162,15 +205,9 @@ export const jobService = {
     jobId: string,
     materials: MaterialUsed[],
     editReason: string,
-    waste?: any[],
-    expenses?: any[]
-  ): Promise<{
-    materials: MaterialUsed[];
-    waste?: any[];
-    expenses?: any[];
-    editHistory: any[];
-    message: string;
-  }> {
+    waste?: WasteExpense[],
+    expenses?: Expense[]
+  ): Promise<UpdateJobMaterialsResponse> {
     try {
       const response = await api.put(`/jobs/${jobId}/materials`, {
         materials,
@@ -179,48 +216,28 @@ export const jobService = {
         edit_reason: editReason,
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error updating materials for job ${jobId}:`, error);
-      throw this.handleApiError(error);
+      throw this.handleApiError(error as ApiError);
     }
   },
 
   // Helper method for consistent error handling
-  handleApiError(error: any): Error {
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      const { status, data } = error.response;
-      let message = 'An error occurred';
-
-      if (data?.error) {
-        message = data.error;
-      } else if (status === 404) {
-        message = 'Resource not found';
-      } else if (status === 500) {
-        message = 'Internal server error. Please try again later.';
-      } else if (status === 401) {
-        message = 'Unauthorized. Please log in again.';
-      } else if (status === 403) {
-        message = 'You do not have permission to perform this action.';
-      }
-
-      const apiError = new Error(message);
-      apiError.name = `HTTP_${status}`;
-      (apiError as any).status = status;
-      (apiError as any).data = data;
-      return apiError;
-    } else if (error.request) {
-      // The request was made but no response was received
-      const networkError = new Error(
-        'No response from server. Please check your network connection.'
-      );
-      networkError.name = 'NetworkError';
-      return networkError;
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      return error;
+  handleApiError(error: ApiError): Error {
+    if (error.response?.data && typeof error.response.data.error === 'string') {
+      return new Error(error.response.data.error);
     }
+    if (error.response) {
+      const { status } = error.response;
+      let message = `Request failed with status code ${status}`;
+      if (status === 404) message = 'Resource not found.';
+      if (status === 500) message = 'Internal server error.';
+      return new Error(message);
+    }
+    if (error.request) {
+      return new Error('No response received from the server.');
+    }
+    return error;
   },
 
   // Optional: Add a method to check if server is reachable
@@ -233,3 +250,9 @@ export const jobService = {
     }
   },
 };
+
+// Helper type for ApiError with extra properties
+interface ApiErrorWithExtra extends Error {
+  status?: number;
+  data?: Record<string, unknown>;
+}

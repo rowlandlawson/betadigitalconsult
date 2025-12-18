@@ -10,12 +10,12 @@ import {
   JobCompletionModal,
   MaterialEntry,
   WasteEntry,
-} from './job-completion-modal'; // Import the new modal
-import { EditMaterialsModal } from './edit-materials-modal'; // Import the new materials modal
-import { EditHistoryDisplay } from './edit-history-display'; // Import edit history component
+} from './job-completion-modal';
+import { EditMaterialsModal } from './edit-materials-modal';
+import { EditHistoryDisplay } from './edit-history-display';
 import { jobService } from '@/lib/jobService';
-import { isApiError, api } from '@/lib/api'; // Added api import for direct patch call
-import { JobWithDetails, Material, MaterialEditHistory } from '@/types/jobs';
+import { isApiError, api } from '@/lib/api';
+import { JobWithDetails, Material, MaterialEditHistory, Waste, JobExpense } from '@/types/jobs';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import {
   Edit,
@@ -52,7 +52,6 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
 
   // New State for Edit Materials Modal
   const [showEditMaterialsModal, setShowEditMaterialsModal] = useState(false);
-  const [updatingMaterials, setUpdatingMaterials] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -89,7 +88,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
     newStatus: JobWithDetails['status'],
     materials?: MaterialEntry[],
     waste?: WasteEntry[],
-    expenses?: any[]
+    expenses?: JobExpense[]
   ) => {
     if (!job) return;
 
@@ -139,7 +138,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
   const handleCompletionConfirm = async (
     materials: MaterialEntry[],
     waste: WasteEntry[],
-    expenses: any[]
+    expenses: JobExpense[]
   ) => {
     await updateJobStatus('completed', materials, waste, expenses);
   };
@@ -148,23 +147,20 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
   const handleMaterialsUpdate = async (
     updatedMaterials: Material[],
     editHistory: MaterialEditHistory[],
-    waste?: any[],
-    expenses?: any[]
+    waste?: Waste[],
+    expenses?: JobExpense[]
   ) => {
     if (!job) return;
 
-    setUpdatingMaterials(true);
     try {
       // Refresh the job data to get updated materials, waste, and expenses
       const updatedJob = await jobService.getJobById(jobId);
       setJob(updatedJob);
       setShowEditMaterialsModal(false);
       toast.success('Materials, waste, and expenses updated successfully');
-    } catch (error: any) {
-      console.error('Failed to update materials:', error);
+    } catch (err: unknown) {
+      console.error('Failed to update materials:', err);
       toast.error('Failed to update materials');
-    } finally {
-      setUpdatingMaterials(false);
     }
   };
 

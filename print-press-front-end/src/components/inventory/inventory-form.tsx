@@ -26,7 +26,7 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  const [formData, setFormData] = useState<Partial<InventoryFormData>>({
+  const [formData, setFormData] = useState<Partial<InventoryItem>>({
     material_name: '',
     category: '',
     current_stock: 0,
@@ -109,15 +109,16 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({
     // If it's a paper category, ensure common paper attributes are in attributes
     if (formData.category?.toLowerCase() === 'paper') {
       // Check if we have any legacy paper fields in the form
-      const legacyPaperFields = [
+      const legacyPaperFields: (keyof InventoryItem)[] = [
         'paper_size',
         'paper_type',
         'grammage',
         'sheets_per_unit',
       ];
-      legacyPaperFields.forEach((field) => {
-        if ((formData as any)[field]) {
-          attributes[field] = (formData as any)[field];
+      legacyPaperFields.forEach(field => {
+        const value = formData[field];
+        if (value) {
+          attributes[field] = value;
         }
       });
     }

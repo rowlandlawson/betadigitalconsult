@@ -19,7 +19,6 @@ import {
   Eye,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { UserDetailModal } from './user-detail-modal';
 
 export const UserList: React.FC = () => {
@@ -32,7 +31,7 @@ export const UserList: React.FC = () => {
   );
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const router = useRouter();
+  // const router = useRouter();
 
   useEffect(() => {
     fetchUsers();

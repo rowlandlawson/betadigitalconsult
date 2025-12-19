@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,23 +38,16 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     notes: '',
   });
 
-  useEffect(() => {
-    fetchCategories();
-    if (mode === 'edit' && expenseId) {
-      fetchExpense();
-    }
-  }, [mode, expenseId]);
-
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const cats = await operationalExpensesService.getCategories();
       setCategories(cats);
     } catch (err) {
       console.error('Failed to fetch categories:', err);
     }
-  };
+  }, []);
 
-  const fetchExpense = async () => {
+  const fetchExpense = useCallback(async () => {
     if (!expenseId) return;
     try {
       setFetchLoading(true);
@@ -80,7 +73,14 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     } finally {
       setFetchLoading(false);
     }
-  };
+  }, [expenseId]);
+
+  useEffect(() => {
+    fetchCategories();
+    if (mode === 'edit' && expenseId) {
+      fetchExpense();
+    }
+  }, [mode, expenseId, fetchCategories, fetchExpense]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

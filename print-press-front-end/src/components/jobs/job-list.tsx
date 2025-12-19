@@ -1,7 +1,7 @@
 // components/jobs/job-list.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,34 +30,37 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
   });
   const [refreshing, setRefreshing] = useState(false);
 
+  const fetchJobs = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const response: PaginatedJobsResponse = await jobService.getAllJobs({
+          page,
+          limit: pagination.limit,
+          status: statusFilter,
+          search: searchTerm,
+        });
+
+        setJobs(response.jobs);
+        setPagination(response.pagination);
+      } catch (err: unknown) {
+        console.error('Failed to fetch jobs:', err);
+        if (isApiError(err)) {
+          setError(err.error);
+        } else {
+          setError('Failed to load jobs');
+        }
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [statusFilter, searchTerm, pagination.limit]
+  );
+
   useEffect(() => {
     fetchJobs();
-  }, [statusFilter]);
-
-  const fetchJobs = async (page = 1) => {
-    try {
-      setLoading(true);
-      const response: PaginatedJobsResponse = await jobService.getAllJobs({
-        page,
-        limit: pagination.limit,
-        status: statusFilter,
-        search: searchTerm,
-      });
-
-      setJobs(response.jobs);
-      setPagination(response.pagination);
-    } catch (err: unknown) {
-      console.error('Failed to fetch jobs:', err);
-      if (isApiError(err)) {
-        setError(err.error);
-      } else {
-        setError('Failed to load jobs');
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  }, [fetchJobs]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -71,7 +74,7 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+  }, [searchTerm, fetchJobs]);
 
   const filteredJobs = jobs.filter(
     (job) =>

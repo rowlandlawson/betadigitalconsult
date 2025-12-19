@@ -18,7 +18,6 @@ export const getAllJobs = async (req, res) => {
     const { page = 1, limit = 20, status, worker_id, customer_id, search } = req.query;
     const offset = (page - 1) * limit;
 
-    // --- REFACTORED FOR PERFORMANCE ---
     // Base query for filtering and counting
     let countQuery = `
       SELECT COUNT(DISTINCT j.id) as total_count
@@ -45,14 +44,15 @@ export const getAllJobs = async (req, res) => {
       params.push(customer_id);
     }
 
-    // Search functionality
+    // Search functionality - FIXED
     if (search) {
+      const searchParam = `%${search}%`;
       countQuery += ` AND (
-        j.ticket_id ILIKE $${paramCount} OR 
-        j.description ILIKE $${paramCount} OR
-        c.name ILIKE $${paramCount}
+        j.ticket_id ILIKE $${++paramCount} OR 
+        j.description ILIKE $${++paramCount} OR
+        c.name ILIKE $${++paramCount}
       )`;
-      params.push(`%${search}%`);
+      params.push(searchParam, searchParam, searchParam);
     }
     
     // For workers, only show their own jobs
@@ -65,14 +65,9 @@ export const getAllJobs = async (req, res) => {
     const totalResult = await pool.query(countQuery, params);
     const totalCount = parseInt(totalResult.rows[0]?.total_count || 0);
 
-    // We need to re-apply filters to the outer query if they exist
-    // This is a simplified example; a more complex refactor might be needed
-    // For now, we'll assume the LIMIT/OFFSET subquery is sufficient for most cases
-    // and the main performance gain comes from that.
-    
-    // A more robust way is to get IDs from the filtered query first
+    // Build paginated query - FIXED placeholder numbering
     const paginatedIdsQuery = countQuery.replace('COUNT(DISTINCT j.id) as total_count', 'j.id') + 
-      ` ORDER BY j.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      ` ORDER BY j.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
     
     const paginatedIdsResult = await pool.query(paginatedIdsQuery, [...params, parseInt(limit), offset]);
     const jobIds = paginatedIdsResult.rows.map(r => r.id);
@@ -81,8 +76,7 @@ export const getAllJobs = async (req, res) => {
       return res.json({ jobs: [], pagination: { page: parseInt(page), limit: parseInt(limit), total: totalCount, totalPages: Math.ceil(totalCount / parseInt(limit)) } });
     }
 
-    // The original mainQuery has a complex subquery for pagination that is replaced.
-    // We need to construct the final query by joining with the paginated IDs.
+    // Get full job details with payment info using only the job IDs
     const finalQuery = `
       SELECT j.*, c.name as customer_name, c.phone as customer_phone, c.total_jobs_count, u.name as worker_name,
              COALESCE(p_sum.amount_paid, 0) as amount_paid,
@@ -97,7 +91,8 @@ export const getAllJobs = async (req, res) => {
       LEFT JOIN customers c ON j.customer_id = c.id
       LEFT JOIN users u ON j.worker_id = u.id
       LEFT JOIN (SELECT job_id, SUM(amount) as amount_paid FROM payments GROUP BY job_id) p_sum ON j.id = p_sum.job_id
-      ORDER BY t.ord;`;
+      ORDER BY t.ord`;
+    
     const result = await pool.query(finalQuery, [jobIds]);
 
     const jobs = result.rows.map(row => ({
@@ -117,7 +112,16 @@ export const getAllJobs = async (req, res) => {
     });
   } catch (error) {
     console.error('Get jobs error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      detail: error.detail
+    });
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message
+    });
   }
 };
 

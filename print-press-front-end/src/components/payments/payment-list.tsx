@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,11 +27,7 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
   const [totalAmount, setTotalAmount] = useState(0);
   const [totalPaymentsCount, setTotalPaymentsCount] = useState(0);
 
-  useEffect(() => {
-    fetchPayments();
-  }, [dateFilter, methodFilter]);
-
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (dateFilter.start_date)
@@ -57,14 +53,28 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
     } finally {
       setLoading(false);
     }
+  }, [dateFilter, methodFilter]);
+
+  useEffect(() => {
+    fetchPayments();
+  }, [fetchPayments]);
+
+  // Extended Payment type that includes job and customer info from API
+  type ExtendedPayment = Payment & {
+    ticket_id?: string;
+    customer_name?: string;
+    recorded_by_name?: string;
   };
 
-  const filteredPayments = (payments || []).filter(
+  const filteredPayments = ((payments as ExtendedPayment[]) || []).filter(
     (payment) =>
       payment.receipt_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.ticket_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.recorded_by_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      payment.recorded_by_name
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      payment.recorded_by?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getPaymentTypeColor = (type: string) => {
@@ -272,15 +282,16 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
                       <div>
                         <span className="font-medium">Job:</span>{' '}
-                        {payment.ticket_id}
+                        {(payment as ExtendedPayment).ticket_id || '-'}
                       </div>
                       <div>
                         <span className="font-medium">Customer:</span>{' '}
-                        {payment.customer_name}
+                        {(payment as ExtendedPayment).customer_name || '-'}
                       </div>
                       <div>
                         <span className="font-medium">Recorded by:</span>{' '}
-                        {payment.recorded_by_name}
+                        {(payment as ExtendedPayment).recorded_by_name ||
+                          payment.recorded_by}
                       </div>
                       <div>
                         <span className="font-medium">Date:</span>{' '}

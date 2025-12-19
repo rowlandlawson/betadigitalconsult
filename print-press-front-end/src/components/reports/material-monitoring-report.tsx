@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,11 +16,7 @@ export const MaterialMonitoringReport: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [months, setMonths] = useState(6);
 
-  useEffect(() => {
-    fetchData();
-  }, [months]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -37,7 +33,11 @@ export const MaterialMonitoringReport: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [months]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (

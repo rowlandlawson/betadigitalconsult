@@ -400,6 +400,111 @@ export const getPaymentStats = async (req, res) => {
   }
 };
 
+// Get outstanding payments summary
+export const getOutstandingPayments = async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        COUNT(DISTINCT j.id) as outstanding_jobs_count,
+        COALESCE(SUM(j.balance), 0) as total_outstanding_amount,
+        COUNT(DISTINCT j.customer_id) as customers_with_outstanding,
+        COALESCE(MAX(j.updated_at), NOW()) as last_updated
+      FROM jobs j
+      WHERE j.balance > 0
+    `;
+
+    const result = await pool.query(query);
+    const stats = result.rows[0] || {
+      outstanding_jobs_count: 0,
+      total_outstanding_amount: 0,
+      customers_with_outstanding: 0,
+      last_updated: new Date().toISOString()
+    };
+
+    // Get detailed outstanding payments (top 10)
+    const detailedQuery = `
+      SELECT 
+        j.id,
+        j.ticket_id,
+        j.balance as outstanding_amount,
+        j.total_cost,
+        j.amount_paid,
+        c.name as customer_name,
+        c.phone as customer_phone,
+        u.name as worker_name,
+        j.updated_at
+      FROM jobs j
+      LEFT JOIN customers c ON j.customer_id = c.id
+      LEFT JOIN users u ON j.worker_id = u.id
+      WHERE j.balance > 0
+      ORDER BY j.balance DESC
+      LIMIT 10
+    `;
+
+    const detailedResult = await pool.query(detailedQuery);
+
+    // FIXED: Calculate aging of outstanding payments using subquery
+    const agingQuery = `
+      WITH job_categories AS (
+        SELECT 
+          j.id,
+          j.balance,
+          CASE 
+            WHEN j.updated_at >= CURRENT_DATE - INTERVAL '30 days' THEN 'Current (0-30 days)'
+            WHEN j.updated_at >= CURRENT_DATE - INTERVAL '60 days' THEN 'Overdue (31-60 days)'
+            WHEN j.updated_at >= CURRENT_DATE - INTERVAL '90 days' THEN 'Very Overdue (61-90 days)'
+            ELSE 'Critical (90+ days)'
+          END as aging_category
+        FROM jobs j
+        WHERE j.balance > 0
+      )
+      SELECT 
+        COUNT(DISTINCT id) as count,
+        COALESCE(SUM(balance), 0) as amount,
+        aging_category
+      FROM job_categories
+      GROUP BY aging_category
+      ORDER BY 
+        CASE aging_category
+          WHEN 'Current (0-30 days)' THEN 1
+          WHEN 'Overdue (31-60 days)' THEN 2
+          WHEN 'Very Overdue (61-90 days)' THEN 3
+          ELSE 4
+        END
+    `;
+
+    const agingResult = await pool.query(agingQuery);
+
+    res.json({
+      summary: {
+        outstanding_jobs_count: parseInt(stats.outstanding_jobs_count || 0),
+        total_outstanding_amount: parseFloat(stats.total_outstanding_amount || 0),
+        customers_with_outstanding: parseInt(stats.customers_with_outstanding || 0),
+        last_updated: stats.last_updated
+      },
+      detailed: detailedResult.rows.map(row => ({
+        id: row.id,
+        ticket_id: row.ticket_id,
+        outstanding_amount: parseFloat(row.outstanding_amount || 0),
+        total_cost: parseFloat(row.total_cost || 0),
+        amount_paid: parseFloat(row.amount_paid || 0),
+        customer_name: row.customer_name || 'Unknown',
+        customer_phone: row.customer_phone || 'N/A',
+        worker_name: row.worker_name || 'N/A',
+        updated_at: row.updated_at
+      })),
+      aging: agingResult.rows.map(row => ({
+        category: row.aging_category,
+        count: parseInt(row.count || 0),
+        amount: parseFloat(row.amount || 0)
+      }))
+    });
+  } catch (error) {
+    console.error('Get outstanding payments error:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+};
+
 export const downloadReceiptPDF = async (req, res) => {
   try {
     const { paymentId } = req.params;

@@ -337,7 +337,9 @@ export const MaterialMonitoringDashboard: React.FC = () => {
                 />
                 <YAxis />
                 <Tooltip
-                  formatter={(value: number) => [formatCurrency(value), 'Cost']}
+                  formatter={(value: number | undefined) =>
+                    value !== undefined ? [formatCurrency(value), 'Cost'] : '-'
+                  }
                 />
                 <Legend />
                 <Bar dataKey="total_cost" name="Total Cost" fill="#3b82f6" />

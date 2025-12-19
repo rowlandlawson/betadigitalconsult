@@ -73,6 +73,19 @@ async getDashboardStatistics(req, res) {
       WHERE date >= $1
     `;
 
+    // NEW: Total jobs cost (ALL TIME - for accurate outstanding calculation)
+    const totalJobsCostQuery = `
+      SELECT 
+        COALESCE(SUM(total_cost), 0) as total_job_costs
+      FROM jobs
+    `;
+
+    // NEW: Total payments (ALL TIME - for accurate outstanding calculation)
+    const allTimePaymentsQuery = `
+      SELECT COALESCE(SUM(amount), 0) as total_payments
+      FROM payments
+    `;
+
     // 4. Inventory Alerts
     const inventoryAlertsQuery = `
       SELECT 
@@ -153,7 +166,9 @@ async getDashboardStatistics(req, res) {
       inventoryResult,
       activitiesResult,
       trendResult,
-      customersRevenueResult
+      customersRevenueResult,
+      totalJobsCostResult,
+      allTimePaymentsResult
     ] = await Promise.all([
       pool.query(totalCustomersQuery, [startOfMonth]),
       pool.query(jobsStatsQuery, [startDate]),
@@ -162,7 +177,9 @@ async getDashboardStatistics(req, res) {
       pool.query(inventoryAlertsQuery),
       pool.query(recentActivitiesQuery),
       pool.query(revenueTrendQuery),
-      pool.query(topCustomersQuery, [startDate])
+      pool.query(topCustomersQuery, [startDate]),
+      pool.query(totalJobsCostQuery),
+      pool.query(allTimePaymentsQuery)
     ]);
 
     console.log('Query results:', {
@@ -207,14 +224,17 @@ async getDashboardStatistics(req, res) {
     const actualRevenue = parseFloat(actualRevenueResult.rows[0]?.total_revenue || 0);
     const totalRevenue = actualRevenue; // Use actual payments received, not job costs
     const totalCollected = parseFloat(paymentStatsResult.total_collected || 0);
-    // For outstanding, calculate from all jobs (not just period) vs payments in period
-    const totalOutstanding = Math.max(0, parseFloat(jobsStats.total_revenue || 0) - totalCollected);
+    
+    // FIXED: Calculate outstanding from ALL jobs (not period-filtered)
+    const totalJobCosts = parseFloat(totalJobsCostResult.rows[0]?.total_job_costs || 0);
+    const allTimePayments = parseFloat(allTimePaymentsResult.rows[0]?.total_payments || 0);
+    const totalOutstanding = Math.max(0, totalJobCosts - allTimePayments);
     
     const paymentStats = {
       total_revenue: totalRevenue,
       total_collected: totalCollected,
       total_outstanding: totalOutstanding,
-      collection_rate: totalRevenue > 0 ? (totalCollected / totalRevenue) * 100 : 0
+      collection_rate: totalJobCosts > 0 ? (allTimePayments / totalJobCosts) * 100 : 0
     };
 
     // Calculate monthly growth
@@ -514,9 +534,9 @@ async getDashboardStatistics(req, res) {
       const expenseBreakdownQuery = `
         SELECT 
           'Materials' as category,
-          material_name as description,
-          total_cost as amount,
-          created_at as date
+          mu.material_name as description,
+          mu.total_cost as amount,
+          mu.created_at as date
         FROM materials_used mu
         JOIN jobs j ON mu.job_id = j.id
         WHERE j.date_requested BETWEEN $1 AND $2
@@ -525,21 +545,21 @@ async getDashboardStatistics(req, res) {
         
         SELECT 
           'Waste' as category,
-          type || ' - ' || description as description,
-          total_cost as amount,
-          created_at as date
-        FROM waste_expenses 
-        WHERE created_at BETWEEN $1 AND $2
+          we.type || ' - ' || we.description as description,
+          we.total_cost as amount,
+          we.created_at as date
+        FROM waste_expenses we
+        WHERE we.created_at BETWEEN $1 AND $2
         
         UNION ALL
         
         SELECT 
           'Operational' as category,
-          category || ' - ' || description as description,
-          amount,
-          expense_date as date
-        FROM operational_expenses 
-        WHERE expense_date BETWEEN $1 AND $2
+          oe.category || ' - ' || oe.description as description,
+          oe.amount,
+          oe.expense_date as date
+        FROM operational_expenses oe
+        WHERE oe.expense_date BETWEEN $1 AND $2
         
         ORDER BY amount DESC
       `;

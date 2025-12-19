@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { notificationService } from '@/lib/notificationService';
@@ -35,11 +35,7 @@ export const NotificationList: React.FC = () => {
     unreadOnly: false,
   });
 
-  useEffect(() => {
-    fetchNotifications();
-  }, [filter]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -58,7 +54,11 @@ export const NotificationList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter.unreadOnly]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   const handleMarkAsRead = async (id: string) => {
     try {

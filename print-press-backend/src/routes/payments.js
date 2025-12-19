@@ -4,7 +4,8 @@ import {
   getPaymentsByJob,
   getAllPayments,
   getReceiptData,
-  getPaymentStats
+  getPaymentStats,
+  getOutstandingPayments
 } from '../controllers/paymentController.js';
 import { downloadReceiptPDF } from '../controllers/paymentController.js';
 import { authenticateToken, requireWorkerOrAdmin } from '../middleware/auth.js';
@@ -20,6 +21,7 @@ router.get('/', getAllPayments);
 router.get('/job/:jobId', getPaymentsByJob);
 router.get('/receipt/:paymentId', getReceiptData);
 router.get('/stats', getPaymentStats);
+router.get('/outstanding', getOutstandingPayments);
 
 router.get('/receipt/:paymentId/pdf', downloadReceiptPDF);
 

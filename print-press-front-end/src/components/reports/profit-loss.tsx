@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,7 @@ export const ProfitLoss: React.FC = () => {
     () => new Date().toISOString().split('T')[0]
   );
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!startDate || !endDate) {
       setError('Please select both start and end dates');
       return;
@@ -57,11 +57,11 @@ export const ProfitLoss: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [startDate, endDate]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleExport = async () => {
     if (!data) return;
@@ -220,7 +220,9 @@ export const ProfitLoss: React.FC = () => {
                     />
                     <YAxis />
                     <Tooltip
-                      formatter={(value: number) => formatCurrency(value)}
+                      formatter={(value: number | undefined) =>
+                        value !== undefined ? formatCurrency(value) : '-'
+                      }
                     />
                     <Bar dataKey="revenue" fill="#AABD77" />
                   </BarChart>
@@ -239,7 +241,9 @@ export const ProfitLoss: React.FC = () => {
                     <XAxis dataKey="category" />
                     <YAxis />
                     <Tooltip
-                      formatter={(value: number) => formatCurrency(value)}
+                      formatter={(value: number | undefined) =>
+                        value !== undefined ? formatCurrency(value) : '-'
+                      }
                     />
                     <Bar dataKey="amount" fill="#ef4444" />
                   </BarChart>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,11 +34,7 @@ export const FinancialSummary: React.FC = () => {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
-  useEffect(() => {
-    fetchData();
-  }, [year, month]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -57,7 +53,11 @@ export const FinancialSummary: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [year, month]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleExport = async () => {
     try {
@@ -226,7 +226,7 @@ export const FinancialSummary: React.FC = () => {
                   cy="50%"
                   labelLine={false}
                   label={({ name, percent }) =>
-                    `${name} ${(percent * 100).toFixed(0)}%`
+                    `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`
                   }
                   outerRadius={80}
                   fill="#8884d8"
@@ -239,7 +239,11 @@ export const FinancialSummary: React.FC = () => {
                     />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Tooltip
+                  formatter={(value: number | undefined) =>
+                    value !== undefined ? formatCurrency(value) : '-'
+                  }
+                />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -260,7 +264,11 @@ export const FinancialSummary: React.FC = () => {
                   height={80}
                 />
                 <YAxis />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Tooltip
+                  formatter={(value: number | undefined) =>
+                    value !== undefined ? formatCurrency(value) : '-'
+                  }
+                />
                 <Bar dataKey="cost" fill="#AABD77" />
               </BarChart>
             </ResponsiveContainer>

@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { reportsService } from '@/lib/reportsService';
-import { BusinessPerformance } from '@/types/reports';
+import type { BusinessPerformance as BusinessPerformanceType } from '@/types/reports';
 import { formatCurrency } from '@/lib/utils';
 import { isApiError } from '@/lib/api';
 import { TrendingUp, Users, Briefcase } from 'lucide-react';
@@ -22,16 +22,12 @@ import {
 } from 'recharts';
 
 export const BusinessPerformance: React.FC = () => {
-  const [data, setData] = useState<BusinessPerformance | null>(null);
+  const [data, setData] = useState<BusinessPerformanceType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [period, setPeriod] = useState<'month' | 'week' | 'day'>('month');
 
-  useEffect(() => {
-    fetchData();
-  }, [period]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -47,7 +43,11 @@ export const BusinessPerformance: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (
@@ -197,7 +197,11 @@ export const BusinessPerformance: React.FC = () => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="period" />
               <YAxis />
-              <Tooltip formatter={(value: number) => formatCurrency(value)} />
+              <Tooltip
+                formatter={(value: number | undefined) =>
+                  value !== undefined ? formatCurrency(value) : '-'
+                }
+              />
               <Legend />
               <Line
                 type="monotone"

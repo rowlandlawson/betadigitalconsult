@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,12 +21,7 @@ export const ExpenseList: React.FC = () => {
   const [month, setMonth] = useState<number | ''>('');
   const [year, setYear] = useState(new Date().getFullYear());
 
-  useEffect(() => {
-    fetchExpenses();
-    fetchCategories();
-  }, [categoryFilter, month, year]);
-
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -47,16 +42,21 @@ export const ExpenseList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [categoryFilter, month, year]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const cats = await operationalExpensesService.getCategories();
       setCategories(cats);
     } catch (err) {
       console.error('Failed to fetch categories:', err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchExpenses();
+    fetchCategories();
+  }, [fetchExpenses, fetchCategories]);
 
   const handleDelete = async (id: string, description: string) => {
     if (!confirm(`Are you sure you want to delete expense "${description}"?`)) {

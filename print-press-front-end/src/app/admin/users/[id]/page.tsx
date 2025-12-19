@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,11 +28,7 @@ export default function UserDetailPage() {
   const [error, setError] = useState<string>('');
   const [showResetModal, setShowResetModal] = useState(false);
 
-  useEffect(() => {
-    fetchUser();
-  }, [userId]);
-
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -48,7 +44,11 @@ export default function UserDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
 
   if (loading) {
     return (

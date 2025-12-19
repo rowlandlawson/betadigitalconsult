@@ -105,13 +105,19 @@ export const NotificationBell: React.FC = () => {
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
-      // Fetch notifications when opening the dropdown
-      fetchNotifications();
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
+  }, [isOpen]);
+
+  // Fetch notifications when opening the dropdown
+  useEffect(() => {
+    if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchNotifications();
+    }
   }, [isOpen, fetchNotifications]);
 
   // WebSocket setup with authentication

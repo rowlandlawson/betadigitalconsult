@@ -65,3 +65,32 @@ export interface PaymentStats {
   }>;
   period: string;
 }
+
+export interface OutstandingPaymentDetail {
+  id: string;
+  ticket_id: string;
+  outstanding_amount: number;
+  total_cost: number;
+  amount_paid: number;
+  customer_name: string;
+  customer_phone: string;
+  worker_name: string;
+  updated_at: string;
+}
+
+export interface OutstandingPaymentAging {
+  category: string;
+  count: number;
+  amount: number;
+}
+
+export interface OutstandingPayments {
+  summary: {
+    outstanding_jobs_count: number;
+    total_outstanding_amount: number;
+    customers_with_outstanding: number;
+    last_updated: string;
+  };
+  detailed: OutstandingPaymentDetail[];
+  aging: OutstandingPaymentAging[];
+}

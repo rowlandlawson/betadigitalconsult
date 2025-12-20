@@ -361,12 +361,11 @@ async getDashboardStatistics(req, res) {
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
 
-      // Total revenue from completed jobs
+      // Total revenue from payments actually received in the period
       const revenueQuery = `
-        SELECT COALESCE(SUM(total_cost), 0) as total_revenue
-        FROM jobs 
-        WHERE status = 'completed' 
-        AND date_requested BETWEEN $1 AND $2
+        SELECT COALESCE(SUM(amount), 0) as total_revenue
+        FROM payments
+        WHERE date BETWEEN $1 AND $2
       `;
 
       // Total material costs
@@ -514,20 +513,20 @@ async getDashboardStatistics(req, res) {
         return res.status(400).json({ error: 'Start date and end date are required' });
       }
 
-      // Revenue breakdown by job
+      // Revenue breakdown by payments received within the period
       const revenueBreakdownQuery = `
         SELECT 
           j.ticket_id,
           j.description,
-          j.total_cost as revenue,
+          p.amount as revenue,
           c.name as customer_name,
-          j.date_requested,
+          p.date as payment_date,
           j.status
-        FROM jobs j
+        FROM payments p
+        LEFT JOIN jobs j ON p.job_id = j.id
         LEFT JOIN customers c ON j.customer_id = c.id
-        WHERE j.date_requested BETWEEN $1 AND $2
-        AND j.status = 'completed'
-        ORDER BY j.total_cost DESC
+        WHERE p.date BETWEEN $1 AND $2
+        ORDER BY p.amount DESC
       `;
 
       // Expense breakdown
@@ -594,11 +593,22 @@ async getDashboardStatistics(req, res) {
       const monthlyLaborCosts = parseFloat(laborCostResult.rows[0]?.labor_costs || 0);
       const proratedLaborCosts = (monthlyLaborCosts / daysInMonth) * daysInPeriod;
 
-      // Calculate totals
+      // Calculate totals based on actual payments received
       const totalRevenue = revenueBreakdown.rows.reduce((sum, row) => sum + parseFloat(row.revenue), 0);
-      const totalOperationalExpenses = expenseBreakdown.rows.reduce((sum, row) => sum + parseFloat(row.amount), 0);
-      const totalExpenses = totalOperationalExpenses + proratedLaborCosts;
-      const netProfit = totalRevenue - totalExpenses;
+      
+      // Separate material costs from other expenses
+      const materialCosts = expenseBreakdown.rows
+        .filter(row => row.category === 'Materials')
+        .reduce((sum, row) => sum + parseFloat(row.amount), 0);
+      
+      const operatingExpenses = expenseBreakdown.rows
+        .filter(row => row.category !== 'Materials')
+        .reduce((sum, row) => sum + parseFloat(row.amount), 0) + proratedLaborCosts;
+      
+      // Calculate using standard accounting: Materials as COGS
+      const grossProfit = totalRevenue - materialCosts;
+      const totalExpenses = operatingExpenses; // Operating expenses only (materials already subtracted)
+      const netProfit = grossProfit - totalExpenses;
 
       // Add prorated labor cost to the expense breakdown for transparency
       const finalExpenseBreakdown = [
@@ -615,6 +625,9 @@ async getDashboardStatistics(req, res) {
         period: { start_date, end_date },
         summary: {
           total_revenue: parseFloat(totalRevenue.toFixed(2)),
+          material_costs: parseFloat(materialCosts.toFixed(2)),
+          gross_profit: parseFloat(grossProfit.toFixed(2)),
+          gross_profit_margin: parseFloat((totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0).toFixed(2)),
           total_expenses: parseFloat(totalExpenses.toFixed(2)),
           net_profit: parseFloat(netProfit.toFixed(2)),
           profit_margin: parseFloat((totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0).toFixed(2))
@@ -754,17 +767,33 @@ async getDashboardStatistics(req, res) {
         return res.status(400).json({ error: 'Invalid period specified' });
       }
       const interval = '12 months';
-      // Revenue trends
+      // Revenue trends based on payments actually received
       const revenueTrendsQuery = `
+        WITH revenue AS (
+          SELECT 
+            DATE_TRUNC($1, p.date) as period,
+            COALESCE(SUM(p.amount), 0) as total_revenue
+          FROM payments p
+          WHERE p.date >= CURRENT_DATE - $2::interval
+          GROUP BY period
+        ),
+        jobs AS (
+          SELECT
+            DATE_TRUNC($1, j.date_requested) as period,
+            COUNT(*) as job_count,
+            COALESCE(AVG(j.total_cost), 0) as average_job_value
+          FROM jobs j
+          WHERE j.date_requested >= CURRENT_DATE - $2::interval
+          GROUP BY period
+        )
         SELECT 
-          DATE_TRUNC($1, date_requested) as period,
-          COUNT(*) as job_count,
-          COALESCE(SUM(total_cost), 0) as total_revenue,
-          COALESCE(SUM(amount_paid), 0) as collected_revenue,
-          COALESCE(AVG(total_cost), 0) as average_job_value
-        FROM jobs
-        WHERE date_requested >= CURRENT_DATE - $2::interval
-        GROUP BY period
+          COALESCE(j.period, r.period) as period,
+          COALESCE(j.job_count, 0) as job_count,
+          COALESCE(r.total_revenue, 0) as total_revenue,
+          COALESCE(r.total_revenue, 0) as collected_revenue,
+          COALESCE(j.average_job_value, 0) as average_job_value
+        FROM revenue r
+        FULL OUTER JOIN jobs j ON j.period = r.period
         ORDER BY period DESC
       `;
 

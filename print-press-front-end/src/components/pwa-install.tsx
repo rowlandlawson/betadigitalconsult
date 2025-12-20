@@ -57,7 +57,7 @@ export const PWAInstallPrompt = () => {
     useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
-  const [_canInstall, _setCanInstall] = useState(false);
+  const [canInstall, setCanInstall] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [_showManualInstall, _setShowManualInstall] = useState(false);
   const [showInstallDialog, setShowInstallDialog] = useState(false);
@@ -152,7 +152,7 @@ export const PWAInstallPrompt = () => {
 
     // Fallback: Show manual install option after delay for non-iOS devices
     const manualInstallTimer = setTimeout(() => {
-      setShowManualInstall((prev) => {
+      _setShowManualInstall((prev) => {
         // Only show if not already shown and we don't have a deferred prompt
         if (!prev && !deferredPrompt && !iosDevice) {
           console.log(

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { passwordService } from '@/lib/passwordService';
+import Image from 'next/image';
 
 interface LoginFormProps {
   isAdmin?: boolean;
@@ -42,7 +43,6 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
 
       console.log('✅ Login successful:', response.data);
 
-      // Extract tokens - handle both response formats
       const accessToken = response.data.accessToken || response.data.token;
       const refreshToken = response.data.refreshToken;
       const user = response.data.user;
@@ -55,7 +55,6 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
         throw new Error('No user data received from server');
       }
 
-      // Store tokens and user data
       localStorage.setItem('auth_token', accessToken);
       if (refreshToken) {
         localStorage.setItem('refresh_token', refreshToken);
@@ -68,7 +67,6 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
         userRole: user.role,
       });
 
-      // Verify the token is stored correctly
       const storedToken = localStorage.getItem('auth_token');
       const storedUser = localStorage.getItem('user');
 
@@ -78,7 +76,6 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
         userRole: storedUser ? JSON.parse(storedUser).role : 'none',
       });
 
-      // Redirect based on user role
       if (user.role === 'admin') {
         console.log('🔄 Redirecting to admin dashboard...');
         router.push('/admin/dashboard');
@@ -152,124 +149,142 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-center mb-6">
-        {isAdmin ? 'Admin Login' : 'User Login'}
-      </h2>
-
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label
-            htmlFor="identifier"
-            className="block text-sm font-medium text-gray-700"
-          >
-            {isAdmin ? 'Email or Username' : 'Email or Username'}
-          </label>
-          <input
-            id="identifier"
-            name="identifier"
-            type="text"
-            required
-            value={formData.identifier}
-            onChange={handleChange}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            placeholder={
-              isAdmin
-                ? 'Enter admin email or username'
-                : 'Enter your email or username'
-            }
+    <div className="w-full max-w-md mx-auto ">
+      {/* LOGO PLACED ABOVE THE CARD */}
+      <div className="flex justify-center mb-8">
+        {/* <div className="relative w-32 h-32">
+          <Image
+            src="/logo.png"
+            alt="Company Logo"
+            fill
+            className="object-contain"
+            priority
           />
-        </div>
+        </div> */}
+      </div>
 
-        <div>
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            value={formData.password}
-            onChange={handleChange}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter your password"
-          />
-        </div>
+      {/* LOGIN FORM CARD */}
+      <div className="p-6 bg-white rounded-lg shadow-md">
+        <h2 className="text-2xl font-bold text-center mb-6">
+          {isAdmin ? 'Admin Login' : 'User Login'}
+        </h2>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Signing in...' : 'Sign in'}
-        </button>
-      </form>
-
-      <div className="mt-6 border-t border-gray-200 pt-4">
-        <button
-          type="button"
-          className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
-          onClick={() => {
-            setShowRecovery((prev) => !prev);
-            setRecoveryMessage('');
-          }}
-        >
-          Forgot password?
-        </button>
-
-        {showRecovery && (
-          <form onSubmit={handleRecoverySubmit} className="mt-4 space-y-3">
-            <div>
-              <label
-                htmlFor="recoveryIdentifier"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Enter your email or username
-              </label>
-              <input
-                id="recoveryIdentifier"
-                name="recoveryIdentifier"
-                type="text"
-                value={recoveryIdentifier}
-                onChange={(e) => setRecoveryIdentifier(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="you@example.com"
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={recoveryLoading}
-                className="inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {recoveryLoading ? 'Sending...' : 'Send reset link'}
-              </button>
-              {recoveryMessage && (
-                <button
-                  type="button"
-                  onClick={handleRecoverySubmit}
-                  disabled={recoveryLoading}
-                  className="inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Resend
-                </button>
-              )}
-            </div>
-            {recoveryMessage && (
-              <p className="text-sm text-gray-600">{recoveryMessage}</p>
-            )}
-          </form>
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
         )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label
+              htmlFor="identifier"
+              className="block text-sm font-medium text-gray-700"
+            >
+              {isAdmin ? 'Email or Username' : 'Email or Username'}
+            </label>
+            <input
+              id="identifier"
+              name="identifier"
+              type="text"
+              required
+              value={formData.identifier}
+              onChange={handleChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder={
+                isAdmin
+                  ? 'Enter admin email or username'
+                  : 'Enter your email or username'
+              }
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              value={formData.password}
+              onChange={handleChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter your password"
+            />
+          </div>
+
+          {/* LIGHT GREEN BUTTON */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Signing in...' : 'Sign in'}
+          </button>
+        </form>
+
+        <div className="mt-6 border-t border-gray-200 pt-4">
+          <button
+            type="button"
+            className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+            onClick={() => {
+              setShowRecovery((prev) => !prev);
+              setRecoveryMessage('');
+            }}
+          >
+            Forgot password?
+          </button>
+
+          {showRecovery && (
+            <form onSubmit={handleRecoverySubmit} className="mt-4 space-y-3">
+              <div>
+                <label
+                  htmlFor="recoveryIdentifier"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Enter your email or username
+                </label>
+                <input
+                  id="recoveryIdentifier"
+                  name="recoveryIdentifier"
+                  type="text"
+                  value={recoveryIdentifier}
+                  onChange={(e) => setRecoveryIdentifier(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="you@example.com"
+                />
+              </div>
+              <div className="flex gap-2">
+                {/* LIGHT GREEN BUTTON */}
+                <button
+                  type="submit"
+                  disabled={recoveryLoading}
+                  className="inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {recoveryLoading ? 'Sending...' : 'Send reset link'}
+                </button>
+                {recoveryMessage && (
+                  <button
+                    type="button"
+                    onClick={handleRecoverySubmit}
+                    disabled={recoveryLoading}
+                    className="inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Resend
+                  </button>
+                )}
+              </div>
+              {recoveryMessage && (
+                <p className="text-sm text-gray-600">{recoveryMessage}</p>
+              )}
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );

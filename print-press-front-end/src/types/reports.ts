@@ -51,6 +51,9 @@ export interface ProfitLossStatement {
   };
   summary: {
     total_revenue: number;
+    material_costs: number;
+    gross_profit: number;
+    gross_profit_margin: number;
     total_expenses: number;
     net_profit: number;
     profit_margin: number;
@@ -60,7 +63,7 @@ export interface ProfitLossStatement {
     description: string;
     revenue: number;
     customer_name: string;
-    date_requested: string;
+    payment_date: string;
     status: string;
   }>;
   expense_breakdown: Array<{

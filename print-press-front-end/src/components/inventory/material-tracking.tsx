@@ -32,7 +32,7 @@ export const MaterialUsageTracker: React.FC = () => {
     try {
       const response = await inventoryApi.getInventory(1, 1000); // Fetch all for dropdown
       setInventory(response.inventory);
-    } catch (err) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to load inventory' });
     } finally {
       setLoading(false);

@@ -10,15 +10,12 @@ import { formatCurrency } from '@/lib/utils';
 import { isApiError } from '@/lib/api';
 import { Download, Calendar } from 'lucide-react';
 import {
-  LineChart,
-  Line,
   BarChart,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   PieChart,
   Pie,

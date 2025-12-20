@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { api, ApiError, isApiError } from '@/lib/api';
+import { api, isApiError } from '@/lib/api';
 import { PaymentFormData } from '@/types/payments';
 import { Job } from '@/types';
 import { formatCurrency } from '@/lib/utils';

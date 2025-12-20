@@ -1,22 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { notificationService } from '@/lib/notificationService';
 import { Notification } from '@/types';
-import { formatDate } from '@/lib/utils';
 import { isApiError } from '@/lib/api';
 import {
   Bell,
-  Check,
   CheckCheck,
   Filter,
   AlertCircle,
   Package,
   CreditCard,
   Briefcase,
-  Users,
   Settings,
 } from 'lucide-react';
 import { NotificationItem } from './notification-item';

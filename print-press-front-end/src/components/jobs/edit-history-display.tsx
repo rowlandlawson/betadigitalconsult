@@ -15,7 +15,7 @@ interface EditHistoryDisplayProps {
 
 export const EditHistoryDisplay: React.FC<EditHistoryDisplayProps> = ({
   jobId,
-  userRole,
+  userRole: _userRole,
 }) => {
   const [editHistory, setEditHistory] = useState<MaterialEditHistory[]>([]);
   const [loading, setLoading] = useState(true);

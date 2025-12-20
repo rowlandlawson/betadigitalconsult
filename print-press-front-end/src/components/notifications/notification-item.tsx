@@ -4,7 +4,7 @@ import React from 'react';
 import { Notification } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Check, LucideIcon } from 'lucide-react';
+import { Check } from 'lucide-react';
 import Link from 'next/link';
 
 interface NotificationItemProps {

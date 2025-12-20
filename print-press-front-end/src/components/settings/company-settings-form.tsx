@@ -10,15 +10,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCompanySettings } from '@/lib/useCompanySettings';
-import { Building2, Save, RotateCcw, Upload, X } from 'lucide-react';
+import { Building2, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import Image from 'next/image';
 
 export const CompanySettingsForm: React.FC = () => {
   const { settings, loading, updateSettings, uploadLogo } =
     useCompanySettings();
   const [formData, setFormData] = useState(settings);
-  const [logoPreview, setLogoPreview] = useState<string | null>(
+  const [_logoPreview, setLogoPreview] = useState<string | null>(
     settings.logo || null
   );
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -41,7 +40,7 @@ export const CompanySettingsForm: React.FC = () => {
     }));
   };
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const _handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       // Validate file type
@@ -72,7 +71,7 @@ export const CompanySettingsForm: React.FC = () => {
     }
   };
 
-  const handleRemoveLogo = () => {
+  const _handleRemoveLogo = () => {
     setLogoPreview(null);
     setLogoFile(null);
     setFormData((prev) => ({ ...prev, logo: undefined }));
@@ -87,17 +86,12 @@ export const CompanySettingsForm: React.FC = () => {
 
       // Upload logo if a new file was selected
       if (logoFile) {
-        try {
-          finalLogoUrl = await uploadLogo(logoFile);
-          // Logo upload already shows success toast in useCompanySettings
-          // Reset file input after successful upload
-          setLogoFile(null);
-          // Update preview to show the uploaded logo
-          setLogoPreview(finalLogoUrl);
-        } catch (uploadErr) {
-          // Error toast already shown in useCompanySettings
-          throw uploadErr;
-        }
+        finalLogoUrl = await uploadLogo(logoFile);
+        // Logo upload already shows success toast in useCompanySettings
+        // Reset file input after successful upload
+        setLogoFile(null);
+        // Update preview to show the uploaded logo
+        setLogoPreview(finalLogoUrl);
       }
 
       // Update all settings (including logo if it was just uploaded)
@@ -119,7 +113,7 @@ export const CompanySettingsForm: React.FC = () => {
     }
   };
 
-  const handleReset = () => {
+  const _handleReset = () => {
     if (
       confirm(
         'Are you sure you want to reset all company settings to defaults?'

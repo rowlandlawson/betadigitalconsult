@@ -144,7 +144,7 @@ interface NavGroupProps {
   onToggleSidebar?: () => void;
 }
 
-const NavGroup: React.FC<NavGroupProps> = ({
+const NavGroupComponent: React.FC<NavGroupProps> = ({
   group,
   pathname,
   isMobile,
@@ -248,7 +248,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [isMobileOpen, isMobile]);
 
   const { settings } = useCompanySettings();
-  const companyLogo = settings.logo
+  const _companyLogo = settings.logo
     ? getLogoUrl(settings.logo) || settings.logo
     : '/logo.png';
   const companyName = settings.name || 'Company Logo';
@@ -308,7 +308,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             // Admin navigation with dropdown groups
             <div className="space-y-4">
               {adminNavGroups.map((group) => (
-                <NavGroup
+                <NavGroupComponent
                   key={group.title}
                   group={group}
                   pathname={pathname}

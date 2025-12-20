@@ -52,7 +52,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
 
   // New State for Edit Materials Modal
   const [showEditMaterialsModal, setShowEditMaterialsModal] = useState(false);
-  const [updatingMaterials, setUpdatingMaterials] = useState(false);
+  const [_updatingMaterials, _setUpdatingMaterials] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -146,10 +146,10 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
 
   // Handle materials update
   const handleMaterialsUpdate = async (
-    updatedMaterials: Material[],
-    editHistory: MaterialEditHistory[],
-    waste?: any[],
-    expenses?: any[]
+    _updatedMaterials: Material[],
+    _editHistory: MaterialEditHistory[],
+    _waste?: any[],
+    _expenses?: any[]
   ) => {
     if (!job) return;
 
@@ -706,7 +706,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
                         </p>
                       </div>
                       <span className="text-gray-500 text-xs">
-                        {formatDate(payment.payment_date)}
+                        {formatDate(payment.date)}
                       </span>
                     </div>
                   ))}
@@ -789,7 +789,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
                 >
                   {job.payments.map((payment) => (
                     <option key={payment.id} value={payment.id}>
-                      {formatDate(payment.payment_date)} •{' '}
+                      {formatDate(payment.date)} •{' '}
                       {formatCurrency(payment.amount)} (
                       {payment.payment_method.toUpperCase()})
                     </option>

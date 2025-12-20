@@ -8,7 +8,7 @@ import { operationalExpensesService } from '@/lib/operationalExpensesService';
 import { OperationalExpense } from '@/types/operational-expenses';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { isApiError } from '@/lib/api';
-import { Plus, Search, Filter, Edit, Trash2, DollarSign } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 
 export const ExpenseList: React.FC = () => {

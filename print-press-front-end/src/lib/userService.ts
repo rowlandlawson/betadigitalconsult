@@ -1,5 +1,5 @@
 import { api } from './api';
-export type { User } from '@/types';
+import { User } from '@/types'; // Change from export type to import
 
 export interface UsersResponse {
   users: User[];
@@ -67,3 +67,5 @@ export const userService = {
     await api.post(`/users/${id}/reset-password`, { newPassword });
   },
 };
+
+export type { User };

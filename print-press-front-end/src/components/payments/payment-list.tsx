@@ -4,10 +4,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { api, ApiError, isApiError } from '@/lib/api';
-import { Payment, PaginatedResponse } from '@/types';
+import { api, isApiError } from '@/lib/api';
+import { Payment } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Search, Filter, Download, Plus } from 'lucide-react';
+import { Search, Download, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 interface PaymentListProps {
@@ -68,7 +68,9 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
 
   const filteredPayments = ((payments as ExtendedPayment[]) || []).filter(
     (payment) =>
-      payment.receipt_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.receipt_number
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
       payment.ticket_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.recorded_by_name

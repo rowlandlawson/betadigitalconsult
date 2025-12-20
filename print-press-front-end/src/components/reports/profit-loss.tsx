@@ -17,7 +17,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from 'recharts';
 
 export const ProfitLoss: React.FC = () => {
@@ -164,7 +163,7 @@ export const ProfitLoss: React.FC = () => {
       {data && !loading && (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <Card>
               <CardContent className="p-6">
                 <p className="text-sm font-medium text-gray-600">
@@ -179,7 +178,32 @@ export const ProfitLoss: React.FC = () => {
             <Card>
               <CardContent className="p-6">
                 <p className="text-sm font-medium text-gray-600">
-                  Total Expenses
+                  Material Costs
+                </p>
+                <p className="text-2xl font-bold text-orange-600 mt-1">
+                  {formatCurrency(data.summary.material_costs)}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <p className="text-sm font-medium text-gray-600">
+                  Gross Profit
+                </p>
+                <p className="text-2xl font-bold text-blue-600 mt-1">
+                  {formatCurrency(data.summary.gross_profit)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Margin: {data.summary.gross_profit_margin.toFixed(1)}%
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <p className="text-sm font-medium text-gray-600">
+                  Operating Expenses
                 </p>
                 <p className="text-2xl font-bold text-red-600 mt-1">
                   {formatCurrency(data.summary.total_expenses)}
@@ -279,9 +303,7 @@ export const ProfitLoss: React.FC = () => {
                         <td className="p-2 text-right font-medium">
                           {formatCurrency(item.revenue)}
                         </td>
-                        <td className="p-2">
-                          {formatDate(item.date_requested)}
-                        </td>
+                        <td className="p-2">{formatDate(item.payment_date)}</td>
                         <td className="p-2">
                           <span
                             className={`px-2 py-1 rounded text-xs ${

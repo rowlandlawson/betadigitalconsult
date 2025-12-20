@@ -3,20 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardFooter,
-} from '@/components/ui/card';
-import {
-  AlertCircle,
-  History,
-  Plus,
-  Trash2,
-  X,
-  AlertTriangle,
-} from 'lucide-react';
+import { AlertCircle, Plus, Trash2, X, AlertTriangle } from 'lucide-react';
 import { Material, MaterialEditHistory } from '@/types/jobs';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
@@ -67,7 +54,7 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
   initialWaste = [],
   initialExpenses = [],
   jobId,
-  userRole,
+  userRole: _userRole,
 }) => {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [waste, setWaste] = useState<WasteEntry[]>([]);
@@ -75,8 +62,8 @@ export const EditMaterialsModal: React.FC<EditMaterialsModalProps> = ({
   const [editReason, setEditReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showHistory, setShowHistory] = useState(false);
-  const [editHistory, setEditHistory] = useState<MaterialEditHistory[]>([]);
+  const [_showHistory, _setShowHistory] = useState(false);
+  const [_editHistory, _setEditHistory] = useState<MaterialEditHistory[]>([]);
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
 
   useEffect(() => {

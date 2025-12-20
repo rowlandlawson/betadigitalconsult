@@ -1,40 +1,9 @@
 // types/jobs.ts
 
-// Customer and User interfaces for relationships
-export interface Customer {
-  id: string;
-  name: string;
-  phone: string;
-  email?: string;
-  total_jobs_count?: number;
-  total_amount_spent?: number;
-  first_interaction_date?: string;
-  last_interaction_date?: string;
-  created_at?: string;
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  phone?: string;
-  is_active?: boolean;
-}
-
-export interface Payment {
-  id: string;
-  job_id: string;
-  amount: number;
-  payment_type: 'deposit' | 'installment' | 'full_payment' | 'balance';
-  payment_method: 'cash' | 'transfer' | 'pos';
-  date: string;
-  recorded_by: string;
-  recorded_by_id: string;
-  receipt_number: string;
-  notes?: string;
-  created_at: string;
-}
+// Import interfaces instead of defining them here
+import { Customer } from './customers';
+import { Payment } from './payments';
+import { User } from '@/types';
 
 export interface JobFormData {
   customer_id?: string;

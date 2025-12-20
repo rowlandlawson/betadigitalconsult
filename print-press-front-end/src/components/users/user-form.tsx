@@ -6,8 +6,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { userService, CreateUserData, UpdateUserData } from '@/lib/userService';
-import { passwordService } from '@/lib/passwordService';
+import { userService, CreateUserData } from '@/lib/userService';
 import { isApiError } from '@/lib/api';
 import { Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
@@ -153,7 +152,7 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
 
     try {
       if (mode === 'create') {
-        const { isActive, ...createData } = formData;
+        const { isActive: _isActive, ...createData } = formData;
         await userService.createUser(createData);
         router.push('/admin/users');
       } else if (mode === 'edit' && userId) {

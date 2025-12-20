@@ -8,11 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { operationalExpensesService } from '@/lib/operationalExpensesService';
-import {
-  CreateExpenseData,
-  UpdateExpenseData,
-  OperationalExpense,
-} from '@/types/operational-expenses';
+import { CreateExpenseData } from '@/types/operational-expenses';
 import { isApiError } from '@/lib/api';
 
 interface ExpenseFormProps {
@@ -179,7 +175,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
                     setFormData({ ...formData, category: e.target.value })
                   }
                   className="flex-1"
-                  onFocus={(e) => {
+                  onFocus={() => {
                     const select = document.getElementById(
                       'category'
                     ) as HTMLSelectElement;

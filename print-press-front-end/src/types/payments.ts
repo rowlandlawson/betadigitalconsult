@@ -94,3 +94,30 @@ export interface OutstandingPayments {
   detailed: OutstandingPaymentDetail[];
   aging: OutstandingPaymentAging[];
 }
+
+// This is the ONLY Payment interface definition in the project
+export interface Payment {
+  id: string;
+  job_id: string;
+  amount: number;
+  payment_type: 'deposit' | 'installment' | 'full_payment' | 'balance';
+  payment_method: 'cash' | 'transfer' | 'pos';
+  date: string;
+  notes?: string;
+  receipt_number?: string;
+  recorded_by?: string;
+  recorded_by_name?: string;
+  created_at?: string;
+  updated_at?: string;
+  customer_name?: string;
+  job_ticket_id?: string;
+}
+
+// Additional payment-related types (optional but recommended)
+export type PaymentMethod = 'cash' | 'transfer' | 'pos';
+export type PaymentStatus = 'pending' | 'partially_paid' | 'fully_paid';
+export type PaymentType =
+  | 'deposit'
+  | 'installment'
+  | 'full_payment'
+  | 'balance';

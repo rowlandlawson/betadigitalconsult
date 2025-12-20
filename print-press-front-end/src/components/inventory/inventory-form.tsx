@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { inventoryApi } from '@/lib/inventoryService';
-import { InventoryFormData, InventoryItem } from '@/types/inventory';
+import { InventoryFormData } from '@/types/inventory';
 
 interface InventoryFormProps {
   itemId?: string;

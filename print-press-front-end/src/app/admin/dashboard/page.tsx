@@ -9,7 +9,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { api, dashboardApi, DashboardStats } from '@/lib/api';
+import { dashboardApi, DashboardStats } from '@/lib/api';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import {
   TrendingUp,
@@ -47,7 +47,7 @@ interface StatCard {
 }
 
 // Add missing utility functions
-const calculatePercentageChange = (
+const _calculatePercentageChange = (
   current: number,
   previous: number
 ): number => {
@@ -398,7 +398,7 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="space-y-3">
                 {stats?.top_customers && stats.top_customers.length > 0 ? (
-                  stats.top_customers.map((customer, index) => (
+                  stats.top_customers.map((customer, _index) => (
                     <div
                       key={customer.id}
                       className="flex items-center justify-between p-3 border border-gray-100 rounded-lg"

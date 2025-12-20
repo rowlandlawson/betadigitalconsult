@@ -32,7 +32,7 @@ export const UserList: React.FC = () => {
   );
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const router = useRouter();
+  const _router = useRouter();
 
   useEffect(() => {
     fetchUsers();

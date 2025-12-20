@@ -3,7 +3,15 @@
 import { useEffect, useState } from 'react';
 import type { SVGProps } from 'react';
 import { Button } from './ui/button';
-import { ChevronLeft, ChevronRight, Search, Home, Grid, Smartphone, Monitor, Laptop, Apple, Chrome } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Smartphone,
+  Laptop,
+  Apple,
+  Chrome,
+} from 'lucide-react';
 
 // Lightweight in-file SVG icon replacements for Download and X (avoid external dependency)
 const Download = (props: SVGProps<SVGSVGElement>) => (
@@ -45,18 +53,21 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export const PWAInstallPrompt = () => {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
-  const [canInstall, setCanInstall] = useState(false);
+  const [_canInstall, _setCanInstall] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
-  const [showManualInstall, setShowManualInstall] = useState(false);
+  const [_showManualInstall, _setShowManualInstall] = useState(false);
   const [showInstallDialog, setShowInstallDialog] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [installStep, setInstallStep] = useState(0);
   const [installProgress, setInstallProgress] = useState(0);
   const [showLocationGuide, setShowLocationGuide] = useState(false);
-  const [currentOS, setCurrentOS] = useState<'windows' | 'mac' | 'ios' | 'android' | 'chromeos' | 'linux' | 'unknown'>('unknown');
+  const [currentOS, setCurrentOS] = useState<
+    'windows' | 'mac' | 'ios' | 'android' | 'chromeos' | 'linux' | 'unknown'
+  >('unknown');
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
@@ -81,10 +92,15 @@ export const PWAInstallPrompt = () => {
     // Detect Operating System
     const detectOS = () => {
       const userAgent = window.navigator.userAgent.toLowerCase();
-      
+
       if (userAgent.includes('windows')) return 'windows';
       if (userAgent.includes('mac')) return 'mac';
-      if (userAgent.includes('iphone') || userAgent.includes('ipad') || userAgent.includes('ipod')) return 'ios';
+      if (
+        userAgent.includes('iphone') ||
+        userAgent.includes('ipad') ||
+        userAgent.includes('ipod')
+      )
+        return 'ios';
       if (userAgent.includes('android')) return 'android';
       if (userAgent.includes('cros')) return 'chromeos';
       if (userAgent.includes('linux')) return 'linux';
@@ -139,7 +155,9 @@ export const PWAInstallPrompt = () => {
       setShowManualInstall((prev) => {
         // Only show if not already shown and we don't have a deferred prompt
         if (!prev && !deferredPrompt && !iosDevice) {
-          console.log('⏱️ No beforeinstallprompt after 2s, showing manual install option');
+          console.log(
+            '⏱️ No beforeinstallprompt after 2s, showing manual install option'
+          );
           setShowPrompt(true);
           setCanInstall(true);
           return true;
@@ -150,7 +168,10 @@ export const PWAInstallPrompt = () => {
 
     return () => {
       clearTimeout(manualInstallTimer);
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener(
+        'beforeinstallprompt',
+        handleBeforeInstallPrompt
+      );
     };
   }, [deferredPrompt]);
 
@@ -169,8 +190,8 @@ export const PWAInstallPrompt = () => {
           steps: [
             'Press Windows key or click Start button',
             'Scroll through app list or type "Print Press"',
-            'Right-click → Pin to Start for quick access'
-          ]
+            'Right-click → Pin to Start for quick access',
+          ],
         },
         {
           title: 'Taskbar',
@@ -179,8 +200,8 @@ export const PWAInstallPrompt = () => {
           steps: [
             'Find app in Start Menu',
             'Right-click → "More" → "Pin to taskbar"',
-            'App will appear on your taskbar'
-          ]
+            'App will appear on your taskbar',
+          ],
         },
         {
           title: 'Desktop',
@@ -189,10 +210,10 @@ export const PWAInstallPrompt = () => {
           steps: [
             'Go to Start Menu',
             'Drag app icon to desktop',
-            'Or right-click → Create shortcut'
-          ]
-        }
-      ]
+            'Or right-click → Create shortcut',
+          ],
+        },
+      ],
     },
     {
       id: 'mac',
@@ -207,8 +228,8 @@ export const PWAInstallPrompt = () => {
           steps: [
             'Press F4 or click Launchpad in Dock',
             'Find "Print Press" app',
-            'Drag to organize or create folder'
-          ]
+            'Drag to organize or create folder',
+          ],
         },
         {
           title: 'Applications Folder',
@@ -217,8 +238,8 @@ export const PWAInstallPrompt = () => {
           steps: [
             'Open Finder',
             'Go to Applications folder',
-            'Find and open "Print Press"'
-          ]
+            'Find and open "Print Press"',
+          ],
         },
         {
           title: 'Dock',
@@ -227,10 +248,10 @@ export const PWAInstallPrompt = () => {
           steps: [
             'Open app from Launchpad',
             'Right-click Dock icon',
-            'Options → Keep in Dock'
-          ]
-        }
-      ]
+            'Options → Keep in Dock',
+          ],
+        },
+      ],
     },
     {
       id: 'ios',
@@ -245,8 +266,8 @@ export const PWAInstallPrompt = () => {
           steps: [
             'After "Add to Home Screen"',
             'App appears on current home screen',
-            'Drag to rearrange or create folder'
-          ]
+            'Drag to rearrange or create folder',
+          ],
         },
         {
           title: 'App Library',
@@ -255,8 +276,8 @@ export const PWAInstallPrompt = () => {
           steps: [
             'Swipe left past last home screen',
             'Find in alphabetical list or category',
-            'Press and hold to add back to home'
-          ]
+            'Press and hold to add back to home',
+          ],
         },
         {
           title: 'Search',
@@ -265,10 +286,10 @@ export const PWAInstallPrompt = () => {
           steps: [
             'Swipe down on home screen',
             'Type "Print Press"',
-            'Tap to open directly'
-          ]
-        }
-      ]
+            'Tap to open directly',
+          ],
+        },
+      ],
     },
     {
       id: 'android',
@@ -283,8 +304,8 @@ export const PWAInstallPrompt = () => {
           steps: [
             'App appears on home screen after install',
             'Long press to move or remove',
-            'Drag to create folder with other apps'
-          ]
+            'Drag to create folder with other apps',
+          ],
         },
         {
           title: 'App Drawer',
@@ -293,8 +314,8 @@ export const PWAInstallPrompt = () => {
           steps: [
             'Swipe up from bottom (or tap app drawer)',
             'Find in alphabetical list',
-            'Long press to add to home'
-          ]
+            'Long press to add to home',
+          ],
         },
         {
           title: 'Search Apps',
@@ -303,10 +324,10 @@ export const PWAInstallPrompt = () => {
           steps: [
             'Open app drawer',
             'Type "Print Press" in search bar',
-            'Tap to open'
-          ]
-        }
-      ]
+            'Tap to open',
+          ],
+        },
+      ],
     },
     {
       id: 'chromeos',
@@ -321,8 +342,8 @@ export const PWAInstallPrompt = () => {
           steps: [
             'Press Launcher key (⊞) or click circle',
             'Find in app list or search',
-            'Right-click → Pin to shelf'
-          ]
+            'Right-click → Pin to shelf',
+          ],
         },
         {
           title: 'Shelf',
@@ -331,10 +352,10 @@ export const PWAInstallPrompt = () => {
           steps: [
             'Open app from Launcher',
             'Right-click shelf icon',
-            'Select "Pin to shelf"'
-          ]
-        }
-      ]
+            'Select "Pin to shelf"',
+          ],
+        },
+      ],
     },
     {
       id: 'linux',
@@ -349,8 +370,8 @@ export const PWAInstallPrompt = () => {
           steps: [
             'Click Applications/System menu',
             'Find in installed applications',
-            'Right-click → Add to favorites/desktop'
-          ]
+            'Right-click → Add to favorites/desktop',
+          ],
         },
         {
           title: 'Desktop Shortcut',
@@ -359,14 +380,15 @@ export const PWAInstallPrompt = () => {
           steps: [
             'Usually auto-created on desktop',
             'Or create in ~/.local/share/applications/',
-            'Double-click to launch'
-          ]
-        }
-      ]
-    }
+            'Double-click to launch',
+          ],
+        },
+      ],
+    },
   ];
 
-  const currentGuide = deviceGuides.find(g => g.id === currentOS) || deviceGuides[0];
+  const currentGuide =
+    deviceGuides.find((g) => g.id === currentOS) || deviceGuides[0];
   const allGuides = deviceGuides;
 
   const handleShowLocationGuide = () => {
@@ -378,7 +400,7 @@ export const PWAInstallPrompt = () => {
     setCurrentSlide((prev) => (prev + 1) % allGuides.length);
   };
 
-  const handlePrevSlide = () => {
+  const _handlePrevSlide = () => {
     setCurrentSlide((prev) => (prev - 1 + allGuides.length) % allGuides.length);
   };
 
@@ -394,53 +416,58 @@ export const PWAInstallPrompt = () => {
     setIsInstalling(true);
     setInstallStep(0);
     setInstallProgress(0);
-    
+
     if (isIOS) {
       // For iOS, show share instructions
       setInstallStep(1);
       setInstallProgress(50);
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       setInstallStep(2);
       setInstallProgress(100);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       setShowInstallDialog(false);
       setShowPrompt(false);
       setIsInstalling(false);
       return;
     }
 
-    if (currentOS === 'windows' || currentOS === 'mac' || currentOS === 'linux' || currentOS === 'chromeos') {
+    if (
+      currentOS === 'windows' ||
+      currentOS === 'mac' ||
+      currentOS === 'linux' ||
+      currentOS === 'chromeos'
+    ) {
       // For desktop platforms
       setInstallStep(1);
       setInstallProgress(20);
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
       setInstallStep(2);
       setInstallProgress(40);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
       setInstallStep(3);
       setInstallProgress(60);
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
       if (deferredPrompt) {
         try {
           console.log('📲 Using deferred beforeinstallprompt for desktop...');
           await deferredPrompt.prompt();
-          
+
           const choiceResult = await deferredPrompt.userChoice;
           if (choiceResult.outcome === 'accepted') {
             // Installation accepted
             setInstallStep(4);
             setInstallProgress(80);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
             setInstallStep(5);
             setInstallProgress(100);
             console.log('✅ Desktop app installation accepted');
-            
+
             // Show location guide after successful install
-            await new Promise(resolve => setTimeout(resolve, 800));
+            await new Promise((resolve) => setTimeout(resolve, 800));
             handleShowLocationGuide();
           } else {
             // Installation dismissed
@@ -458,22 +485,22 @@ export const PWAInstallPrompt = () => {
     // If no deferred prompt available, just show our progress anyway
     try {
       console.log('📲 No deferred prompt, showing progress...');
-      
+
       // Step 4: Installing
       setInstallStep(4);
       setInstallProgress(75);
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
       // Step 5: Finalizing
       setInstallStep(5);
       setInstallProgress(90);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Step 6: Complete
       setInstallStep(6);
       setInstallProgress(100);
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
       // Show location guide after successful install
       handleShowLocationGuide();
     } catch (error) {
@@ -483,7 +510,7 @@ export const PWAInstallPrompt = () => {
     }
   };
 
-  const handleCancelInstall = () => {
+  const _handleCancelInstall = () => {
     setShowInstallDialog(false);
     setIsInstalling(false);
   };
@@ -500,32 +527,32 @@ export const PWAInstallPrompt = () => {
     const visuals: Record<string, { device: string; label: string }> = {
       windows: {
         device: '🖥️',
-        label: 'Windows Desktop'
+        label: 'Windows Desktop',
       },
       mac: {
         device: '💻',
-        label: 'macOS Desktop'
+        label: 'macOS Desktop',
       },
       ios: {
         device: '📱',
-        label: 'iPhone/iPad'
+        label: 'iPhone/iPad',
       },
       android: {
         device: '📱',
-        label: 'Android Phone'
+        label: 'Android Phone',
       },
       chromeos: {
         device: '💻',
-        label: 'ChromeOS'
+        label: 'ChromeOS',
       },
       linux: {
         device: '💻',
-        label: 'Linux Desktop'
+        label: 'Linux Desktop',
       },
       unknown: {
         device: '🖥️',
-        label: 'Your Device'
-      }
+        label: 'Your Device',
+      },
     };
 
     const visual = visuals[os] || visuals.unknown;
@@ -555,13 +582,19 @@ export const PWAInstallPrompt = () => {
                 <span className="text-2xl">📍</span>
                 Find Your App
               </h2>
-              <p className="text-sm mt-1 opacity-90">Guide for {currentGuide.name}</p>
+              <p className="text-sm mt-1 opacity-90">
+                Guide for {currentGuide.name}
+              </p>
             </div>
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setCurrentSlide((currentSlide - 1 + allGuides.length) % allGuides.length)}
+                onClick={() =>
+                  setCurrentSlide(
+                    (currentSlide - 1 + allGuides.length) % allGuides.length
+                  )
+                }
                 className="h-8 w-8 text-white hover:bg-white/20"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -572,14 +605,16 @@ export const PWAInstallPrompt = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setCurrentSlide((currentSlide + 1) % allGuides.length)}
+                onClick={() =>
+                  setCurrentSlide((currentSlide + 1) % allGuides.length)
+                }
                 className="h-8 w-8 text-white hover:bg-white/20"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
-          
+
           {/* OS Selection Pills */}
           <div className="flex flex-wrap gap-1.5 mt-3">
             {allGuides.map((guide, index) => (
@@ -603,29 +638,43 @@ export const PWAInstallPrompt = () => {
         <div className="p-5 max-h-[60vh] overflow-y-auto">
           {/* Device Visual */}
           <DeviceVisualGuide os={currentOS} />
-          
+
           {/* Current OS Guide */}
           <div className="space-y-4 mb-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className={`p-2 rounded-lg ${currentGuide.color.split(' ')[0]} border ${currentGuide.color.split(' ')[2]}`}>
+              <div
+                className={`p-2 rounded-lg ${currentGuide.color.split(' ')[0]} border ${currentGuide.color.split(' ')[2]}`}
+              >
                 {currentGuide.icon}
               </div>
               <div>
                 <h3 className="font-bold text-gray-900">{currentGuide.name}</h3>
-                <p className="text-sm text-gray-600">Your app is ready! Find it here:</p>
+                <p className="text-sm text-gray-600">
+                  Your app is ready! Find it here:
+                </p>
               </div>
             </div>
 
             {currentGuide.locations.map((location, index) => (
-              <div key={index} className="bg-gray-50/80 border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-all">
+              <div
+                key={index}
+                className="bg-gray-50/80 border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-all"
+              >
                 <div className="flex items-start gap-3">
                   <div className="text-2xl flex-shrink-0">{location.icon}</div>
                   <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 text-sm">{location.title}</h4>
-                    <p className="text-xs text-gray-600 mt-0.5 mb-2">{location.description}</p>
+                    <h4 className="font-semibold text-gray-900 text-sm">
+                      {location.title}
+                    </h4>
+                    <p className="text-xs text-gray-600 mt-0.5 mb-2">
+                      {location.description}
+                    </p>
                     <ul className="space-y-1.5">
                       {location.steps.map((step, stepIndex) => (
-                        <li key={stepIndex} className="flex items-start gap-2 text-xs text-gray-700">
+                        <li
+                          key={stepIndex}
+                          className="flex items-start gap-2 text-xs text-gray-700"
+                        >
                           <span className="flex-shrink-0 w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[10px] mt-0.5">
                             {stepIndex + 1}
                           </span>
@@ -672,9 +721,12 @@ export const PWAInstallPrompt = () => {
                 </div>
               </div>
               <div>
-                <p className="font-semibold text-amber-800 text-xs mb-1">App Icon Note</p>
+                <p className="font-semibold text-amber-800 text-xs mb-1">
+                  App Icon Note
+                </p>
                 <p className="text-xs text-amber-700">
-                  Uses App Loco icon. May take a moment to appear. If default icon shows, restart app.
+                  Uses App Loco icon. May take a moment to appear. If default
+                  icon shows, restart app.
                 </p>
               </div>
             </div>
@@ -703,7 +755,7 @@ export const PWAInstallPrompt = () => {
                 <ChevronRight className="ml-1.5 h-3.5 w-3.5" />
               </Button>
             </div>
-            
+
             {/* Progress Dots */}
             <div className="flex justify-center mt-2">
               <div className="flex gap-1.5">
@@ -755,8 +807,8 @@ export const PWAInstallPrompt = () => {
               Install App
             </h3>
             <p className="text-sm text-gray-600 leading-relaxed">
-              {isIOS 
-                ? 'Tap Share, then "Add to Home Screen"' 
+              {isIOS
+                ? 'Tap Share, then "Add to Home Screen"'
                 : 'Get the best experience with our app installed'}
             </p>
           </div>
@@ -771,18 +823,14 @@ export const PWAInstallPrompt = () => {
           </Button>
         </div>
         <div className="flex gap-2 mt-4">
-          <Button 
+          <Button
             onClick={handleInstall}
             className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
           >
             <Download className="h-4 w-4 mr-2" />
             Install Now
           </Button>
-          <Button
-            variant="outline"
-            onClick={handleDismiss}
-            className="px-4"
-          >
+          <Button variant="outline" onClick={handleDismiss} className="px-4">
             Later
           </Button>
         </div>
@@ -795,7 +843,9 @@ export const PWAInstallPrompt = () => {
             {/* Header */}
             <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-5 text-white rounded-t-2xl">
               <h2 className="text-xl font-bold text-center">Install App</h2>
-              <p className="text-center text-sm mt-1 opacity-90">Print Press Management System</p>
+              <p className="text-center text-sm mt-1 opacity-90">
+                Print Press Management System
+              </p>
             </div>
 
             {/* Content */}
@@ -809,8 +859,12 @@ export const PWAInstallPrompt = () => {
                         <span className="text-lg">✓</span>
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900 text-sm">Offline Access</p>
-                        <p className="text-xs text-gray-600">Use without internet connection</p>
+                        <p className="font-semibold text-gray-900 text-sm">
+                          Offline Access
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Use without internet connection
+                        </p>
                       </div>
                     </div>
 
@@ -819,8 +873,12 @@ export const PWAInstallPrompt = () => {
                         <span className="text-lg">⚡</span>
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900 text-sm">Fast Performance</p>
-                        <p className="text-xs text-gray-600">Lightning-fast on your device</p>
+                        <p className="font-semibold text-gray-900 text-sm">
+                          Fast Performance
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Lightning-fast on your device
+                        </p>
                       </div>
                     </div>
 
@@ -829,8 +887,12 @@ export const PWAInstallPrompt = () => {
                         <span className="text-lg">📱</span>
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900 text-sm">Easy Access</p>
-                        <p className="text-xs text-gray-600">From home screen or app drawer</p>
+                        <p className="font-semibold text-gray-900 text-sm">
+                          Easy Access
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          From home screen or app drawer
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -838,7 +900,8 @@ export const PWAInstallPrompt = () => {
                   {isIOS && (
                     <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 mb-5">
                       <p className="text-xs text-emerald-900">
-                        <span className="font-semibold">For iOS:</span> After Install, tap Share → "Add to Home Screen"
+                        <span className="font-semibold">For iOS:</span> After
+                        Install, tap Share → &quot;Add to Home Screen&quot;
                       </p>
                     </div>
                   )}
@@ -850,8 +913,12 @@ export const PWAInstallPrompt = () => {
                     {/* Progress Bar */}
                     <div>
                       <div className="flex justify-between mb-2">
-                        <span className="text-sm font-semibold text-gray-700">Installing...</span>
-                        <span className="text-sm font-semibold text-emerald-600">{installProgress}%</span>
+                        <span className="text-sm font-semibold text-gray-700">
+                          Installing...
+                        </span>
+                        <span className="text-sm font-semibold text-emerald-600">
+                          {installProgress}%
+                        </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                         <div
@@ -865,80 +932,128 @@ export const PWAInstallPrompt = () => {
                     <div className="space-y-3">
                       {/* Step 1: Initializing */}
                       <div className="flex gap-3">
-                        <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
-                          installStep >= 1 ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
-                        }`}>
+                        <div
+                          className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
+                            installStep >= 1
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-gray-200 text-gray-500'
+                          }`}
+                        >
                           {installStep > 1 ? '✓' : '1'}
                         </div>
                         <div className="flex-1 pt-0.5">
-                          <p className={`font-semibold text-sm ${installStep >= 1 ? 'text-gray-900' : 'text-gray-500'}`}>
+                          <p
+                            className={`font-semibold text-sm ${installStep >= 1 ? 'text-gray-900' : 'text-gray-500'}`}
+                          >
                             Initializing
                           </p>
-                          <p className="text-xs text-gray-500">Preparing installation</p>
+                          <p className="text-xs text-gray-500">
+                            Preparing installation
+                          </p>
                         </div>
                       </div>
 
                       {/* Step 3: User Confirmation */}
                       <div className="flex gap-3">
-                        <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
-                          installStep >= 3 ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
-                        }`}>
+                        <div
+                          className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
+                            installStep >= 3
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-gray-200 text-gray-500'
+                          }`}
+                        >
                           {installStep > 3 ? '✓' : '3'}
                         </div>
                         <div className="flex-1 pt-0.5">
-                          <p className={`font-semibold text-sm ${installStep >= 3 ? 'text-gray-900' : 'text-gray-500'}`}>
+                          <p
+                            className={`font-semibold text-sm ${installStep >= 3 ? 'text-gray-900' : 'text-gray-500'}`}
+                          >
                             Confirmation
                           </p>
-                          <p className="text-xs text-gray-500">Waiting for confirmation</p>
+                          <p className="text-xs text-gray-500">
+                            Waiting for confirmation
+                          </p>
                         </div>
                       </div>
 
                       {/* Step 4: Installing */}
                       <div className="flex gap-3">
-                        <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
-                          installStep >= 4 ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
-                        }`}>
-                          {installStep > 4 ? '✓' : installStep === 4 ? (
+                        <div
+                          className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
+                            installStep >= 4
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-gray-200 text-gray-500'
+                          }`}
+                        >
+                          {installStep > 4 ? (
+                            '✓'
+                          ) : installStep === 4 ? (
                             <div className="w-3 h-3 border-2 border-transparent border-t-white rounded-full animate-spin"></div>
-                          ) : '4'}
+                          ) : (
+                            '4'
+                          )}
                         </div>
                         <div className="flex-1 pt-0.5">
-                          <p className={`font-semibold text-sm ${installStep >= 4 ? 'text-gray-900' : 'text-gray-500'}`}>
+                          <p
+                            className={`font-semibold text-sm ${installStep >= 4 ? 'text-gray-900' : 'text-gray-500'}`}
+                          >
                             Installing Files
                           </p>
-                          <p className="text-xs text-gray-500">Downloading app files</p>
+                          <p className="text-xs text-gray-500">
+                            Downloading app files
+                          </p>
                         </div>
                       </div>
 
                       {/* Step 5: Finalizing */}
                       <div className="flex gap-3">
-                        <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
-                          installStep >= 5 ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
-                        }`}>
-                          {installStep > 5 ? '✓' : installStep === 5 ? (
+                        <div
+                          className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
+                            installStep >= 5
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-gray-200 text-gray-500'
+                          }`}
+                        >
+                          {installStep > 5 ? (
+                            '✓'
+                          ) : installStep === 5 ? (
                             <div className="w-3 h-3 border-2 border-transparent border-t-white rounded-full animate-spin"></div>
-                          ) : '5'}
+                          ) : (
+                            '5'
+                          )}
                         </div>
                         <div className="flex-1 pt-0.5">
-                          <p className={`font-semibold text-sm ${installStep >= 5 ? 'text-gray-900' : 'text-gray-500'}`}>
+                          <p
+                            className={`font-semibold text-sm ${installStep >= 5 ? 'text-gray-900' : 'text-gray-500'}`}
+                          >
                             Finalizing
                           </p>
-                          <p className="text-xs text-gray-500">Setting up shortcuts</p>
+                          <p className="text-xs text-gray-500">
+                            Setting up shortcuts
+                          </p>
                         </div>
                       </div>
 
                       {/* Step 6: Complete */}
                       <div className="flex gap-3">
-                        <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
-                          installStep >= 6 ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
-                        }`}>
+                        <div
+                          className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
+                            installStep >= 6
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-gray-200 text-gray-500'
+                          }`}
+                        >
                           {installStep >= 6 ? '✓' : '6'}
                         </div>
                         <div className="flex-1 pt-0.5">
-                          <p className={`font-semibold text-sm ${installStep >= 6 ? 'text-gray-900' : 'text-gray-500'}`}>
+                          <p
+                            className={`font-semibold text-sm ${installStep >= 6 ? 'text-gray-900' : 'text-gray-500'}`}
+                          >
                             Complete
                           </p>
-                          <p className="text-xs text-gray-500">App is ready to use</p>
+                          <p className="text-xs text-gray-500">
+                            App is ready to use
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -947,7 +1062,8 @@ export const PWAInstallPrompt = () => {
                     {installStep === 6 && (
                       <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 mt-3">
                         <p className="text-xs text-emerald-900 mb-2">
-                          <span className="font-semibold">✓ Success!</span> Your app is now installed.
+                          <span className="font-semibold">✓ Success!</span> Your
+                          app is now installed.
                         </p>
                         <Button
                           onClick={handleShowLocationGuide}

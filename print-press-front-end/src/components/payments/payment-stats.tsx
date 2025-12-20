@@ -56,17 +56,20 @@ export const PaymentStats: React.FC = () => {
   }
 
   const totalRevenue = stats.payment_stats.reduce((sum, stat) => {
-    const amount = parseFloat(stat.total_amount) || 0;
-    return sum + (isNaN(amount) ? 0 : amount);
+    const amount = stat.total_amount || 0;
+    return sum + amount;
   }, 0);
+
   const totalPayments = stats.payment_stats.reduce((sum, stat) => {
-    const count = parseInt(stat.payment_count) || 0;
-    return sum + (isNaN(count) ? 0 : count);
+    const count = stat.payment_count || 0;
+    return sum + count;
   }, 0);
+
   const averagePayment = totalPayments > 0 ? totalRevenue / totalPayments : 0;
+
   const uniqueJobs = stats.payment_stats.reduce((sum, stat) => {
-    const jobs = parseInt(stat.unique_jobs) || 0;
-    return sum + (isNaN(jobs) ? 0 : jobs);
+    const jobs = stat.unique_jobs || 0;
+    return sum + jobs;
   }, 0);
 
   return (
@@ -194,7 +197,10 @@ export const PaymentStats: React.FC = () => {
                     {formatCurrency(method.total_amount)}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {((method.total_amount / totalRevenue) * 100).toFixed(1)}%
+                    {totalRevenue > 0
+                      ? ((method.total_amount / totalRevenue) * 100).toFixed(1)
+                      : '0'}
+                    %
                   </p>
                 </div>
               </div>
@@ -223,17 +229,16 @@ export const PaymentStats: React.FC = () => {
                     Period: {stat.period}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {parseInt(stat.payment_count) || 0} payments •{' '}
-                    {parseInt(stat.unique_jobs) || 0} jobs •{' '}
-                    {parseInt(stat.unique_customers) || 0} customers
+                    {stat.payment_count || 0} payments • {stat.unique_jobs || 0}{' '}
+                    jobs • {stat.unique_customers || 0} customers
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-semibold text-green-600">
-                    {formatCurrency(parseFloat(stat.total_amount) || 0)}
+                    {formatCurrency(stat.total_amount || 0)}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Avg: {formatCurrency(parseFloat(stat.average_payment) || 0)}
+                    Avg: {formatCurrency(stat.average_payment || 0)}
                   </p>
                 </div>
               </div>

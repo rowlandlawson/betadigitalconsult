@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { api, isApiError } from '@/lib/api';
 import { ReceiptData } from '@/types/payments';
-import { formatCurrency, formatDate, getLogoUrl } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { useCompanySettings } from '@/lib/useCompanySettings';
 import Image from 'next/image';
 import { Printer, Download, ArrowLeft } from 'lucide-react';

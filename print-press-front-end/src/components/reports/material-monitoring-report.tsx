@@ -80,8 +80,8 @@ export const MaterialMonitoringReport: React.FC = () => {
     <div className="space-y-6">
       {/* Period Selector */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className="pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="text-lg font-semibold">
               Material Monitoring Dashboard
             </h3>
@@ -160,7 +160,10 @@ export const MaterialMonitoringReport: React.FC = () => {
                   Avg Material Return
                 </p>
                 <p className="text-2xl font-bold text-green-600">
-                {(Number(data.summary.average_material_return) || 0).toFixed(1)}%
+                  {(Number(data.summary.average_material_return) || 0).toFixed(
+                    1
+                  )}
+                  %
                 </p>
               </div>
             </div>
@@ -198,7 +201,7 @@ export const MaterialMonitoringReport: React.FC = () => {
                       {formatCurrency(item.stock_value)}
                     </td>
                     <td className="p-2 text-right">
-                    {(Number(item.stock_percentage) || 0).toFixed(1)}%
+                      {(Number(item.stock_percentage) || 0).toFixed(1)}%
                     </td>
                     <td className="p-2">
                       <span
@@ -246,7 +249,7 @@ export const MaterialMonitoringReport: React.FC = () => {
                       {formatCurrency(item.generated_profit)}
                     </td>
                     <td className="p-2 text-right font-medium">
-                    {(Number(item.return_on_material) || 0).toFixed(1)}%
+                      {(Number(item.return_on_material) || 0).toFixed(1)}%
                     </td>
                   </tr>
                 ))}
@@ -289,7 +292,7 @@ export const MaterialMonitoringReport: React.FC = () => {
                       {formatCurrency(item.average_cost)}
                     </td>
                     <td className="p-2 text-right">
-                    {(Number(item.percentage_of_total) || 0).toFixed(1)}%
+                      {(Number(item.percentage_of_total) || 0).toFixed(1)}%
                     </td>
                   </tr>
                 ))}

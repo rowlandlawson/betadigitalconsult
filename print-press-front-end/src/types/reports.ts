@@ -1,10 +1,8 @@
 export interface MonthlyFinancialSummary {
   period: {
-    month: number;
-    year: number;
     start_date: string;
     end_date: string;
-    month_name: string;
+    days?: number;
   };
   revenue: {
     total_revenue: number;
@@ -23,6 +21,12 @@ export interface MonthlyFinancialSummary {
     net_profit: number;
     profit_margin: number;
     is_profitable: boolean;
+  };
+  cash_flow: {
+    total_invoiced: number;
+    payments_received: number;
+    outstanding_amount: number;
+    collection_rate: number;
   };
   job_stats: {
     total_jobs: number;
@@ -48,10 +52,12 @@ export interface ProfitLossStatement {
   period: {
     start_date: string;
     end_date: string;
-    days?: number; 
+    days?: number;
   };
   summary: {
     total_revenue: number;
+    total_invoiced: number;
+    outstanding_amount: number;
     material_costs: number;
     gross_profit: number;
     gross_profit_margin: number;

@@ -8,7 +8,7 @@ import { reportsService } from '@/lib/reportsService';
 import { ProfitLossStatement } from '@/types/reports';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { isApiError } from '@/lib/api';
-import { Download, Calendar } from 'lucide-react';
+import { Download, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -19,18 +19,27 @@ import {
   Tooltip,
 } from 'recharts';
 
+const ITEMS_PER_PAGE = 10;
+
 export const ProfitLoss: React.FC = () => {
   const [data, setData] = useState<ProfitLossStatement | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  // Default to current month (same as dashboard "month" period)
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
-    date.setMonth(date.getMonth() - 1);
-    return date.toISOString().split('T')[0];
+    // First day of current month
+    return new Date(date.getFullYear(), date.getMonth(), 1)
+      .toISOString()
+      .split('T')[0];
   });
   const [endDate, setEndDate] = useState(
     () => new Date().toISOString().split('T')[0]
   );
+
+  // Pagination states
+  const [revenueCurrentPage, setRevenueCurrentPage] = useState(1);
+  const [expenseCurrentPage, setExpenseCurrentPage] = useState(1);
 
   const fetchData = useCallback(async () => {
     if (!startDate || !endDate) {
@@ -46,6 +55,9 @@ export const ProfitLoss: React.FC = () => {
         endDate
       );
       setData(statement);
+      // Reset pagination when new data is loaded
+      setRevenueCurrentPage(1);
+      setExpenseCurrentPage(1);
     } catch (err: unknown) {
       console.error('Failed to fetch profit/loss statement:', err);
       if (isApiError(err)) {
@@ -109,31 +121,42 @@ export const ProfitLoss: React.FC = () => {
     <div className="space-y-6">
       {/* Date Range Selector */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
+        <CardHeader className="pb-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-gray-500" />
               <h3 className="text-lg font-semibold">Profit & Loss Statement</h3>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr_auto_auto] gap-2 items-center">
               <Input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-40"
+                className="w-full"
               />
-              <span className="text-gray-500">to</span>
+              <span className="text-gray-500 text-sm text-center hidden sm:block">
+                to
+              </span>
               <Input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-40"
+                className="w-full"
               />
-              <Button onClick={fetchData} disabled={loading}>
-                {loading ? 'Loading...' : 'Generate Report'}
+              <Button
+                onClick={fetchData}
+                disabled={loading}
+                className="w-full sm:w-auto"
+              >
+                {loading ? 'Loading...' : 'Generate'}
               </Button>
               {data && (
-                <Button onClick={handleExport} variant="outline" size="sm">
+                <Button
+                  onClick={handleExport}
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
@@ -163,11 +186,11 @@ export const ProfitLoss: React.FC = () => {
       {data && !loading && (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <Card>
               <CardContent className="p-6">
                 <p className="text-sm font-medium text-gray-600">
-                  Total Revenue
+                  Revenue (Collected)
                 </p>
                 <p className="text-2xl font-bold text-green-600 mt-1">
                   {formatCurrency(data.summary.total_revenue)}
@@ -178,10 +201,19 @@ export const ProfitLoss: React.FC = () => {
             <Card>
               <CardContent className="p-6">
                 <p className="text-sm font-medium text-gray-600">
-                  Material Costs
+                  Total Invoiced
                 </p>
+                <p className="text-2xl font-bold text-blue-600 mt-1">
+                  {formatCurrency(data.summary.total_invoiced || 0)}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <p className="text-sm font-medium text-gray-600">Amount Owed</p>
                 <p className="text-2xl font-bold text-orange-600 mt-1">
-                  {formatCurrency(data.summary.material_costs)}
+                  {formatCurrency(data.summary.outstanding_amount || 0)}
                 </p>
               </CardContent>
             </Card>
@@ -277,125 +309,258 @@ export const ProfitLoss: React.FC = () => {
           </div>
 
           {/* Revenue Breakdown Table */}
-          {/* Revenue Breakdown Table */}
-<Card>
-  <CardHeader>
-    <div className="flex items-center justify-between">
-      <h3 className="text-lg font-semibold">Revenue Breakdown</h3>
-      <p className="text-sm text-gray-500">
-        Showing {data.revenue_breakdown.length} jobs
-      </p>
-    </div>
-  </CardHeader>
-  <CardContent>
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b">
-            <th className="text-left p-2">Ticket ID</th>
-            <th className="text-left p-2">Description</th>
-            <th className="text-left p-2">Customer</th>
-            <th className="text-right p-2">Revenue</th>
-            <th className="text-right p-2">Payments</th>
-            <th className="text-left p-2">Date</th>
-            <th className="text-left p-2">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.revenue_breakdown.map((item, idx) => (
-            <tr key={idx} className="border-b hover:bg-gray-50">
-              <td className="p-2 font-medium">{item.ticket_id}</td>
-              <td className="p-2">{item.description}</td>
-              <td className="p-2">{item.customer_name || 'N/A'}</td>
-              <td className="p-2 text-right font-medium">
-                {formatCurrency(item.revenue)}
-              </td>
-              <td className="p-2 text-right text-sm">
-                <div className="flex flex-col">
-                  <span className="text-green-600">
-                    Paid: {formatCurrency(item.payments_received || 0)}
-                  </span>
-                  <span className="text-red-500 text-xs">
-                    Due: {formatCurrency(item.outstanding || 0)}
-                  </span>
-                </div>
-              </td>
-              <td className="p-2">{formatDate(item.payment_date)}</td>
-              <td className="p-2">
-                <span className={`px-2 py-1 rounded text-xs ${
-                  item.status === 'completed' 
-                    ? 'bg-green-100 text-green-800' 
-                    : item.status === 'delivered'
-                    ? 'bg-blue-100 text-blue-800'
-                    : item.status === 'in_progress'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {item.status}
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-        {/* Optional: Add summary footer */}
-        {data.revenue_breakdown.length > 0 && (
-          <tfoot>
-            <tr className="bg-gray-50 font-medium">
-              <td className="p-2" colSpan={3}>Total</td>
-              <td className="p-2 text-right">
-                {formatCurrency(data.summary.total_revenue)}
-              </td>
-              <td className="p-2 text-right">
-                <div className="flex flex-col">
-                  <span className="text-green-600">
-                    {formatCurrency(data.revenue_breakdown.reduce((sum, item) => sum + (item.payments_received || 0), 0))}
-                  </span>
-                  <span className="text-red-500 text-xs">
-                    {formatCurrency(data.revenue_breakdown.reduce((sum, item) => sum + (item.outstanding || 0), 0))}
-                  </span>
-                </div>
-              </td>
-              <td className="p-2" colSpan={2}></td>
-            </tr>
-          </tfoot>
-        )}
-      </table>
-    </div>
-  </CardContent>
-</Card>
+          {(() => {
+            const totalRevenuePages = Math.ceil(
+              data.revenue_breakdown.length / ITEMS_PER_PAGE
+            );
+            const revenueStartIndex = (revenueCurrentPage - 1) * ITEMS_PER_PAGE;
+            const paginatedRevenue = data.revenue_breakdown.slice(
+              revenueStartIndex,
+              revenueStartIndex + ITEMS_PER_PAGE
+            );
+
+            return (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Revenue Breakdown</h3>
+                    <p className="text-sm text-gray-500">
+                      Showing {revenueStartIndex + 1}-
+                      {Math.min(
+                        revenueStartIndex + ITEMS_PER_PAGE,
+                        data.revenue_breakdown.length
+                      )}{' '}
+                      of {data.revenue_breakdown.length} jobs
+                    </p>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Ticket ID</th>
+                          <th className="text-left p-2">Description</th>
+                          <th className="text-left p-2">Customer</th>
+                          <th className="text-right p-2">Revenue</th>
+                          <th className="text-right p-2">Payments</th>
+                          <th className="text-left p-2">Date</th>
+                          <th className="text-left p-2">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedRevenue.map((item, idx) => (
+                          <tr key={idx} className="border-b hover:bg-gray-50">
+                            <td className="p-2 font-medium">
+                              {item.ticket_id}
+                            </td>
+                            <td className="p-2">{item.description}</td>
+                            <td className="p-2">
+                              {item.customer_name || 'N/A'}
+                            </td>
+                            <td className="p-2 text-right font-medium">
+                              {formatCurrency(item.revenue)}
+                            </td>
+                            <td className="p-2 text-right text-sm">
+                              <div className="flex flex-col">
+                                <span className="text-green-600">
+                                  Paid:{' '}
+                                  {formatCurrency(item.payments_received || 0)}
+                                </span>
+                                <span className="text-red-500 text-xs">
+                                  Due: {formatCurrency(item.outstanding || 0)}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="p-2">
+                              {formatDate(item.payment_date)}
+                            </td>
+                            <td className="p-2">
+                              <span
+                                className={`px-2 py-1 rounded text-xs ${
+                                  item.status === 'completed'
+                                    ? 'bg-green-100 text-green-800'
+                                    : item.status === 'delivered'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : item.status === 'in_progress'
+                                        ? 'bg-yellow-100 text-yellow-800'
+                                        : 'bg-gray-100 text-gray-800'
+                                }`}
+                              >
+                                {item.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      {data.revenue_breakdown.length > 0 && (
+                        <tfoot>
+                          <tr className="bg-gray-50 font-medium">
+                            <td className="p-2" colSpan={3}>
+                              Total
+                            </td>
+                            <td className="p-2 text-right">
+                              {formatCurrency(
+                                data.summary.total_invoiced ||
+                                  data.revenue_breakdown.reduce(
+                                    (sum, item) => sum + item.revenue,
+                                    0
+                                  )
+                              )}
+                            </td>
+                            <td className="p-2 text-right">
+                              <div className="flex flex-col">
+                                <span className="text-green-600">
+                                  {formatCurrency(data.summary.total_revenue)}
+                                </span>
+                                <span className="text-red-500 text-xs">
+                                  {formatCurrency(
+                                    data.summary.outstanding_amount || 0
+                                  )}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="p-2" colSpan={2}></td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+
+                  {/* Pagination Controls */}
+                  {totalRevenuePages > 1 && (
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setRevenueCurrentPage((p) => Math.max(1, p - 1))
+                        }
+                        disabled={revenueCurrentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                      </Button>
+                      <span className="text-sm text-gray-600">
+                        Page {revenueCurrentPage} of {totalRevenuePages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setRevenueCurrentPage((p) =>
+                            Math.min(totalRevenuePages, p + 1)
+                          )
+                        }
+                        disabled={revenueCurrentPage === totalRevenuePages}
+                      >
+                        Next <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Expense Breakdown Table */}
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">Expense Breakdown</h3>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Category</th>
-                      <th className="text-left p-2">Description</th>
-                      <th className="text-right p-2">Amount</th>
-                      <th className="text-left p-2">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.expense_breakdown.map((item, idx) => (
-                      <tr key={idx} className="border-b hover:bg-gray-50">
-                        <td className="p-2 font-medium">{item.category}</td>
-                        <td className="p-2">{item.description}</td>
-                        <td className="p-2 text-right font-medium text-red-600">
-                          {formatCurrency(item.amount)}
-                        </td>
-                        <td className="p-2">{formatDate(item.date)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+          {(() => {
+            const totalExpensePages = Math.ceil(
+              data.expense_breakdown.length / ITEMS_PER_PAGE
+            );
+            const expenseStartIndex = (expenseCurrentPage - 1) * ITEMS_PER_PAGE;
+            const paginatedExpenses = data.expense_breakdown.slice(
+              expenseStartIndex,
+              expenseStartIndex + ITEMS_PER_PAGE
+            );
+
+            return (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Expense Breakdown</h3>
+                    <p className="text-sm text-gray-500">
+                      Showing {expenseStartIndex + 1}-
+                      {Math.min(
+                        expenseStartIndex + ITEMS_PER_PAGE,
+                        data.expense_breakdown.length
+                      )}{' '}
+                      of {data.expense_breakdown.length} expenses
+                    </p>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Category</th>
+                          <th className="text-left p-2">Description</th>
+                          <th className="text-right p-2">Amount</th>
+                          <th className="text-left p-2">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedExpenses.map((item, idx) => (
+                          <tr key={idx} className="border-b hover:bg-gray-50">
+                            <td className="p-2 font-medium">{item.category}</td>
+                            <td className="p-2">{item.description}</td>
+                            <td className="p-2 text-right font-medium text-red-600">
+                              {formatCurrency(item.amount)}
+                            </td>
+                            <td className="p-2">{formatDate(item.date)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      {data.expense_breakdown.length > 0 && (
+                        <tfoot>
+                          <tr className="bg-gray-50 font-medium">
+                            <td className="p-2" colSpan={2}>
+                              Total Expenses
+                            </td>
+                            <td className="p-2 text-right text-red-600">
+                              {formatCurrency(data.summary.total_expenses)}
+                            </td>
+                            <td className="p-2"></td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+
+                  {/* Pagination Controls */}
+                  {totalExpensePages > 1 && (
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setExpenseCurrentPage((p) => Math.max(1, p - 1))
+                        }
+                        disabled={expenseCurrentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                      </Button>
+                      <span className="text-sm text-gray-600">
+                        Page {expenseCurrentPage} of {totalExpensePages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setExpenseCurrentPage((p) =>
+                            Math.min(totalExpensePages, p + 1)
+                          )
+                        }
+                        disabled={expenseCurrentPage === totalExpensePages}
+                      >
+                        Next <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
         </>
       )}
     </div>

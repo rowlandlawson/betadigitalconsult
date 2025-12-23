@@ -52,7 +52,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
 
   // New State for Edit Materials Modal
   const [showEditMaterialsModal, setShowEditMaterialsModal] = useState(false);
-  const [updatingMaterials, setUpdatingMaterials] = useState(false);
+  const [_updatingMaterials, setUpdatingMaterials] = useState(false);
 
   useEffect(() => {
     let isMounted = true;

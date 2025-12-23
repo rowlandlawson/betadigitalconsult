@@ -7,13 +7,13 @@ import {
 } from '@/types/reports';
 
 export const reportsService = {
-  async getMonthlyFinancialSummary(
-    year?: number,
-    month?: number
+  async getFinancialSummary(
+    startDate: string,
+    endDate: string
   ): Promise<MonthlyFinancialSummary> {
     const queryParams = new URLSearchParams();
-    if (year) queryParams.append('year', year.toString());
-    if (month) queryParams.append('month', month.toString());
+    queryParams.append('start_date', startDate);
+    queryParams.append('end_date', endDate);
 
     const response = await api.get(
       `/reports/financial-summary?${queryParams.toString()}`

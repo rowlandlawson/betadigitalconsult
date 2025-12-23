@@ -105,14 +105,15 @@ export const BusinessPerformance: React.FC = () => {
     <div className="space-y-6">
       {/* Period Selector */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className="pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="text-lg font-semibold">Business Performance</h3>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <Button
                 variant={period === 'month' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setPeriod('month')}
+                className="text-xs sm:text-sm px-2 sm:px-3"
               >
                 Monthly
               </Button>
@@ -120,6 +121,7 @@ export const BusinessPerformance: React.FC = () => {
                 variant={period === 'week' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setPeriod('week')}
+                className="text-xs sm:text-sm px-2 sm:px-3"
               >
                 Weekly
               </Button>
@@ -127,6 +129,7 @@ export const BusinessPerformance: React.FC = () => {
                 variant={period === 'day' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setPeriod('day')}
+                className="text-xs sm:text-sm px-2 sm:px-3"
               >
                 Daily
               </Button>

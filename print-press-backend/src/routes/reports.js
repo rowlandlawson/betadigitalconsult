@@ -10,7 +10,7 @@ router.use(authenticateToken, requireAdmin);
 router.get('/dashboard-stats', reportsController.getDashboardStatistics);
 
 // Financial reports routes
-router.get('/financial-summary', reportsController.getMonthlyFinancialSummary);
+router.get('/financial-summary', reportsController.getFinancialSummary);
 router.get('/profit-loss', reportsController.getProfitLossStatement);
 
 // Material monitoring and analytics routes

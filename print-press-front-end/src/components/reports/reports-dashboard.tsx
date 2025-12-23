@@ -46,7 +46,7 @@ export const ReportsDashboard: React.FC = () => {
       {/* Tab Navigation */}
       <Card>
         <CardContent className="p-0">
-          <div className="flex flex-wrap border-b border-gray-200">
+          <div className="flex overflow-x-auto scrollbar-hide border-b border-gray-200">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -54,16 +54,17 @@ export const ReportsDashboard: React.FC = () => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`
-                    flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors
+                    flex items-center gap-2 px-4 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0
                     ${
                       activeTab === tab.id
-                        ? 'border-b-2 border-[#AABD77] text-[#AABD77]'
+                        ? 'border-b-2 border-[#AABD77] text-[#AABD77] bg-green-50/50'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }
                   `}
                 >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
+                  <Icon className="h-4 w-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
                 </button>
               );
             })}

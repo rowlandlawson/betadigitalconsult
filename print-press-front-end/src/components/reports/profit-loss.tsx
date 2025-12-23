@@ -277,51 +277,92 @@ export const ProfitLoss: React.FC = () => {
           </div>
 
           {/* Revenue Breakdown Table */}
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">Revenue Breakdown</h3>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Ticket ID</th>
-                      <th className="text-left p-2">Description</th>
-                      <th className="text-left p-2">Customer</th>
-                      <th className="text-right p-2">Revenue</th>
-                      <th className="text-left p-2">Date</th>
-                      <th className="text-left p-2">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.revenue_breakdown.map((item, idx) => (
-                      <tr key={idx} className="border-b hover:bg-gray-50">
-                        <td className="p-2 font-medium">{item.ticket_id}</td>
-                        <td className="p-2">{item.description}</td>
-                        <td className="p-2">{item.customer_name || 'N/A'}</td>
-                        <td className="p-2 text-right font-medium">
-                          {formatCurrency(item.revenue)}
-                        </td>
-                        <td className="p-2">{formatDate(item.payment_date)}</td>
-                        <td className="p-2">
-                          <span
-                            className={`px-2 py-1 rounded text-xs ${
-                              item.status === 'completed'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                            }`}
-                          >
-                            {item.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Revenue Breakdown Table */}
+<Card>
+  <CardHeader>
+    <div className="flex items-center justify-between">
+      <h3 className="text-lg font-semibold">Revenue Breakdown</h3>
+      <p className="text-sm text-gray-500">
+        Showing {data.revenue_breakdown.length} jobs
+      </p>
+    </div>
+  </CardHeader>
+  <CardContent>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b">
+            <th className="text-left p-2">Ticket ID</th>
+            <th className="text-left p-2">Description</th>
+            <th className="text-left p-2">Customer</th>
+            <th className="text-right p-2">Revenue</th>
+            <th className="text-right p-2">Payments</th>
+            <th className="text-left p-2">Date</th>
+            <th className="text-left p-2">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.revenue_breakdown.map((item, idx) => (
+            <tr key={idx} className="border-b hover:bg-gray-50">
+              <td className="p-2 font-medium">{item.ticket_id}</td>
+              <td className="p-2">{item.description}</td>
+              <td className="p-2">{item.customer_name || 'N/A'}</td>
+              <td className="p-2 text-right font-medium">
+                {formatCurrency(item.revenue)}
+              </td>
+              <td className="p-2 text-right text-sm">
+                <div className="flex flex-col">
+                  <span className="text-green-600">
+                    Paid: {formatCurrency(item.payments_received || 0)}
+                  </span>
+                  <span className="text-red-500 text-xs">
+                    Due: {formatCurrency(item.outstanding || 0)}
+                  </span>
+                </div>
+              </td>
+              <td className="p-2">{formatDate(item.payment_date)}</td>
+              <td className="p-2">
+                <span className={`px-2 py-1 rounded text-xs ${
+                  item.status === 'completed' 
+                    ? 'bg-green-100 text-green-800' 
+                    : item.status === 'delivered'
+                    ? 'bg-blue-100 text-blue-800'
+                    : item.status === 'in_progress'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {item.status}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        {/* Optional: Add summary footer */}
+        {data.revenue_breakdown.length > 0 && (
+          <tfoot>
+            <tr className="bg-gray-50 font-medium">
+              <td className="p-2" colSpan={3}>Total</td>
+              <td className="p-2 text-right">
+                {formatCurrency(data.summary.total_revenue)}
+              </td>
+              <td className="p-2 text-right">
+                <div className="flex flex-col">
+                  <span className="text-green-600">
+                    {formatCurrency(data.revenue_breakdown.reduce((sum, item) => sum + (item.payments_received || 0), 0))}
+                  </span>
+                  <span className="text-red-500 text-xs">
+                    {formatCurrency(data.revenue_breakdown.reduce((sum, item) => sum + (item.outstanding || 0), 0))}
+                  </span>
+                </div>
+              </td>
+              <td className="p-2" colSpan={2}></td>
+            </tr>
+          </tfoot>
+        )}
+      </table>
+    </div>
+  </CardContent>
+</Card>
 
           {/* Expense Breakdown Table */}
           <Card>

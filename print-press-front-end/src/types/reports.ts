@@ -48,6 +48,7 @@ export interface ProfitLossStatement {
   period: {
     start_date: string;
     end_date: string;
+    days?: number; 
   };
   summary: {
     total_revenue: number;
@@ -65,6 +66,8 @@ export interface ProfitLossStatement {
     customer_name: string;
     payment_date: string;
     status: string;
+    payments_received?: number;
+    outstanding?: number;
   }>;
   expense_breakdown: Array<{
     category: string;
@@ -86,6 +89,7 @@ export interface MaterialMonitoringDashboard {
   waste_analysis: Array<{
     type: string;
     waste_reason: string;
+    material_name?: string;
     occurrence_count: number;
     total_cost: number;
     average_cost: number;
@@ -160,9 +164,11 @@ export interface WasteAnalysis {
   waste_analysis: Array<{
     type: string;
     waste_reason: string;
+    material_name?: string;
     occurrence_count: number;
     total_cost: number;
     average_cost: number;
+    percentage_of_total: number;
   }>;
 }
 

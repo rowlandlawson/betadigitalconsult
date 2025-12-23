@@ -505,154 +505,195 @@ async getDashboardStatistics(req, res) {
   }
 
   // Get profit/loss statement for custom date range
-  async getProfitLossStatement(req, res) {
-    try {
-      const { start_date, end_date } = req.query;
+ // Get profit/loss statement for custom date range
+// Get profit/loss statement for custom date range
+async getProfitLossStatement(req, res) {
+  try {
+    const { start_date, end_date } = req.query;
 
-      if (!start_date || !end_date) {
-        return res.status(400).json({ error: 'Start date and end date are required' });
-      }
-
-      // Revenue breakdown by payments received within the period
-      const revenueBreakdownQuery = `
-        SELECT 
-          j.ticket_id,
-          j.description,
-          p.amount as revenue,
-          c.name as customer_name,
-          p.date as payment_date,
-          j.status
-        FROM payments p
-        LEFT JOIN jobs j ON p.job_id = j.id
-        LEFT JOIN customers c ON j.customer_id = c.id
-        WHERE p.date BETWEEN $1 AND $2
-        ORDER BY p.amount DESC
-      `;
-
-      // Expense breakdown
-      const expenseBreakdownQuery = `
-        SELECT 
-          'Materials' as category,
-          mu.material_name as description,
-          mu.total_cost as amount,
-          mu.created_at as date
-        FROM materials_used mu
-        JOIN jobs j ON mu.job_id = j.id
-        WHERE j.date_requested BETWEEN $1 AND $2
-        
-        UNION ALL
-        
-        SELECT 
-          'Waste' as category,
-          we.type || ' - ' || we.description as description,
-          we.total_cost as amount,
-          we.created_at as date
-        FROM waste_expenses we
-        WHERE we.created_at BETWEEN $1 AND $2
-        
-        UNION ALL
-        
-        SELECT 
-          'Operational' as category,
-          oe.category || ' - ' || oe.description as description,
-          oe.amount,
-          oe.expense_date as date
-        FROM operational_expenses oe
-        WHERE oe.expense_date BETWEEN $1 AND $2
-        
-        ORDER BY amount DESC
-      `;
-
-      // Labor costs (from worker salaries) - Note: This is a rough estimate and not tied to the date range
-      const laborCostsQuery = `
-        SELECT COALESCE(SUM(
-          CASE 
-            WHEN u.hourly_rate IS NOT NULL THEN u.hourly_rate * 160 -- Approx monthly hours
-            WHEN u.monthly_salary IS NOT NULL THEN u.monthly_salary
-            ELSE 0 
-          END
-        ), 0) as labor_costs
-        FROM users u
-        WHERE u.role = 'worker' 
-        AND u.is_active = true
-      `;
-
-      const [revenueBreakdown, expenseBreakdown, laborCostResult] = await Promise.all([
-        pool.query(revenueBreakdownQuery, [start_date, end_date]),
-        pool.query(expenseBreakdownQuery, [start_date, end_date]),
-        pool.query(laborCostsQuery) // Not date-range dependent in current schema
-      ]);
-
-      // --- IMPROVED LOGIC: Prorate labor costs for the selected period ---
-      const startDate = new Date(start_date);
-      const endDate = new Date(end_date);
-      // Calculate the number of days in the period (+1 to include both start and end dates)
-      const daysInPeriod = (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24) + 1;
-      const daysInMonth = 30; // Using a standard 30-day month for proration
-
-      const monthlyLaborCosts = parseFloat(laborCostResult.rows[0]?.labor_costs || 0);
-      const proratedLaborCosts = (monthlyLaborCosts / daysInMonth) * daysInPeriod;
-
-      // Calculate totals based on actual payments received
-      const totalRevenue = revenueBreakdown.rows.reduce((sum, row) => sum + parseFloat(row.revenue), 0);
-      
-      // Separate material costs from other expenses
-      const materialCosts = expenseBreakdown.rows
-        .filter(row => row.category === 'Materials')
-        .reduce((sum, row) => sum + parseFloat(row.amount), 0);
-      
-      const operatingExpenses = expenseBreakdown.rows
-        .filter(row => row.category !== 'Materials')
-        .reduce((sum, row) => sum + parseFloat(row.amount), 0) + proratedLaborCosts;
-      
-      // Calculate using standard accounting: Materials as COGS
-      const grossProfit = totalRevenue - materialCosts;
-      const totalExpenses = operatingExpenses; // Operating expenses only (materials already subtracted)
-      const netProfit = grossProfit - totalExpenses;
-
-      // Add prorated labor cost to the expense breakdown for transparency
-      const finalExpenseBreakdown = [
-        ...expenseBreakdown.rows,
-        {
-          category: 'Labor',
-          description: `Prorated salaries for ${daysInPeriod.toFixed(0)} days`,
-          amount: proratedLaborCosts,
-          date: end_date // Assign to the end of the period
-        }
-      ].sort((a, b) => b.amount - a.amount); // Re-sort with labor costs included
-
-      res.json({
-        period: { start_date, end_date },
-        summary: {
-          total_revenue: parseFloat(totalRevenue.toFixed(2)),
-          material_costs: parseFloat(materialCosts.toFixed(2)),
-          gross_profit: parseFloat(grossProfit.toFixed(2)),
-          gross_profit_margin: parseFloat((totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0).toFixed(2)),
-          total_expenses: parseFloat(totalExpenses.toFixed(2)),
-          net_profit: parseFloat(netProfit.toFixed(2)),
-          profit_margin: parseFloat((totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0).toFixed(2))
-        },
-        revenue_breakdown: revenueBreakdown.rows,
-        expense_breakdown: finalExpenseBreakdown
-      });
-    } catch (error) {
-      console.error('Profit loss statement error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+    if (!start_date || !end_date) {
+      return res.status(400).json({ error: 'Start date and end date are required' });
     }
+
+    // 1. Revenue: Jobs completed/worked on during the period (accrual basis)
+    const revenueBreakdownQuery = `
+      SELECT 
+        j.ticket_id,
+        j.description,
+        j.total_cost as revenue,  -- Job total cost, not just payments
+        c.name as customer_name,
+        j.date_requested as revenue_date,
+        j.status,
+        COALESCE(SUM(p.amount), 0) as payments_received,
+        (j.total_cost - COALESCE(SUM(p.amount), 0)) as outstanding
+      FROM jobs j
+      LEFT JOIN customers c ON j.customer_id = c.id
+      LEFT JOIN payments p ON j.id = p.job_id 
+        AND p.date BETWEEN $1 AND $2  -- Payments in period
+      WHERE j.date_requested BETWEEN $1 AND $2  -- Jobs requested in period
+      GROUP BY j.id, j.ticket_id, j.description, j.total_cost, 
+               c.name, j.date_requested, j.status
+      ORDER BY j.total_cost DESC
+    `;
+
+    // 2. Material Costs: Actual materials used for jobs in the period
+    const materialCostsQuery = `
+      SELECT 
+        'Materials' as category,
+        mu.material_name as description,
+        mu.total_cost as amount,
+        mu.created_at as date,
+        j.ticket_id
+      FROM materials_used mu
+      JOIN jobs j ON mu.job_id = j.id
+      WHERE j.date_requested BETWEEN $1 AND $2
+      ORDER BY mu.total_cost DESC
+    `;
+
+    // 3. Waste Costs
+    const wasteCostsQuery = `
+      SELECT 
+        'Waste' as category,
+        we.type || ' - ' || COALESCE(we.description, 'No description') as description,
+        we.total_cost as amount,
+        we.created_at as date
+      FROM waste_expenses we
+      WHERE we.created_at BETWEEN $1 AND $2
+      ORDER BY we.total_cost DESC
+    `;
+
+    // 4. Operational Costs
+    const operationalCostsQuery = `
+      SELECT 
+        'Operational' as category,
+        oe.category || ' - ' || oe.description as description,
+        oe.amount,
+        oe.expense_date as date
+      FROM operational_expenses oe
+      WHERE oe.expense_date BETWEEN $1 AND $2
+      ORDER BY oe.amount DESC
+    `;
+
+    // 5. Labor Costs - FIXED VERSION (simpler calculation)
+    const laborCostsQuery = `
+      SELECT 
+        'Labor' as category,
+        u.name as description,
+        CASE 
+          WHEN u.hourly_rate IS NOT NULL THEN u.hourly_rate * 160 * (EXTRACT(DAY FROM ($2::date - $1::date)) / 30.0)
+          WHEN u.monthly_salary IS NOT NULL THEN u.monthly_salary * (EXTRACT(DAY FROM ($2::date - $1::date)) / 30.0)
+          ELSE 0 
+        END as amount,
+        $1 as date
+      FROM users u
+      WHERE u.role = 'worker' 
+        AND u.is_active = true
+      ORDER BY amount DESC
+    `;
+
+    const params = [start_date, end_date];
+
+    const [
+      revenueBreakdownResult,
+      materialCostsResult,
+      wasteCostsResult,
+      operationalCostsResult,
+      laborCostsResult
+    ] = await Promise.all([
+      pool.query(revenueBreakdownQuery, params),
+      pool.query(materialCostsQuery, params),
+      pool.query(wasteCostsQuery, params),
+      pool.query(operationalCostsQuery, params),
+      pool.query(laborCostsQuery, params)
+    ]);
+
+    // Calculate totals
+    const totalRevenue = revenueBreakdownResult.rows.reduce(
+      (sum, row) => sum + parseFloat(row.revenue || 0), 0
+    );
+    
+    const totalMaterialCosts = materialCostsResult.rows.reduce(
+      (sum, row) => sum + parseFloat(row.amount || 0), 0
+    );
+    
+    const totalWasteCosts = wasteCostsResult.rows.reduce(
+      (sum, row) => sum + parseFloat(row.amount || 0), 0
+    );
+    
+    const totalOperationalCosts = operationalCostsResult.rows.reduce(
+      (sum, row) => sum + parseFloat(row.amount || 0), 0
+    );
+    
+    const totalLaborCosts = laborCostsResult.rows.reduce(
+      (sum, row) => sum + parseFloat(row.amount || 0), 0
+    );
+
+    // Calculate profits (standard accounting)
+    const grossProfit = totalRevenue - totalMaterialCosts;
+    const totalOperatingExpenses = totalWasteCosts + totalOperationalCosts + totalLaborCosts;
+    const netProfit = grossProfit - totalOperatingExpenses;
+
+    // Combine all expenses for breakdown
+    const allExpenses = [
+      ...materialCostsResult.rows,
+      ...wasteCostsResult.rows,
+      ...operationalCostsResult.rows,
+      ...laborCostsResult.rows
+    ].sort((a, b) => b.amount - a.amount);
+
+    res.json({
+      period: { 
+        start_date, 
+        end_date,
+        days: Math.ceil((new Date(end_date) - new Date(start_date)) / (1000 * 3600 * 24)) + 1
+      },
+      summary: {
+        total_revenue: parseFloat(totalRevenue.toFixed(2)),
+        material_costs: parseFloat(totalMaterialCosts.toFixed(2)),
+        gross_profit: parseFloat(grossProfit.toFixed(2)),
+        gross_profit_margin: parseFloat((totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0).toFixed(2)),
+        total_expenses: parseFloat(totalOperatingExpenses.toFixed(2)),
+        net_profit: parseFloat(netProfit.toFixed(2)),
+        profit_margin: parseFloat((totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0).toFixed(2))
+      },
+      revenue_breakdown: revenueBreakdownResult.rows.map(row => ({
+        ticket_id: row.ticket_id,
+        description: row.description,
+        revenue: parseFloat(row.revenue || 0),
+        customer_name: row.customer_name || 'Unknown',
+        payment_date: row.revenue_date,
+        status: row.status,
+        payments_received: parseFloat(row.payments_received || 0),
+        outstanding: parseFloat(row.outstanding || 0)
+      })),
+      expense_breakdown: allExpenses.map(row => ({
+        category: row.category,
+        description: row.description,
+        amount: parseFloat(row.amount || 0),
+        date: row.date
+      }))
+    });
+  } catch (error) {
+    console.error('Profit loss statement error:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message
+    });
   }
+}
 
   // Get material monitoring dashboard
   async getMaterialMonitoringDashboard(req, res) {
     try {
       // Ensure months is a number to prevent injection
       const months = parseInt(req.query.months, 10) || 6;
-
+  
       if (isNaN(months) || months <= 0) {
         return res.status(400).json({ error: 'Invalid number of months specified.' });
       }
-      const interval = `${months} months`;
-
-      // Material usage trends
+  
+      // Material usage trends - FIXED: using correct date calculation
       const usageTrendsQuery = `
         SELECT 
           DATE_TRUNC('month', j.date_requested) as period,
@@ -662,98 +703,178 @@ async getDashboardStatistics(req, res) {
           AVG(mu.unit_cost) as average_unit_cost
         FROM materials_used mu
         JOIN jobs j ON mu.job_id = j.id
-        WHERE j.date_requested >= CURRENT_DATE - $1::interval
+        WHERE j.date_requested >= CURRENT_DATE - INTERVAL '${months} months'
         GROUP BY period, mu.material_name
         ORDER BY period DESC, total_cost DESC
       `;
-
-      // Waste analysis
+  
+      // Waste analysis - FIXED: updated column names to match schema
       const wasteAnalysisQuery = `
         SELECT 
-          type,
-          waste_reason,
+          we.type,
+          we.waste_reason,
+          COALESCE(i.material_name, we.description) as material_name,
           COUNT(*) as occurrence_count,
-          SUM(total_cost) as total_cost,
-          AVG(total_cost) as average_cost,
-          (SUM(total_cost) / (SELECT COALESCE(SUM(total_cost), 1) FROM waste_expenses 
-           WHERE created_at >= CURRENT_DATE - $1::interval)) * 100 as percentage_of_total
-        FROM waste_expenses 
-        WHERE created_at >= CURRENT_DATE - $1::interval
-        GROUP BY type, waste_reason
+          SUM(we.total_cost) as total_cost,
+          AVG(we.total_cost) as average_cost,
+          (SUM(we.total_cost) / NULLIF((
+            SELECT COALESCE(SUM(total_cost), 1) 
+            FROM waste_expenses 
+            WHERE created_at >= CURRENT_DATE - INTERVAL '${months} months'
+          ), 0)) * 100 as percentage_of_total
+        FROM waste_expenses we
+        LEFT JOIN inventory i ON we.material_id = i.id
+        WHERE we.created_at >= CURRENT_DATE - INTERVAL '${months} months'
+        GROUP BY we.type, we.waste_reason, i.material_name, we.description
         ORDER BY total_cost DESC
       `;
-
-      // Stock level analysis
+  
+      // Stock level analysis - FIXED: using correct column names from schema
       const stockAnalysisQuery = `
         SELECT 
           material_name,
-          current_stock_sheets,
-          threshold_sheets,
+          category,
+          current_stock,
+          threshold,
           unit_of_measure,
           unit_cost,
-          (current_stock_sheets * cost_per_sheet) as stock_value,
-          ROUND((current_stock_sheets / NULLIF(threshold_sheets, 0)) * 100, 2) as stock_percentage,
+          (current_stock * unit_cost) as stock_value,
           CASE 
-            WHEN current_stock_sheets <= threshold_sheets THEN 'CRITICAL'
-            WHEN current_stock_sheets <= threshold_sheets * 1.5 THEN 'LOW'
+            WHEN threshold > 0 
+            THEN ROUND((current_stock / threshold) * 100, 2)
+            ELSE 0 
+          END as stock_percentage,
+          CASE 
+            WHEN current_stock <= threshold THEN 'CRITICAL'
+            WHEN current_stock <= threshold * 1.5 THEN 'LOW'
             ELSE 'HEALTHY'
           END as stock_status
         FROM inventory 
         WHERE is_active = true 
-        ORDER BY stock_percentage ASC, stock_value DESC
+        ORDER BY stock_status, stock_percentage ASC
       `;
-
-      // Material cost efficiency
+  
+      // Material cost efficiency - FIXED: using material_id for joins
       const costEfficiencyQuery = `
         SELECT 
-          mu.material_name,
+          COALESCE(i.material_name, mu.material_name) as material_name,
           COUNT(DISTINCT j.id) as jobs_count,
           SUM(mu.quantity) as total_quantity,
-          SUM(mu.total_cost) as total_cost,
+          SUM(mu.total_cost) as total_material_cost,
           AVG(mu.unit_cost) as avg_unit_cost,
-          (SUM(j.total_cost) - SUM(mu.total_cost)) as generated_profit,
+          SUM(j.total_cost) as total_job_revenue,
+          (SUM(j.total_cost) - SUM(mu.total_cost)) as gross_profit,
           CASE 
             WHEN SUM(mu.total_cost) > 0 
             THEN ((SUM(j.total_cost) - SUM(mu.total_cost)) / SUM(mu.total_cost)) * 100 
             ELSE 0 
-          END as return_on_material
+          END as return_on_material,
+          COUNT(DISTINCT j.customer_id) as unique_customers,
+          AVG(j.total_cost) as avg_job_value
         FROM materials_used mu
         JOIN jobs j ON mu.job_id = j.id
-        WHERE j.date_requested >= CURRENT_DATE - $1::interval
-        AND j.status = 'completed'
-        GROUP BY mu.material_name
+        LEFT JOIN inventory i ON mu.material_id = i.id
+        WHERE j.date_requested >= CURRENT_DATE - INTERVAL '${months} months'
+          AND j.status = 'completed'
+        GROUP BY COALESCE(i.material_name, mu.material_name)
+        HAVING SUM(mu.total_cost) > 0
         ORDER BY return_on_material DESC
       `;
-
+  
+      // Get material count separately
+      const materialCountQuery = `
+        SELECT COUNT(*) as material_count
+        FROM inventory 
+        WHERE is_active = true
+      `;
+  
+      // Get total waste cost separately
+      const totalWasteCostQuery = `
+        SELECT COALESCE(SUM(total_cost), 0) as total_waste_cost
+        FROM waste_expenses 
+        WHERE created_at >= CURRENT_DATE - INTERVAL '${months} months'
+      `;
+  
       const [
         usageTrendsResult,
         wasteAnalysisResult,
         stockAnalysisResult,
-        costEfficiencyResult
+        costEfficiencyResult,
+        materialCountResult,
+        totalWasteCostResult
       ] = await Promise.all([
-        pool.query(usageTrendsQuery, [interval]),
-        pool.query(wasteAnalysisQuery, [interval]),
+        pool.query(usageTrendsQuery),
+        pool.query(wasteAnalysisQuery),
         pool.query(stockAnalysisQuery),
-        pool.query(costEfficiencyQuery, [interval])
+        pool.query(costEfficiencyQuery),
+        pool.query(materialCountQuery),
+        pool.query(totalWasteCostQuery)
       ]);
-
+  
+      // Calculate accurate material return average
+      const validReturns = costEfficiencyResult.rows
+        .filter(row => !isNaN(row.return_on_material) && isFinite(row.return_on_material));
+      
+      const averageMaterialReturn = validReturns.length > 0
+        ? validReturns.reduce((sum, row) => sum + parseFloat(row.return_on_material), 0) / validReturns.length
+        : 0;
+  
       res.json({
         monitoring_period: `${months} months`,
-        material_usage_trends: usageTrendsResult.rows,
-        waste_analysis: wasteAnalysisResult.rows,
-        stock_levels: stockAnalysisResult.rows,
-        cost_efficiency: costEfficiencyResult.rows,
+        material_usage_trends: usageTrendsResult.rows.map(row => ({
+          period: row.period,
+          material_name: row.material_name,
+          total_quantity: parseFloat(row.total_quantity) || 0,
+          total_cost: parseFloat(row.total_cost) || 0,
+          average_unit_cost: parseFloat(row.average_unit_cost) || 0
+        })),
+        waste_analysis: wasteAnalysisResult.rows.map(row => ({
+          type: row.type,
+          waste_reason: row.waste_reason || 'N/A',
+          material_name: row.material_name,
+          occurrence_count: parseInt(row.occurrence_count) || 0,
+          total_cost: parseFloat(row.total_cost) || 0,
+          average_cost: parseFloat(row.average_cost) || 0,
+          percentage_of_total: parseFloat(row.percentage_of_total) || 0
+        })),
+        stock_levels: stockAnalysisResult.rows.map(row => ({
+          material_name: row.material_name,
+          category: row.category,
+          current_stock: parseFloat(row.current_stock) || 0,
+          threshold: parseFloat(row.threshold) || 0,
+          unit_of_measure: row.unit_of_measure,
+          unit_cost: parseFloat(row.unit_cost) || 0,
+          stock_value: parseFloat(row.stock_value) || 0,
+          stock_percentage: parseFloat(row.stock_percentage || 0),
+          stock_status: row.stock_status || 'HEALTHY'
+        })),
+        cost_efficiency: costEfficiencyResult.rows.map(row => ({
+          material_name: row.material_name,
+          jobs_count: parseInt(row.jobs_count) || 0,
+          total_quantity: parseFloat(row.total_quantity) || 0,
+          total_cost: parseFloat(row.total_material_cost) || 0,
+          avg_unit_cost: parseFloat(row.avg_unit_cost) || 0,
+          generated_profit: parseFloat(row.gross_profit) || 0,
+          return_on_material: parseFloat(row.return_on_material) || 0,
+          unique_customers: parseInt(row.unique_customers) || 0,
+          avg_job_value: parseFloat(row.avg_job_value) || 0
+        })),
         summary: {
-          total_materials_tracked: usageTrendsResult.rows.length,
-          critical_stock_items: stockAnalysisResult.rows.filter(item => item.stock_status === 'CRITICAL').length,
-          total_waste_cost: wasteAnalysisResult.rows.reduce((sum, item) => sum + parseFloat(item.total_cost), 0),
-          average_material_return: costEfficiencyResult.rows.length > 0 ? 
-            costEfficiencyResult.rows.reduce((sum, item) => sum + parseFloat(item.return_on_material), 0) / costEfficiencyResult.rows.length : 0
+          total_materials_tracked: parseInt(materialCountResult.rows[0]?.material_count || 0),
+          critical_stock_items: stockAnalysisResult.rows.filter(item => 
+            item.stock_status === 'CRITICAL'
+          ).length,
+          total_waste_cost: parseFloat(totalWasteCostResult.rows[0]?.total_waste_cost || 0),
+          average_material_return: parseFloat(averageMaterialReturn.toFixed(2))
         }
       });
     } catch (error) {
       console.error('Material monitoring dashboard error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ 
+        error: 'Internal server error',
+        details: error.message,
+        hint: 'Check database column names match the schema'
+      });
     }
   }
 
@@ -761,21 +882,21 @@ async getDashboardStatistics(req, res) {
   async getBusinessPerformance(req, res) {
     try {
       const { period = 'month' } = req.query;
-
+  
       const allowedPeriods = ['day', 'week', 'month', 'quarter', 'year'];
       if (!allowedPeriods.includes(period)) {
         return res.status(400).json({ error: 'Invalid period specified' });
       }
-      const interval = '12 months';
-      // Revenue trends based on payments actually received
+  
+      // Revenue trends based on payments actually received - FIXED
       const revenueTrendsQuery = `
         WITH revenue AS (
           SELECT 
             DATE_TRUNC($1, p.date) as period,
             COALESCE(SUM(p.amount), 0) as total_revenue
           FROM payments p
-          WHERE p.date >= CURRENT_DATE - $2::interval
-          GROUP BY period
+          WHERE p.date >= CURRENT_DATE - INTERVAL '12 months'
+          GROUP BY DATE_TRUNC($1, p.date)
         ),
         jobs AS (
           SELECT
@@ -783,8 +904,8 @@ async getDashboardStatistics(req, res) {
             COUNT(*) as job_count,
             COALESCE(AVG(j.total_cost), 0) as average_job_value
           FROM jobs j
-          WHERE j.date_requested >= CURRENT_DATE - $2::interval
-          GROUP BY period
+          WHERE j.date_requested >= CURRENT_DATE - INTERVAL '12 months'
+          GROUP BY DATE_TRUNC($1, j.date_requested)
         )
         SELECT 
           COALESCE(j.period, r.period) as period,
@@ -796,20 +917,20 @@ async getDashboardStatistics(req, res) {
         FULL OUTER JOIN jobs j ON j.period = r.period
         ORDER BY period DESC
       `;
-
-      // Customer acquisition trends
+  
+      // Customer acquisition trends - FIXED
       const customerTrendsQuery = `
         SELECT 
           DATE_TRUNC($1, first_interaction_date) as period,
           COUNT(*) as new_customers,
           COUNT(CASE WHEN total_jobs_count > 1 THEN 1 END) as repeat_customers
         FROM customers
-        WHERE first_interaction_date >= CURRENT_DATE - $2::interval
-        GROUP BY period
+        WHERE first_interaction_date >= CURRENT_DATE - INTERVAL '12 months'
+        GROUP BY DATE_TRUNC($1, first_interaction_date)
         ORDER BY period DESC
       `;
-
-      // Efficiency metrics
+  
+      // Efficiency metrics - FIXED
       const efficiencyMetricsQuery = `
         SELECT 
           DATE_TRUNC($1, j.date_requested) as period,
@@ -818,21 +939,21 @@ async getDashboardStatistics(req, res) {
           AVG(EXTRACT(EPOCH FROM (j.updated_at - j.created_at)) / 3600) as avg_completion_hours,
           (COUNT(CASE WHEN j.status = 'completed' THEN 1 END)::FLOAT / COUNT(*) * 100) as completion_rate
         FROM jobs j
-        WHERE j.date_requested >= CURRENT_DATE - $2::interval
-        GROUP BY period
+        WHERE j.date_requested >= CURRENT_DATE - INTERVAL '12 months'
+        GROUP BY DATE_TRUNC($1, j.date_requested)
         ORDER BY period DESC
       `;
-
+  
       const [
         revenueTrendsResult,
         customerTrendsResult,
         efficiencyMetricsResult
       ] = await Promise.all([
-        pool.query(revenueTrendsQuery, [period, interval]),
-        pool.query(customerTrendsQuery, [period, interval]),
-        pool.query(efficiencyMetricsQuery, [period, interval])
+        pool.query(revenueTrendsQuery, [period]),
+        pool.query(customerTrendsQuery, [period]),
+        pool.query(efficiencyMetricsQuery, [period])
       ]);
-
+  
       res.json({
         period,
         revenue_trends: revenueTrendsResult.rows,
@@ -843,7 +964,8 @@ async getDashboardStatistics(req, res) {
           average_revenue: revenueTrendsResult.rows.length > 0 ? 
             revenueTrendsResult.rows.reduce((sum, row) => sum + parseFloat(row.total_revenue), 0) / revenueTrendsResult.rows.length : 0,
           customer_growth_rate: customerTrendsResult.rows.length > 1 ? 
-            ((customerTrendsResult.rows[0].new_customers - customerTrendsResult.rows[1].new_customers) / customerTrendsResult.rows[1].new_customers) * 100 : 0
+            ((customerTrendsResult.rows[0]?.new_customers || 0) - (customerTrendsResult.rows[1]?.new_customers || 0)) / 
+            (customerTrendsResult.rows[1]?.new_customers || 1) * 100 : 0
         }
       });
     } catch (error) {

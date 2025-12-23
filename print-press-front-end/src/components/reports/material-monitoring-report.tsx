@@ -160,7 +160,7 @@ export const MaterialMonitoringReport: React.FC = () => {
                   Avg Material Return
                 </p>
                 <p className="text-2xl font-bold text-green-600">
-                  {data.summary.average_material_return.toFixed(1)}%
+                {(Number(data.summary.average_material_return) || 0).toFixed(1)}%
                 </p>
               </div>
             </div>
@@ -198,7 +198,7 @@ export const MaterialMonitoringReport: React.FC = () => {
                       {formatCurrency(item.stock_value)}
                     </td>
                     <td className="p-2 text-right">
-                      {item.stock_percentage.toFixed(1)}%
+                    {(Number(item.stock_percentage) || 0).toFixed(1)}%
                     </td>
                     <td className="p-2">
                       <span
@@ -246,7 +246,7 @@ export const MaterialMonitoringReport: React.FC = () => {
                       {formatCurrency(item.generated_profit)}
                     </td>
                     <td className="p-2 text-right font-medium">
-                      {item.return_on_material.toFixed(1)}%
+                    {(Number(item.return_on_material) || 0).toFixed(1)}%
                     </td>
                   </tr>
                 ))}
@@ -267,6 +267,7 @@ export const MaterialMonitoringReport: React.FC = () => {
               <thead>
                 <tr className="border-b">
                   <th className="text-left p-2">Type</th>
+                  <th className="text-left p-2">Material</th>
                   <th className="text-left p-2">Reason</th>
                   <th className="text-right p-2">Occurrences</th>
                   <th className="text-right p-2">Total Cost</th>
@@ -278,6 +279,7 @@ export const MaterialMonitoringReport: React.FC = () => {
                 {data.waste_analysis.map((item, idx) => (
                   <tr key={idx} className="border-b hover:bg-gray-50">
                     <td className="p-2 font-medium">{item.type}</td>
+                    <td className="p-2">{item.material_name || 'General'}</td>
                     <td className="p-2">{item.waste_reason || 'N/A'}</td>
                     <td className="p-2 text-right">{item.occurrence_count}</td>
                     <td className="p-2 text-right font-medium text-red-600">
@@ -287,7 +289,7 @@ export const MaterialMonitoringReport: React.FC = () => {
                       {formatCurrency(item.average_cost)}
                     </td>
                     <td className="p-2 text-right">
-                      {item.percentage_of_total.toFixed(1)}%
+                    {(Number(item.percentage_of_total) || 0).toFixed(1)}%
                     </td>
                   </tr>
                 ))}

@@ -94,11 +94,11 @@ export const FinancialSummary: React.FC = () => {
 
   const expenseData = data
     ? [
-        { name: 'Materials', value: data.expenses.material_costs },
-        { name: 'Waste', value: data.expenses.waste_costs },
-        { name: 'Operational', value: data.expenses.operational_costs },
-        { name: 'Labor', value: data.expenses.labor_costs },
-      ]
+      { name: 'Materials', value: data.expenses.material_costs },
+      { name: 'Waste', value: data.expenses.waste_costs },
+      { name: 'Operational', value: data.expenses.operational_costs },
+      { name: 'Labor', value: data.expenses.labor_costs },
+    ]
     : [];
 
   const topMaterialsData =
@@ -177,73 +177,80 @@ export const FinancialSummary: React.FC = () => {
       {data && !loading && (
         <>
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-gray-600">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+            <Card className="min-w-0">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
                   Revenue (Collected)
                 </p>
-                <p className="text-2xl font-bold text-green-600 mt-1">
+                <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 mt-1 break-words">
                   {formatCurrency(data.revenue.total_revenue)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
                   Gross Profit: {formatCurrency(data.revenue.gross_profit)}
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-gray-600">
+            <Card className="min-w-0">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
                   Total Invoiced
                 </p>
-                <p className="text-2xl font-bold text-blue-600 mt-1">
+                <p className="text-base sm:text-lg lg:text-2xl font-bold text-blue-600 mt-1 break-words">
                   {formatCurrency(data.cash_flow?.total_invoiced || 0)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
                   Jobs value for period
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-gray-600">Amount Owed</p>
-                <p className="text-2xl font-bold text-orange-600 mt-1">
+            <Card className="min-w-0">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Amount Owed</p>
+                <p className="text-base sm:text-lg lg:text-2xl font-bold text-orange-600 mt-1 break-words">
                   {formatCurrency(data.cash_flow?.outstanding_amount || 0)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
                   Collection:{' '}
                   {(data.cash_flow?.collection_rate || 0).toFixed(1)}%
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-gray-600">Net Profit</p>
+            <Card className="min-w-0">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Net Profit</p>
                 <p
-                  className={`text-2xl font-bold mt-1 ${data.profit.is_profitable ? 'text-green-600' : 'text-red-600'}`}
+                  className={`text-base sm:text-lg lg:text-2xl font-bold mt-1 break-words ${data.profit.is_profitable ? 'text-green-600' : 'text-red-600'}`}
                 >
                   {formatCurrency(data.profit.net_profit)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
                   Margin: {data.profit.profit_margin.toFixed(1)}%
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-gray-600">Total Jobs</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+            <Card className="min-w-0">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Total Jobs</p>
+                <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mt-1 break-words">
                   {data.job_stats.total_jobs}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
                   Completed: {data.job_stats.completed_jobs}
                 </p>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Explanatory Note */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+            <p className="text-xs sm:text-sm text-blue-800">
+              <strong>Note:</strong> Revenue (Collected) shows actual payments received in this period, which may include payments for jobs created before this period. Total Invoiced shows the value of jobs created within this period.
+            </p>
           </div>
 
           {/* Charts */}
@@ -313,56 +320,56 @@ export const FinancialSummary: React.FC = () => {
 
           {/* Job Statistics */}
           <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">Job Statistics</h3>
+            <CardHeader className="pb-2 sm:pb-4">
+              <h3 className="text-base sm:text-lg font-semibold">Job Statistics</h3>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Total Jobs</p>
-                  <p className="text-xl font-bold">
+            <CardContent className="p-3 sm:p-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">Total Jobs</p>
+                  <p className="text-base sm:text-lg lg:text-xl font-bold break-words">
                     {data.job_stats.total_jobs}
                   </p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Completed</p>
-                  <p className="text-xl font-bold text-green-600">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">Completed</p>
+                  <p className="text-base sm:text-lg lg:text-xl font-bold text-green-600 break-words">
                     {data.job_stats.completed_jobs}
                   </p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">In Progress</p>
-                  <p className="text-xl font-bold text-blue-600">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">In Progress</p>
+                  <p className="text-base sm:text-lg lg:text-xl font-bold text-blue-600 break-words">
                     {data.job_stats.in_progress_jobs}
                   </p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Fully Paid</p>
-                  <p className="text-xl font-bold text-purple-600">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">Fully Paid</p>
+                  <p className="text-base sm:text-lg lg:text-xl font-bold text-purple-600 break-words">
                     {data.job_stats.fully_paid_jobs}
                   </p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Average Job Value</p>
-                  <p className="text-xl font-bold">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">Avg Job Value</p>
+                  <p className="text-base sm:text-lg lg:text-xl font-bold break-words">
                     {formatCurrency(data.job_stats.average_job_value)}
                   </p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Highest Job Value</p>
-                  <p className="text-xl font-bold">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">Highest Job</p>
+                  <p className="text-base sm:text-lg lg:text-xl font-bold break-words">
                     {formatCurrency(data.job_stats.highest_job_value)}
                   </p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Material Efficiency</p>
-                  <p className="text-xl font-bold">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">Material Eff.</p>
+                  <p className="text-base sm:text-lg lg:text-xl font-bold break-words">
                     {data.efficiency_metrics.material_efficiency.toFixed(2)}x
                   </p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Waste Percentage</p>
-                  <p className="text-xl font-bold text-red-600">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">Waste %</p>
+                  <p className="text-base sm:text-lg lg:text-xl font-bold text-red-600 break-words">
                     {data.efficiency_metrics.waste_percentage.toFixed(1)}%
                   </p>
                 </div>

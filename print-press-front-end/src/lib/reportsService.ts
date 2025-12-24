@@ -36,10 +36,15 @@ export const reportsService = {
   },
 
   async getMaterialMonitoringDashboard(
-    months: number = 6
+    startDate: string,
+    endDate: string
   ): Promise<MaterialMonitoringDashboard> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('start_date', startDate);
+    queryParams.append('end_date', endDate);
+
     const response = await api.get(
-      `/reports/material-monitoring?months=${months}`
+      `/reports/material-monitoring?${queryParams.toString()}`
     );
     return response.data;
   },

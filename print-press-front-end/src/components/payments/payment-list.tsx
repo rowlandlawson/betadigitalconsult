@@ -7,28 +7,43 @@ import { Input } from '@/components/ui/input';
 import { api, isApiError } from '@/lib/api';
 import { Payment } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Search, Download, Plus } from 'lucide-react';
+import { Search, Download, Plus, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import Link from 'next/link';
 
 interface PaymentListProps {
   userRole: 'admin' | 'worker';
 }
 
+const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50];
+
 export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Default to current month (matching reports behavior)
   const [dateFilter, setDateFilter] = useState({
-    start_date: '',
-    end_date: '',
+    start_date: (() => {
+      const date = new Date();
+      return new Date(date.getFullYear(), date.getMonth(), 1)
+        .toISOString()
+        .split('T')[0];
+    })(),
+    end_date: new Date().toISOString().split('T')[0],
   });
+
   const [methodFilter, setMethodFilter] = useState<string>('');
   const [totalAmount, setTotalAmount] = useState(0);
   const [totalPaymentsCount, setTotalPaymentsCount] = useState(0);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   const fetchPayments = useCallback(async () => {
     try {
+      setLoading(true);
       const params = new URLSearchParams();
       if (dateFilter.start_date)
         params.append('start_date', dateFilter.start_date);
@@ -43,6 +58,7 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
       setPayments(response.data.payments || []);
       setTotalAmount(response.data.summary?.total_amount || 0);
       setTotalPaymentsCount(response.data.pagination?.total || 0);
+      setCurrentPage(1); // Reset to first page when filters change
     } catch (err: unknown) {
       console.error('Failed to fetch payments:', err);
       if (isApiError(err)) {
@@ -66,6 +82,7 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
     recorded_by_name?: string;
   };
 
+  // Filter payments by search term
   const filteredPayments = ((payments as ExtendedPayment[]) || []).filter(
     (payment) =>
       payment.receipt_number
@@ -78,6 +95,11 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
         .includes(searchTerm.toLowerCase()) ||
       payment.recorded_by?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedPayments = filteredPayments.slice(startIndex, startIndex + itemsPerPage);
 
   const getPaymentTypeColor = (type: string) => {
     switch (type) {
@@ -137,11 +159,11 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Payments</h1>
-          <p className="text-gray-600">Manage and track all payments</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Paid Payments</h1>
+          <p className="text-sm sm:text-base text-gray-600">View and track all received payments</p>
         </div>
         <Link href={`/${userRole}/payments/record`}>
-          <Button>
+          <Button className="text-sm">
             <Plus className="h-4 w-4 mr-2" />
             Record Payment
           </Button>
@@ -152,178 +174,204 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
         <div className="p-4 text-red-600 bg-red-50 rounded-lg">{error}</div>
       )}
 
+      {/* Date Range Filter - Similar to Reports */}
+      <Card>
+        <CardHeader className="pb-2 sm:pb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
+            <h3 className="text-sm sm:text-base font-semibold">Date Range</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr_auto] gap-2 items-center">
+            <Input
+              type="date"
+              value={dateFilter.start_date}
+              onChange={(e) =>
+                setDateFilter((prev) => ({
+                  ...prev,
+                  start_date: e.target.value,
+                }))
+              }
+              className="w-full text-sm"
+            />
+            <span className="text-gray-500 text-sm text-center hidden sm:block">
+              to
+            </span>
+            <Input
+              type="date"
+              value={dateFilter.end_date}
+              onChange={(e) =>
+                setDateFilter((prev) => ({
+                  ...prev,
+                  end_date: e.target.value,
+                }))
+              }
+              className="w-full text-sm"
+            />
+            <select
+              value={methodFilter}
+              onChange={(e) => setMethodFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+            >
+              <option value="">All Methods</option>
+              <option value="cash">Cash</option>
+              <option value="transfer">Transfer</option>
+              <option value="pos">POS</option>
+            </select>
+          </div>
+        </CardHeader>
+      </Card>
+
       {/* Summary Card */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-gray-600">Total Payments</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {totalPaymentsCount}
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <Card className="min-w-0">
+          <CardContent className="p-3 sm:p-4">
+            <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Total Payments</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 break-words">
+              {filteredPayments.length}
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-gray-600">Total Amount</p>
-            <p className="text-2xl font-bold text-green-600">
+        <Card className="min-w-0">
+          <CardContent className="p-3 sm:p-4">
+            <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Total Amount</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 break-words">
               {formatCurrency(totalAmount)}
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-gray-600">Average Payment</p>
-            <p className="text-2xl font-bold text-blue-600">
+        <Card className="min-w-0">
+          <CardContent className="p-3 sm:p-4">
+            <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Average Payment</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-blue-600 break-words">
               {formatCurrency(
-                totalPaymentsCount > 0 ? totalAmount / totalPaymentsCount : 0
+                filteredPayments.length > 0 ? totalAmount / filteredPayments.length : 0
               )}
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-gray-600">Unique Jobs</p>
-            <p className="text-2xl font-bold text-purple-600">
+        <Card className="min-w-0">
+          <CardContent className="p-3 sm:p-4">
+            <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Unique Jobs</p>
+            <p className="text-base sm:text-lg lg:text-2xl font-bold text-purple-600 break-words">
               {new Set(payments.map((p) => p.job_id)).size}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters and Search */}
+      {/* Search */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search by receipt number, job ticket, customer, or recorded by..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Input
-                type="date"
-                placeholder="Start Date"
-                value={dateFilter.start_date}
-                onChange={(e) =>
-                  setDateFilter((prev) => ({
-                    ...prev,
-                    start_date: e.target.value,
-                  }))
-                }
-                className="w-full sm:w-40"
-              />
-              <Input
-                type="date"
-                placeholder="End Date"
-                value={dateFilter.end_date}
-                onChange={(e) =>
-                  setDateFilter((prev) => ({
-                    ...prev,
-                    end_date: e.target.value,
-                  }))
-                }
-                className="w-full sm:w-40"
-              />
-              <select
-                value={methodFilter}
-                onChange={(e) => setMethodFilter(e.target.value)}
-                className="w-full sm:w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Methods</option>
-                <option value="cash">Cash</option>
-                <option value="transfer">Transfer</option>
-                <option value="pos">POS</option>
-              </select>
-            </div>
+        <CardContent className="p-3 sm:p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search by receipt, job ticket, customer..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1); // Reset to first page on search
+              }}
+              className="pl-10 text-sm"
+            />
           </div>
         </CardContent>
       </Card>
 
       {/* Payments List */}
       <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">
-            Payment History ({filteredPayments.length})
-          </h3>
+        <CardHeader className="pb-2 sm:pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h3 className="text-base sm:text-lg font-semibold">
+              Payment History ({filteredPayments.length})
+            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-xs sm:text-sm text-gray-600">Show:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm"
+              >
+                {ITEMS_PER_PAGE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          {filteredPayments.length === 0 ? (
+        <CardContent className="p-2 sm:p-6">
+          {paginatedPayments.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500">No payments found</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredPayments.map((payment) => (
+            <div className="space-y-3 sm:space-y-4">
+              {paginatedPayments.map((payment) => (
                 <div
                   key={payment.id}
-                  className="flex flex-col lg:flex-row lg:items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex flex-col lg:flex-row lg:items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h4 className="font-semibold text-gray-900">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <h4 className="font-semibold text-gray-900 text-sm sm:text-base">
                         {payment.receipt_number}
                       </h4>
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentTypeColor(payment.payment_type)}`}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium ${getPaymentTypeColor(payment.payment_type)}`}
                       >
                         {payment.payment_type.replace('_', ' ')}
                       </span>
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentMethodColor(payment.payment_method)}`}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium ${getPaymentMethodColor(payment.payment_method)}`}
                       >
                         {payment.payment_method.toUpperCase()}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
-                      <div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
+                      <div className="truncate">
                         <span className="font-medium">Job:</span>{' '}
                         {(payment as ExtendedPayment).ticket_id || '-'}
                       </div>
-                      <div>
+                      <div className="truncate">
                         <span className="font-medium">Customer:</span>{' '}
                         {(payment as ExtendedPayment).customer_name || '-'}
                       </div>
-                      <div>
-                        <span className="font-medium">Recorded by:</span>{' '}
+                      <div className="truncate">
+                        <span className="font-medium">By:</span>{' '}
                         {(payment as ExtendedPayment).recorded_by_name ||
                           payment.recorded_by}
                       </div>
-                      <div>
+                      <div className="truncate">
                         <span className="font-medium">Date:</span>{' '}
                         {formatDate(payment.date)}
                       </div>
                     </div>
 
                     {payment.notes && (
-                      <p className="text-sm text-gray-500 mt-2">
+                      <p className="text-xs sm:text-sm text-gray-500 mt-2 truncate">
                         <span className="font-medium">Notes:</span>{' '}
                         {payment.notes}
                       </p>
                     )}
                   </div>
 
-                  <div className="flex items-center space-x-4 mt-4 lg:mt-0">
+                  <div className="flex items-center justify-between lg:justify-end gap-4 mt-3 lg:mt-0">
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-green-600">
+                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">
                         {formatCurrency(payment.amount)}
                       </p>
-                      <p className="text-sm text-gray-500">
-                        {formatDate(payment.date)}
-                      </p>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex gap-2">
                       <Link
                         href={`/${userRole}/payments/receipt/${payment.id}`}
                       >
-                        <Button variant="outline" size="sm">
-                          View Receipt
+                        <Button variant="outline" size="sm" className="text-xs sm:text-sm">
+                          View
                         </Button>
                       </Link>
                       <Button
@@ -332,12 +380,39 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
                         onClick={() => downloadReceipt(payment.id)}
                         title="Download PDF Receipt"
                       >
-                        <Download className="h-4 w-4" />
+                        <Download className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                     </div>
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-4 pt-4 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="w-full sm:w-auto text-xs sm:text-sm"
+              >
+                <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Previous
+              </Button>
+              <span className="text-xs sm:text-sm text-gray-600">
+                Page {currentPage} of {totalPages} ({filteredPayments.length} total)
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="w-full sm:w-auto text-xs sm:text-sm"
+              >
+                Next <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
+              </Button>
             </div>
           )}
         </CardContent>

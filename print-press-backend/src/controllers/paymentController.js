@@ -5,7 +5,7 @@ import receiptService from '../services/receiptService.js';
 
 export const recordPayment = async (req, res) => {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
 
@@ -18,8 +18,8 @@ export const recordPayment = async (req, res) => {
     } = req.body;
 
     if (!job_id || !amount || !payment_type || !payment_method) {
-      return res.status(400).json({ 
-        error: 'Job ID, amount, payment type, and payment method are required' 
+      return res.status(400).json({
+        error: 'Job ID, amount, payment type, and payment method are required'
       });
     }
 
@@ -183,7 +183,7 @@ export const getAllPayments = async (req, res) => {
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `;
     const mainParams = [...filterParams, limit, offset];
-    
+
     const summaryQuery = `
       SELECT 
         COUNT(*) as total_count,
@@ -326,7 +326,7 @@ export const getPaymentStats = async (req, res) => {
     const { period = 'monthly' } = req.query;
 
     let groupByExpr, dateFilter, periodFormat;
-    
+
     switch (period) {
       case 'daily':
         // Get last 30 days
@@ -421,7 +421,7 @@ export const getOutstandingPayments = async (req, res) => {
       last_updated: new Date().toISOString()
     };
 
-    // Get detailed outstanding payments (top 10)
+    // Get detailed outstanding payments (all - pagination is handled client-side)
     const detailedQuery = `
       SELECT 
         j.id,
@@ -438,7 +438,6 @@ export const getOutstandingPayments = async (req, res) => {
       LEFT JOIN users u ON j.worker_id = u.id
       WHERE j.balance > 0
       ORDER BY j.balance DESC
-      LIMIT 10
     `;
 
     const detailedResult = await pool.query(detailedQuery);

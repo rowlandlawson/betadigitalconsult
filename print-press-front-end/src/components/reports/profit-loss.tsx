@@ -186,76 +186,92 @@ export const ProfitLoss: React.FC = () => {
       {data && !loading && (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-gray-600">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+            <Card className="min-w-0">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
                   Revenue (Collected)
                 </p>
-                <p className="text-2xl font-bold text-green-600 mt-1">
+                <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 mt-1 break-words">
                   {formatCurrency(data.summary.total_revenue)}
                 </p>
+                <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
+                  Payments received
+                </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-gray-600">
+            <Card className="min-w-0">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
                   Total Invoiced
                 </p>
-                <p className="text-2xl font-bold text-blue-600 mt-1">
+                <p className="text-base sm:text-lg lg:text-2xl font-bold text-blue-600 mt-1 break-words">
                   {formatCurrency(data.summary.total_invoiced || 0)}
                 </p>
+                <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
+                  Jobs value in period
+                </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-gray-600">Amount Owed</p>
-                <p className="text-2xl font-bold text-orange-600 mt-1">
+            <Card className="min-w-0">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Amount Owed</p>
+                <p className="text-base sm:text-lg lg:text-2xl font-bold text-orange-600 mt-1 break-words">
                   {formatCurrency(data.summary.outstanding_amount || 0)}
                 </p>
+                <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
+                  All time balance
+                </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-gray-600">
+            <Card className="min-w-0">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
                   Gross Profit
                 </p>
-                <p className="text-2xl font-bold text-blue-600 mt-1">
+                <p className="text-base sm:text-lg lg:text-2xl font-bold text-blue-600 mt-1 break-words">
                   {formatCurrency(data.summary.gross_profit)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
                   Margin: {data.summary.gross_profit_margin.toFixed(1)}%
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-gray-600">
+            <Card className="min-w-0">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
                   Operating Expenses
                 </p>
-                <p className="text-2xl font-bold text-red-600 mt-1">
+                <p className="text-base sm:text-lg lg:text-2xl font-bold text-red-600 mt-1 break-words">
                   {formatCurrency(data.summary.total_expenses)}
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-gray-600">Net Profit</p>
+            <Card className="min-w-0">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Net Profit</p>
                 <p
-                  className={`text-2xl font-bold mt-1 ${data.summary.net_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                  className={`text-base sm:text-lg lg:text-2xl font-bold mt-1 break-words ${data.summary.net_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}
                 >
                   {formatCurrency(data.summary.net_profit)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
                   Margin: {data.summary.profit_margin.toFixed(1)}%
                 </p>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Explanatory Note */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+            <p className="text-xs sm:text-sm text-blue-800">
+              <strong>Note:</strong> Revenue (Collected) shows actual payments received in this period, which may include payments for jobs created before this period. Total Invoiced shows the value of jobs created within this period.
+            </p>
           </div>
 
           {/* Charts */}
@@ -321,10 +337,10 @@ export const ProfitLoss: React.FC = () => {
 
             return (
               <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Revenue Breakdown</h3>
-                    <p className="text-sm text-gray-500">
+                <CardHeader className="pb-2 sm:pb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <h3 className="text-base sm:text-lg font-semibold">Revenue Breakdown</h3>
+                    <p className="text-xs sm:text-sm text-gray-500">
                       Showing {revenueStartIndex + 1}-
                       {Math.min(
                         revenueStartIndex + ITEMS_PER_PAGE,
@@ -334,58 +350,56 @@ export const ProfitLoss: React.FC = () => {
                     </p>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                <CardContent className="p-2 sm:p-6">
+                  <div className="overflow-x-auto -mx-2 sm:mx-0">
+                    <table className="w-full text-xs sm:text-sm min-w-[600px]">
                       <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Ticket ID</th>
-                          <th className="text-left p-2">Description</th>
-                          <th className="text-left p-2">Customer</th>
-                          <th className="text-right p-2">Revenue</th>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left p-2 whitespace-nowrap">Ticket ID</th>
+                          <th className="text-left p-2 hidden md:table-cell">Description</th>
+                          <th className="text-left p-2 hidden sm:table-cell">Customer</th>
+                          <th className="text-right p-2 whitespace-nowrap">Revenue</th>
                           <th className="text-right p-2">Payments</th>
-                          <th className="text-left p-2">Date</th>
+                          <th className="text-left p-2 hidden lg:table-cell">Date</th>
                           <th className="text-left p-2">Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {paginatedRevenue.map((item, idx) => (
                           <tr key={idx} className="border-b hover:bg-gray-50">
-                            <td className="p-2 font-medium">
+                            <td className="p-2 font-medium whitespace-nowrap">
                               {item.ticket_id}
                             </td>
-                            <td className="p-2">{item.description}</td>
-                            <td className="p-2">
+                            <td className="p-2 hidden md:table-cell max-w-[200px] truncate">{item.description}</td>
+                            <td className="p-2 hidden sm:table-cell">
                               {item.customer_name || 'N/A'}
                             </td>
-                            <td className="p-2 text-right font-medium">
+                            <td className="p-2 text-right font-medium whitespace-nowrap">
                               {formatCurrency(item.revenue)}
                             </td>
-                            <td className="p-2 text-right text-sm">
+                            <td className="p-2 text-right">
                               <div className="flex flex-col">
-                                <span className="text-green-600">
-                                  Paid:{' '}
+                                <span className="text-green-600 text-xs sm:text-sm">
                                   {formatCurrency(item.payments_received || 0)}
                                 </span>
-                                <span className="text-red-500 text-xs">
+                                <span className="text-red-500 text-[10px] sm:text-xs">
                                   Due: {formatCurrency(item.outstanding || 0)}
                                 </span>
                               </div>
                             </td>
-                            <td className="p-2">
+                            <td className="p-2 hidden lg:table-cell whitespace-nowrap">
                               {formatDate(item.payment_date)}
                             </td>
                             <td className="p-2">
                               <span
-                                className={`px-2 py-1 rounded text-xs ${
-                                  item.status === 'completed'
-                                    ? 'bg-green-100 text-green-800'
-                                    : item.status === 'delivered'
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : item.status === 'in_progress'
-                                        ? 'bg-yellow-100 text-yellow-800'
-                                        : 'bg-gray-100 text-gray-800'
-                                }`}
+                                className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs whitespace-nowrap ${item.status === 'completed'
+                                  ? 'bg-green-100 text-green-800'
+                                  : item.status === 'delivered'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : item.status === 'in_progress'
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : 'bg-gray-100 text-gray-800'
+                                  }`}
                               >
                                 {item.status}
                               </span>
@@ -402,10 +416,10 @@ export const ProfitLoss: React.FC = () => {
                             <td className="p-2 text-right">
                               {formatCurrency(
                                 data.summary.total_invoiced ||
-                                  data.revenue_breakdown.reduce(
-                                    (sum, item) => sum + item.revenue,
-                                    0
-                                  )
+                                data.revenue_breakdown.reduce(
+                                  (sum, item) => sum + item.revenue,
+                                  0
+                                )
                               )}
                             </td>
                             <td className="p-2 text-right">
@@ -429,7 +443,7 @@ export const ProfitLoss: React.FC = () => {
 
                   {/* Pagination Controls */}
                   {totalRevenuePages > 1 && (
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-4 pt-4 border-t">
                       <Button
                         variant="outline"
                         size="sm"
@@ -437,10 +451,11 @@ export const ProfitLoss: React.FC = () => {
                           setRevenueCurrentPage((p) => Math.max(1, p - 1))
                         }
                         disabled={revenueCurrentPage === 1}
+                        className="w-full sm:w-auto text-xs sm:text-sm"
                       >
-                        <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                        <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Previous
                       </Button>
-                      <span className="text-sm text-gray-600">
+                      <span className="text-xs sm:text-sm text-gray-600">
                         Page {revenueCurrentPage} of {totalRevenuePages}
                       </span>
                       <Button
@@ -452,8 +467,9 @@ export const ProfitLoss: React.FC = () => {
                           )
                         }
                         disabled={revenueCurrentPage === totalRevenuePages}
+                        className="w-full sm:w-auto text-xs sm:text-sm"
                       >
-                        Next <ChevronRight className="h-4 w-4 ml-1" />
+                        Next <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
                       </Button>
                     </div>
                   )}
@@ -475,10 +491,10 @@ export const ProfitLoss: React.FC = () => {
 
             return (
               <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Expense Breakdown</h3>
-                    <p className="text-sm text-gray-500">
+                <CardHeader className="pb-2 sm:pb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <h3 className="text-base sm:text-lg font-semibold">Expense Breakdown</h3>
+                    <p className="text-xs sm:text-sm text-gray-500">
                       Showing {expenseStartIndex + 1}-
                       {Math.min(
                         expenseStartIndex + ITEMS_PER_PAGE,
@@ -488,26 +504,26 @@ export const ProfitLoss: React.FC = () => {
                     </p>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                <CardContent className="p-2 sm:p-6">
+                  <div className="overflow-x-auto -mx-2 sm:mx-0">
+                    <table className="w-full text-xs sm:text-sm min-w-[400px]">
                       <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Category</th>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left p-2 whitespace-nowrap">Category</th>
                           <th className="text-left p-2">Description</th>
-                          <th className="text-right p-2">Amount</th>
-                          <th className="text-left p-2">Date</th>
+                          <th className="text-right p-2 whitespace-nowrap">Amount</th>
+                          <th className="text-left p-2 hidden sm:table-cell">Date</th>
                         </tr>
                       </thead>
                       <tbody>
                         {paginatedExpenses.map((item, idx) => (
                           <tr key={idx} className="border-b hover:bg-gray-50">
-                            <td className="p-2 font-medium">{item.category}</td>
-                            <td className="p-2">{item.description}</td>
-                            <td className="p-2 text-right font-medium text-red-600">
+                            <td className="p-2 font-medium whitespace-nowrap">{item.category}</td>
+                            <td className="p-2 max-w-[150px] sm:max-w-none truncate">{item.description}</td>
+                            <td className="p-2 text-right font-medium text-red-600 whitespace-nowrap">
                               {formatCurrency(item.amount)}
                             </td>
-                            <td className="p-2">{formatDate(item.date)}</td>
+                            <td className="p-2 hidden sm:table-cell whitespace-nowrap">{formatDate(item.date)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -517,10 +533,10 @@ export const ProfitLoss: React.FC = () => {
                             <td className="p-2" colSpan={2}>
                               Total Expenses
                             </td>
-                            <td className="p-2 text-right text-red-600">
+                            <td className="p-2 text-right text-red-600 whitespace-nowrap">
                               {formatCurrency(data.summary.total_expenses)}
                             </td>
-                            <td className="p-2"></td>
+                            <td className="p-2 hidden sm:table-cell"></td>
                           </tr>
                         </tfoot>
                       )}
@@ -529,7 +545,7 @@ export const ProfitLoss: React.FC = () => {
 
                   {/* Pagination Controls */}
                   {totalExpensePages > 1 && (
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-4 pt-4 border-t">
                       <Button
                         variant="outline"
                         size="sm"
@@ -537,10 +553,11 @@ export const ProfitLoss: React.FC = () => {
                           setExpenseCurrentPage((p) => Math.max(1, p - 1))
                         }
                         disabled={expenseCurrentPage === 1}
+                        className="w-full sm:w-auto text-xs sm:text-sm"
                       >
-                        <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                        <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Previous
                       </Button>
-                      <span className="text-sm text-gray-600">
+                      <span className="text-xs sm:text-sm text-gray-600">
                         Page {expenseCurrentPage} of {totalExpensePages}
                       </span>
                       <Button
@@ -552,8 +569,9 @@ export const ProfitLoss: React.FC = () => {
                           )
                         }
                         disabled={expenseCurrentPage === totalExpensePages}
+                        className="w-full sm:w-auto text-xs sm:text-sm"
                       >
-                        Next <ChevronRight className="h-4 w-4 ml-1" />
+                        Next <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
                       </Button>
                     </div>
                   )}

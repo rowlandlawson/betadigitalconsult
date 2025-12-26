@@ -5,7 +5,7 @@ import receiptService from '../services/receiptService.js';
 
 export const recordPayment = async (req, res) => {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
 
@@ -18,8 +18,8 @@ export const recordPayment = async (req, res) => {
     } = req.body;
 
     if (!job_id || !amount || !payment_type || !payment_method) {
-      return res.status(400).json({ 
-        error: 'Job ID, amount, payment type, and payment method are required' 
+      return res.status(400).json({
+        error: 'Job ID, amount, payment type, and payment method are required'
       });
     }
 
@@ -155,9 +155,16 @@ export const getAllPayments = async (req, res) => {
     const filterParams = [];
     let paramCount = 0;
 
+    // Workers can only see their own payments, admins see all
+    if (req.user.role === 'worker') {
+      paramCount++;
+      whereClause += ` AND p.recorded_by_id = $${paramCount}`;
+      filterParams.push(req.user.userId);
+    }
+
     if (start_date && end_date) {
       paramCount++;
-      whereClause += ` AND p.date BETWEEN $${paramCount} AND $${paramCount + 1}`;
+      whereClause += ` AND p.date::DATE BETWEEN $${paramCount} AND $${paramCount + 1}`;
       filterParams.push(start_date, end_date);
       paramCount++;
     }
@@ -183,7 +190,7 @@ export const getAllPayments = async (req, res) => {
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `;
     const mainParams = [...filterParams, limit, offset];
-    
+
     const summaryQuery = `
       SELECT 
         COUNT(*) as total_count,
@@ -326,7 +333,7 @@ export const getPaymentStats = async (req, res) => {
     const { period = 'monthly' } = req.query;
 
     let groupByExpr, dateFilter, periodFormat;
-    
+
     switch (period) {
       case 'daily':
         // Get last 30 days
@@ -403,6 +410,11 @@ export const getPaymentStats = async (req, res) => {
 // Get outstanding payments summary
 export const getOutstandingPayments = async (req, res) => {
   try {
+    // Workers can only see their own jobs' outstanding, admins see all
+    const isWorker = req.user.role === 'worker';
+    const workerFilter = isWorker ? ` AND j.worker_id = $1` : '';
+    const params = isWorker ? [req.user.userId] : [];
+
     const query = `
       SELECT 
         COUNT(DISTINCT j.id) as outstanding_jobs_count,
@@ -410,10 +422,10 @@ export const getOutstandingPayments = async (req, res) => {
         COUNT(DISTINCT j.customer_id) as customers_with_outstanding,
         COALESCE(MAX(j.updated_at), NOW()) as last_updated
       FROM jobs j
-      WHERE j.balance > 0
+      WHERE j.balance > 0${workerFilter}
     `;
 
-    const result = await pool.query(query);
+    const result = await pool.query(query, params);
     const stats = result.rows[0] || {
       outstanding_jobs_count: 0,
       total_outstanding_amount: 0,
@@ -421,7 +433,7 @@ export const getOutstandingPayments = async (req, res) => {
       last_updated: new Date().toISOString()
     };
 
-    // Get detailed outstanding payments (top 10)
+    // Get detailed outstanding payments (all - pagination is handled client-side)
     const detailedQuery = `
       SELECT 
         j.id,
@@ -436,12 +448,11 @@ export const getOutstandingPayments = async (req, res) => {
       FROM jobs j
       LEFT JOIN customers c ON j.customer_id = c.id
       LEFT JOIN users u ON j.worker_id = u.id
-      WHERE j.balance > 0
+      WHERE j.balance > 0${workerFilter}
       ORDER BY j.balance DESC
-      LIMIT 10
     `;
 
-    const detailedResult = await pool.query(detailedQuery);
+    const detailedResult = await pool.query(detailedQuery, params);
 
     // FIXED: Calculate aging of outstanding payments using subquery
     const agingQuery = `
@@ -456,7 +467,7 @@ export const getOutstandingPayments = async (req, res) => {
             ELSE 'Critical (90+ days)'
           END as aging_category
         FROM jobs j
-        WHERE j.balance > 0
+        WHERE j.balance > 0${workerFilter}
       )
       SELECT 
         COUNT(DISTINCT id) as count,
@@ -473,7 +484,7 @@ export const getOutstandingPayments = async (req, res) => {
         END
     `;
 
-    const agingResult = await pool.query(agingQuery);
+    const agingResult = await pool.query(agingQuery, params);
 
     res.json({
       summary: {

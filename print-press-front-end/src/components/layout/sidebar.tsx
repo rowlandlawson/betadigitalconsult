@@ -24,7 +24,9 @@ import {
   ChevronDown,
   ChevronRight,
   DollarSign,
+  Banknote,
 } from 'lucide-react';
+
 
 interface SidebarProps {
   userRole: 'admin' | 'worker';
@@ -121,9 +123,11 @@ const adminNavGroups: NavGroup[] = [
         label: 'Operational Expenses',
         icon: DollarSign,
       },
+      { href: '/admin/salary', label: 'Salary Management', icon: Banknote },
     ],
   },
 ];
+
 
 const workerNavItems: NavItem[] = [
   { href: '/worker/dashboard', label: 'Dashboard', icon: LayoutDashboard },

@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Receipt as PaymentReceipt } from '@/components/payments/receipt';
@@ -37,6 +37,8 @@ interface JobDetailProps {
 
 export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const ticketId = searchParams.get('ticket_id');
   const [job, setJob] = useState<JobWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -61,7 +63,7 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
       setLoading(true);
       setError('');
       try {
-        const jobData = await jobService.getJobById(jobId);
+        const jobData = await jobService.getJobById(jobId, ticketId || undefined);
         if (isMounted) setJob(jobData);
       } catch (err: unknown) {
         console.error('Failed to fetch job details:', err);
@@ -97,19 +99,25 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
     try {
       if (materials || waste || expenses) {
         // If materials/waste/expenses are provided (from completion modal), use direct API call to pass the body
+        // Include ticket_id for cross-worker access
         await api.patch(`/jobs/${jobId}/status`, {
           status: newStatus,
           materials,
           waste,
           expenses,
+          ticket_id: ticketId || job.ticket_id, // Include for cross-worker access
         });
       } else {
-        // Standard status update
-        await jobService.updateJobStatus(jobId, newStatus);
+        // Standard status update - include ticket_id in body
+        await api.patch(`/jobs/${jobId}/status`, {
+          status: newStatus,
+          ticket_id: ticketId || job.ticket_id, // Include for cross-worker access
+        });
       }
 
       // Refresh job data immediately to show updated financials
-      const updatedJob = await jobService.getJobById(jobId);
+      // Pass ticket_id for cross-worker access
+      const updatedJob = await jobService.getJobById(jobId, ticketId || job.ticket_id);
       setJob(updatedJob);
 
       // Close modal if it was open
@@ -156,7 +164,8 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
     setUpdatingMaterials(true);
     try {
       // Refresh the job data to get updated materials, waste, and expenses
-      const updatedJob = await jobService.getJobById(jobId);
+      // Pass ticket_id for cross-worker access
+      const updatedJob = await jobService.getJobById(jobId, ticketId || job.ticket_id);
       setJob(updatedJob);
       setShowEditMaterialsModal(false);
       toast.success('Materials, waste, and expenses updated successfully');
@@ -604,13 +613,12 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 text-sm">Payment Status:</span>
                   <span
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      job.payment_status === 'fully_paid'
-                        ? 'bg-green-100 text-green-800'
-                        : job.payment_status === 'partially_paid'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-red-100 text-red-800'
-                    }`}
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${job.payment_status === 'fully_paid'
+                      ? 'bg-green-100 text-green-800'
+                      : job.payment_status === 'partially_paid'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-red-100 text-red-800'
+                      }`}
                   >
                     {job.payment_status.replace('_', ' ')}
                   </span>

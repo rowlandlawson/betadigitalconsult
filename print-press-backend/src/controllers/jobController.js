@@ -54,7 +54,7 @@ export const getAllJobs = async (req, res) => {
       )`;
       params.push(searchParam, searchParam, searchParam);
     }
-    
+
     // For workers, only show their own jobs
     if (req.user.role === 'worker') {
       countQuery += ` AND j.worker_id = $${++paramCount}`;
@@ -66,9 +66,9 @@ export const getAllJobs = async (req, res) => {
     const totalCount = parseInt(totalResult.rows[0]?.total_count || 0);
 
     // Build paginated query - FIXED placeholder numbering
-    const paginatedIdsQuery = countQuery.replace('COUNT(DISTINCT j.id) as total_count', 'j.id') + 
+    const paginatedIdsQuery = countQuery.replace('COUNT(DISTINCT j.id) as total_count', 'j.id') +
       ` ORDER BY j.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
-    
+
     const paginatedIdsResult = await pool.query(paginatedIdsQuery, [...params, parseInt(limit), offset]);
     const jobIds = paginatedIdsResult.rows.map(r => r.id);
 
@@ -92,7 +92,7 @@ export const getAllJobs = async (req, res) => {
       LEFT JOIN users u ON j.worker_id = u.id
       LEFT JOIN (SELECT job_id, SUM(amount) as amount_paid FROM payments GROUP BY job_id) p_sum ON j.id = p_sum.job_id
       ORDER BY t.ord`;
-    
+
     const result = await pool.query(finalQuery, [jobIds]);
 
     const jobs = result.rows.map(row => ({
@@ -118,16 +118,27 @@ export const getAllJobs = async (req, res) => {
       code: error.code,
       detail: error.detail
     });
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
       message: error.message
     });
   }
 };
 
+// UUID validation helper
+const isValidUUID = (str) => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+};
+
 export const getJobById = async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Validate UUID format to prevent database errors
+    if (!isValidUUID(id)) {
+      return res.status(400).json({ error: 'Invalid job ID format' });
+    }
 
     // First, get the job with customer and worker info
     const jobResult = await pool.query(`
@@ -160,12 +171,12 @@ export const getJobById = async (req, res) => {
 
     const amountPaid = parseFloat(paymentSummaryResult.rows[0]?.amount_paid || 0);
     const balance = parseFloat(jobRow.total_cost) - amountPaid;
-    
-    const paymentStatus = amountPaid >= parseFloat(jobRow.total_cost) 
-      ? 'fully_paid' 
-      : amountPaid > 0 
-      ? 'partially_paid' 
-      : 'pending';
+
+    const paymentStatus = amountPaid >= parseFloat(jobRow.total_cost)
+      ? 'fully_paid'
+      : amountPaid > 0
+        ? 'partially_paid'
+        : 'pending';
 
     const job = {
       ...jobRow,
@@ -175,7 +186,20 @@ export const getJobById = async (req, res) => {
     };
 
     // Check if worker has access to this job
-    if (req.user.role === 'worker' && job.worker_id !== req.user.userId) {
+    // Workers can only see: 1) their own jobs, 2) jobs accessed via valid ticket_id
+    let hasAccess = false;
+
+    if (req.user.role === 'admin') {
+      hasAccess = true;
+    } else if (job.worker_id === req.user.userId) {
+      // Worker's own job
+      hasAccess = true;
+    } else if (req.query.ticket_id && req.query.ticket_id === job.ticket_id) {
+      // Cross-worker access via ticket_id (e.g., from ticket search)
+      hasAccess = true;
+    }
+
+    if (!hasAccess) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -224,12 +248,12 @@ export const getJobById = async (req, res) => {
       code: error.code,
       detail: error.detail
     });
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
       message: error.message,
-      ...(process.env.NODE_ENV === 'development' && { 
+      ...(process.env.NODE_ENV === 'development' && {
         detail: error.detail,
-        stack: error.stack 
+        stack: error.stack
       })
     });
   }
@@ -237,7 +261,7 @@ export const getJobById = async (req, res) => {
 
 export const createJob = async (req, res) => {
   const client = await pool.connect();
-  
+
   try {
     console.log('🚀 [CreateJob] Payload:', req.body);
 
@@ -377,10 +401,10 @@ export const createJob = async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('❌ Create job error:', error);
-    
+
     // UPDATED: Return specific Postgres error details (like duplicates) to frontend
-    res.status(500).json({ 
-      error: 'Database Error', 
+    res.status(500).json({
+      error: 'Database Error',
       message: error.message,
       code: error.code,
       detail: error.detail
@@ -392,7 +416,7 @@ export const createJob = async (req, res) => {
 
 export const updateJobStatus = async (req, res) => {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
 
@@ -409,8 +433,25 @@ export const updateJobStatus = async (req, res) => {
       return res.status(404).json({ error: 'Job not found' });
     }
 
-    // Check access
-    if (req.user.role === 'worker' && currentJob.rows[0].worker_id !== req.user.userId) {
+    // Check access - Workers can only update:
+    // 1. Their own jobs
+    // 2. Jobs accessed via valid ticket_id (for cross-worker updates)
+    let hasAccess = false;
+
+    // 1. Admin always has access
+    if (req.user.role === 'admin') {
+      hasAccess = true;
+    }
+    // 2. Assigned worker has access to own job
+    else if (currentJob.rows[0].worker_id === req.user.userId) {
+      hasAccess = true;
+    }
+    // 3. Cross-worker access requires ticket_id to match
+    else if (req.body.ticket_id && req.body.ticket_id === currentJob.rows[0].ticket_id) {
+      hasAccess = true;
+    }
+
+    if (!hasAccess) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -429,13 +470,13 @@ export const updateJobStatus = async (req, res) => {
         // Get inventory item
         let materialId = null;
         let inventoryItem = null;
-        
+
         if (material.material_name) {
           const invResult = await client.query(
             'SELECT *, (attributes->>\'sheets_per_unit\')::integer as sheets_per_unit FROM inventory WHERE material_name ILIKE $1 AND is_active = true LIMIT 1',
             [`%${material.material_name}%`]
           );
-          
+
           if (invResult.rows.length > 0) {
             inventoryItem = invResult.rows[0];
             materialId = inventoryItem.id;
@@ -488,7 +529,7 @@ export const updateJobStatus = async (req, res) => {
         } else {
           quantityInUnits = material.quantity || sheetsUsed;
         }
-        
+
         const materialUsedResult = await client.query(
           `INSERT INTO materials_used (
             job_id, material_id, material_name, quantity,
@@ -511,27 +552,27 @@ export const updateJobStatus = async (req, res) => {
         if (materialId && inventoryItem) {
           // Get current stock (now stored as current_stock, but still represents sheets for paper items)
           const currentStockSheets = parseFloat(inventoryItem.current_stock) || 0;
-          
+
           // Check stock
           if (sheetsUsed > currentStockSheets) {
             // Insufficient stock - log warning but continue
             console.warn(`Insufficient stock for ${inventoryItem.material_name}. Need: ${sheetsUsed}, Have: ${currentStockSheets}`);
-            
+
             // Option 1: Use what's available
             const actualSheetsUsed = Math.min(sheetsUsed, currentStockSheets);
             const newSheets = currentStockSheets - actualSheetsUsed;
-            
+
             await client.query(
               'UPDATE inventory SET current_stock = $1 WHERE id = $2',
               [newSheets, materialId]
             );
-            
+
             // Update materials_used with actual used
             await client.query(
               'UPDATE materials_used SET quantity_sheets = $1 WHERE id = $2',
               [actualSheetsUsed, materialUsedResult.rows[0].id]
             );
-            
+
             // Send urgent notification
             await notificationService.createNotification({
               title: 'Stock Shortage',
@@ -542,7 +583,7 @@ export const updateJobStatus = async (req, res) => {
           } else {
             // Normal case - enough stock
             const newSheets = currentStockSheets - sheetsUsed;
-            
+
             await client.query(
               'UPDATE inventory SET current_stock = $1 WHERE id = $2',
               [newSheets, materialId]
@@ -557,7 +598,7 @@ export const updateJobStatus = async (req, res) => {
           } else {
             quantityUsedInUnits = sheetsUsed;
           }
-          
+
           // Calculate total cost
           let totalCostForUsage;
           if (inventoryItem.category === 'Paper') {
@@ -566,7 +607,7 @@ export const updateJobStatus = async (req, res) => {
           } else {
             totalCostForUsage = sheetsUsed * inventoryItem.unit_cost;
           }
-          
+
           await client.query(
             `INSERT INTO material_usage (
               material_id, job_id, quantity_used, quantity_sheets, unit_cost, total_cost,
@@ -589,24 +630,24 @@ export const updateJobStatus = async (req, res) => {
             'SELECT *, (attributes->>\'sheets_per_unit\')::integer as sheets_per_unit FROM inventory WHERE id = $1',
             [materialId]
           );
-          
+
           if (updatedInv.rows.length > 0) {
             const updatedItem = updatedInv.rows[0];
             const currentStockSheets = parseFloat(updatedItem.current_stock) || 0;
             const thresholdSheets = parseFloat(updatedItem.threshold) || 0;
             const sheetsPerUnit = updatedItem.sheets_per_unit || 500;
-            
+
             const stockStatus = SheetCalculator.checkStockStatus(
               currentStockSheets,
               thresholdSheets
             );
-            
+
             if (stockStatus.isLow) {
               const display = SheetCalculator.toDisplay(
                 currentStockSheets,
                 sheetsPerUnit
               );
-              
+
               await notificationService.createNotification({
                 title: 'Low Stock Alert',
                 message: `${updatedItem.material_name} is below threshold. ${display.display}`,
@@ -625,7 +666,7 @@ export const updateJobStatus = async (req, res) => {
     if (waste && Array.isArray(waste)) {
       for (const wasteItem of waste) {
         let materialId = null;
-        let inventoryItem = null; 
+        let inventoryItem = null;
 
         if (wasteItem.material_id) {
           materialId = wasteItem.material_id;
@@ -663,18 +704,18 @@ export const updateJobStatus = async (req, res) => {
         );
 
         if (inventoryItem && wasteItem.quantity > 0) {
-            const isPaper = inventoryItem.category === 'Paper';
-            const attributes = inventoryItem.attributes || {};
-            const sheetsPerUnit = parseInt(attributes.sheets_per_unit) || 500;
-            const unitOfMeasure = (inventoryItem.unit_of_measure || '').toLowerCase();
-            let quantityToSubtract = wasteItem.quantity;
+          const isPaper = inventoryItem.category === 'Paper';
+          const attributes = inventoryItem.attributes || {};
+          const sheetsPerUnit = parseInt(attributes.sheets_per_unit) || 500;
+          const unitOfMeasure = (inventoryItem.unit_of_measure || '').toLowerCase();
+          let quantityToSubtract = wasteItem.quantity;
 
-            if (isPaper) {
-                if (unitOfMeasure.includes('ream')) {
-                  quantityToSubtract = wasteItem.quantity * sheetsPerUnit;
-                }
+          if (isPaper) {
+            if (unitOfMeasure.includes('ream')) {
+              quantityToSubtract = wasteItem.quantity * sheetsPerUnit;
             }
-            
+          }
+
           const currentStock = parseFloat(inventoryItem.current_stock) || 0;
           let newStock = currentStock - quantityToSubtract;
           if (newStock < 0) {
@@ -715,10 +756,10 @@ export const updateJobStatus = async (req, res) => {
     }
 
     // Notify admins about status change and material/expense updates
-    const job = { 
-      id, 
+    const job = {
+      id,
       ticket_id: jobTicketId,
-      status 
+      status
     };
 
     if (oldStatus !== status) {
@@ -828,7 +869,7 @@ export const getJobByTicketId = async (req, res) => {
 
 export const updateJob = async (req, res) => {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
 
@@ -914,7 +955,7 @@ export const getMaterialEditHistory = async (req, res) => {
 // Update materials with edit tracking
 export const updateJobMaterials = async (req, res) => {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
 
@@ -924,8 +965,8 @@ export const updateJobMaterials = async (req, res) => {
 
     if (!edit_reason || edit_reason.trim().length < 5) {
       await client.query('ROLLBACK');
-      return res.status(400).json({ 
-        error: 'Edit reason is required and must be at least 5 characters long' 
+      return res.status(400).json({
+        error: 'Edit reason is required and must be at least 5 characters long'
       });
     }
 
@@ -998,14 +1039,14 @@ export const updateJobMaterials = async (req, res) => {
       if (material.id) {
         // Update existing material
         const currentMaterial = currentMaterialsMap.get(material.id);
-        
+
         if (currentMaterial) {
           const isOldPaper = currentMaterial.category === 'Paper';
           const oldQuantitySheets = (isOldPaper ? currentMaterial.quantity_sheets : (currentMaterial.quantity_sheets || (currentMaterial.quantity * sheetsPerUnit))) || 0;
           const quantityChange = quantitySheets - oldQuantitySheets;
 
           // Check if any changes were made
-          const hasChanges = 
+          const hasChanges =
             currentMaterial.material_name !== material.material_name ||
             currentMaterial.paper_size !== material.paper_size ||
             currentMaterial.paper_type !== material.paper_type ||
@@ -1027,7 +1068,7 @@ export const updateJobMaterials = async (req, res) => {
               ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
               [
                 material.id, jobId,
-                currentMaterial.material_name, currentMaterial.paper_size, 
+                currentMaterial.material_name, currentMaterial.paper_size,
                 currentMaterial.paper_type, currentMaterial.grammage,
                 currentMaterial.quantity, currentMaterial.unit_cost, currentMaterial.total_cost,
                 material.material_name, material.paper_size, material.paper_type,
@@ -1059,10 +1100,10 @@ export const updateJobMaterials = async (req, res) => {
 
             // Update inventory if material_id is present
             // quantityChange is in sheets for paper items, so we can use it directly
-            if(currentMaterial.material_id) {
+            if (currentMaterial.material_id) {
               const currentStock = parseFloat(inventoryItem?.current_stock) || 0;
               const newStock = currentStock - quantityChange;
-              
+
               if (newStock < 0) {
                 console.warn(`Insufficient stock for ${inventoryItem?.material_name}. Adjusting to 0.`);
                 await client.query(
@@ -1125,7 +1166,7 @@ export const updateJobMaterials = async (req, res) => {
         if (material.material_id && inventoryItem) {
           const currentStock = parseFloat(inventoryItem.current_stock) || 0;
           const newStock = currentStock - quantitySheets;
-          
+
           if (newStock < 0) {
             console.warn(`Insufficient stock for ${inventoryItem.material_name}. Adjusting to 0.`);
             await client.query(
@@ -1161,7 +1202,7 @@ export const updateJobMaterials = async (req, res) => {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
         [
           materialToDelete.id, jobId,
-          materialToDelete.material_name, materialToDelete.paper_size, 
+          materialToDelete.material_name, materialToDelete.paper_size,
           materialToDelete.paper_type, materialToDelete.grammage,
           materialToDelete.quantity, materialToDelete.unit_cost, materialToDelete.total_cost,
           null, null, null, null, null, null, null, // All nulls indicate deletion
@@ -1339,10 +1380,10 @@ export const updateJobMaterials = async (req, res) => {
         } else {
           // Insert new expense (link to job via notes or create a job_expenses table)
           // For now, we'll add job_id to notes or create a separate linking mechanism
-          const notesWithJob = expense.notes 
+          const notesWithJob = expense.notes
             ? `${expense.notes} [Job: ${jobTicketId}]`
             : `[Job: ${jobTicketId}]`;
-          
+
           await client.query(
             `INSERT INTO operational_expenses (description, category, amount, expense_date, receipt_number, notes, recorded_by)
              VALUES ($1, $2, $3, $4, $5, $6, $7)`,
@@ -1434,7 +1475,7 @@ export const updateJobMaterials = async (req, res) => {
 
 export const deleteJob = async (req, res) => {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
 
@@ -1459,7 +1500,7 @@ export const deleteJob = async (req, res) => {
     await client.query('DELETE FROM materials_used WHERE job_id = $1', [id]);
     await client.query('DELETE FROM waste_expenses WHERE job_id = $1', [id]);
     await client.query('DELETE FROM payments WHERE job_id = $1', [id]);
-    
+
     // Delete the job
     await client.query('DELETE FROM jobs WHERE id = $1', [id]);
 

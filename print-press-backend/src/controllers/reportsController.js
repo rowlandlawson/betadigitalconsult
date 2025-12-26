@@ -71,7 +71,7 @@ export class ReportsController {
       const actualRevenueQuery = `
       SELECT COALESCE(SUM(amount), 0) as total_revenue
       FROM payments
-      WHERE date BETWEEN $1 AND $2
+      WHERE date::DATE BETWEEN $1 AND $2
     `;
 
       // 3. Payments Statistics - UPDATED to use BETWEEN
@@ -79,7 +79,7 @@ export class ReportsController {
       SELECT
         COALESCE(SUM(amount), 0) as total_collected
       FROM payments
-      WHERE date BETWEEN $1 AND $2
+      WHERE date::DATE BETWEEN $1 AND $2
     `;
 
       // NEW: Total jobs cost (ALL TIME - for accurate outstanding calculation)
@@ -268,10 +268,10 @@ export class ReportsController {
         monthlyGrowth =
           lastMonthRevenue > 0
             ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) *
-              100
+            100
             : currentMonthRevenue > 0
-            ? 100
-            : 0;
+              ? 100
+              : 0;
       }
 
       // Calculate inventory health
@@ -291,8 +291,8 @@ export class ReportsController {
         totalCustomers > 0
           ? (newThisMonth / totalCustomers) * 100
           : newThisMonth > 0
-          ? 100
-          : 0;
+            ? 100
+            : 0;
 
       // Calculate job completion rate safely
       const totalJobs = parseInt(jobsStats.total_jobs || 0);
@@ -356,8 +356,8 @@ export class ReportsController {
             inventoryStats.critical_stock_items > 0
               ? "CRITICAL"
               : inventoryStats.low_stock_items > 0
-              ? "WARNING"
-              : "HEALTHY",
+                ? "WARNING"
+                : "HEALTHY",
         },
         recent_activities: activitiesResult.rows || [],
         revenue_trend: revenueTrend.map((trend) => ({
@@ -397,12 +397,12 @@ export class ReportsController {
   async getFinancialSummary(req, res) {
     try {
       const { start_date, end_date } = req.query;
-      
+
       // Default to current month if not provided
       const currentDate = new Date();
       const defaultStartDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       const defaultEndDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-      
+
       const startDateStr = start_date || defaultStartDate.toISOString().split("T")[0];
       const endDateStr = end_date || defaultEndDate.toISOString().split("T")[0];
 
@@ -411,7 +411,7 @@ export class ReportsController {
       const revenueQuery = `
         SELECT COALESCE(SUM(amount), 0) as total_revenue
         FROM payments
-        WHERE date BETWEEN $1 AND $2
+        WHERE date::DATE BETWEEN $1 AND $2
       `;
 
       // Total invoiced (job costs) for jobs in this period
@@ -453,18 +453,11 @@ export class ReportsController {
         WHERE expense_date BETWEEN $1 AND $2
       `;
 
-      // Labor costs (from worker salaries)
+      // Labor costs (from actual salary payments)
       const laborCostsQuery = `
-        SELECT COALESCE(SUM(
-          CASE 
-            WHEN u.hourly_rate IS NOT NULL THEN u.hourly_rate * 160 -- Approx monthly hours
-            WHEN u.monthly_salary IS NOT NULL THEN u.monthly_salary
-            ELSE 0 
-          END
-        ), 0) as labor_costs
-        FROM users u
-        WHERE u.role = 'worker' 
-        AND u.is_active = true
+        SELECT COALESCE(SUM(amount), 0) as labor_costs
+        FROM salary_payments
+        WHERE payment_date BETWEEN $1 AND $2
       `;
 
       const params = [startDateStr, endDateStr];
@@ -479,19 +472,19 @@ export class ReportsController {
           pool.query(operationalCostsQuery, params),
         ]);
 
-      // Labor costs are calculated independently of the date range in the current logic
-      const laborResult = await pool.query(laborCostsQuery);
+      // Labor costs are calculated based on date range
+      const laborResult = await pool.query(laborCostsQuery, params);
 
       // Cash basis: Revenue = payments received
       const totalRevenue = parseFloat(revenueResult.rows[0].total_revenue);
-      
+
       // From jobs in this period - actual invoiced and paid
       const totalInvoiced = parseFloat(jobsResult.rows[0].total_invoiced);
       const paymentsForJobs = parseFloat(jobsResult.rows[0].payments_for_jobs);
-      
+
       // OUTSTANDING = ALL TIME (not filtered by period)
       const outstandingAmount = parseFloat(outstandingResult.rows[0].total_outstanding);
-      
+
       const totalMaterialCosts = parseFloat(
         materialResult.rows[0].material_costs
       );
@@ -634,10 +627,11 @@ export class ReportsController {
     `;
 
       // Get actual payments received in the period (for revenue calculation - consistent with Financial Summary)
+      // Cast date to DATE to ensure all payments on the end date are included (regardless of time)
       const paymentsQuery = `
       SELECT COALESCE(SUM(amount), 0) as total_payments
       FROM payments
-      WHERE date BETWEEN $1 AND $2
+      WHERE date::DATE BETWEEN $1 AND $2
     `;
 
       // 2. Material Costs: Actual materials used for jobs in the period
@@ -678,23 +672,18 @@ export class ReportsController {
       ORDER BY oe.amount DESC
     `;
 
-      // 5. Labor Costs - FIXED VERSION (simpler calculation)
-      // Note: In PostgreSQL, subtracting two dates returns an integer (days), not an interval
+      // 5. Labor Costs - Actual Salaries
       const laborCostsQuery = `
-      SELECT 
-        'Labor' as category,
-        u.name as description,
-        CASE 
-          WHEN u.hourly_rate IS NOT NULL THEN u.hourly_rate * 160 * (($2::date - $1::date)::numeric / 30.0)
-          WHEN u.monthly_salary IS NOT NULL THEN u.monthly_salary * (($2::date - $1::date)::numeric / 30.0)
-          ELSE 0 
-        END as amount,
-        $1 as date
-      FROM users u
-      WHERE u.role = 'worker' 
-        AND u.is_active = true
-      ORDER BY amount DESC
-    `;
+        SELECT 
+          'Labor' as category,
+          COALESCE(u.name, 'Unknown Worker') || ' - ' || TO_CHAR(sp.payment_date, 'Mon DD') as description,
+          sp.amount,
+          sp.payment_date as date
+        FROM salary_payments sp
+        LEFT JOIN users u ON sp.user_id = u.id
+        WHERE sp.payment_date BETWEEN $1 AND $2
+        ORDER BY sp.payment_date DESC
+      `;
 
       const params = [start_date, end_date];
       // ALL TIME outstanding query (not filtered by date)
@@ -727,10 +716,10 @@ export class ReportsController {
         (sum, row) => sum + parseFloat(row.revenue || 0),
         0
       );
-      
+
       // Revenue = actual payments collected in the period (CASH BASIS - consistent with Financial Summary)
       const totalRevenue = parseFloat(paymentsResult.rows[0].total_payments);
-      
+
       // Outstanding = ALL TIME (total owed across ALL jobs, not just this period)
       const outstandingAmount = parseFloat(allTimeOutstandingResult.rows[0].total_outstanding);
 
@@ -824,16 +813,17 @@ export class ReportsController {
   // Get material monitoring dashboard
   async getMaterialMonitoringDashboard(req, res) {
     try {
-      // Ensure months is a number to prevent injection
-      const months = parseInt(req.query.months, 10) || 6;
+      const { start_date, end_date } = req.query;
 
-      if (isNaN(months) || months <= 0) {
+      if (!start_date || !end_date) {
         return res
           .status(400)
-          .json({ error: "Invalid number of months specified." });
+          .json({ error: "Start date and end date are required" });
       }
 
-      // Material usage trends - FIXED: using correct date calculation
+      const params = [start_date, end_date];
+
+      // Material usage trends - using date range
       const usageTrendsQuery = `
         SELECT 
           DATE_TRUNC('month', j.date_requested) as period,
@@ -843,12 +833,12 @@ export class ReportsController {
           AVG(mu.unit_cost) as average_unit_cost
         FROM materials_used mu
         JOIN jobs j ON mu.job_id = j.id
-        WHERE j.date_requested >= CURRENT_DATE - INTERVAL '${months} months'
+        WHERE j.date_requested BETWEEN $1 AND $2
         GROUP BY period, mu.material_name
         ORDER BY period DESC, total_cost DESC
       `;
 
-      // Waste analysis - FIXED: updated column names to match schema
+      // Waste analysis - using date range
       const wasteAnalysisQuery = `
         SELECT 
           we.type,
@@ -860,16 +850,16 @@ export class ReportsController {
           (SUM(we.total_cost) / NULLIF((
             SELECT COALESCE(SUM(total_cost), 1) 
             FROM waste_expenses 
-            WHERE created_at >= CURRENT_DATE - INTERVAL '${months} months'
+            WHERE created_at BETWEEN $1 AND $2
           ), 0)) * 100 as percentage_of_total
         FROM waste_expenses we
         LEFT JOIN inventory i ON we.material_id = i.id
-        WHERE we.created_at >= CURRENT_DATE - INTERVAL '${months} months'
+        WHERE we.created_at BETWEEN $1 AND $2
         GROUP BY we.type, we.waste_reason, i.material_name, we.description
         ORDER BY total_cost DESC
       `;
 
-      // Stock level analysis - FIXED: using correct column names from schema
+      // Stock level analysis - not date dependent
       const stockAnalysisQuery = `
         SELECT 
           material_name,
@@ -894,7 +884,7 @@ export class ReportsController {
         ORDER BY stock_status, stock_percentage ASC
       `;
 
-      // Material cost efficiency - FIXED: using material_id for joins
+      // Material cost efficiency - using date range
       const costEfficiencyQuery = `
         SELECT 
           COALESCE(i.material_name, mu.material_name) as material_name,
@@ -914,7 +904,7 @@ export class ReportsController {
         FROM materials_used mu
         JOIN jobs j ON mu.job_id = j.id
         LEFT JOIN inventory i ON mu.material_id = i.id
-        WHERE j.date_requested >= CURRENT_DATE - INTERVAL '${months} months'
+        WHERE j.date_requested BETWEEN $1 AND $2
           AND j.status = 'completed'
         GROUP BY COALESCE(i.material_name, mu.material_name)
         HAVING SUM(mu.total_cost) > 0
@@ -928,11 +918,11 @@ export class ReportsController {
         WHERE is_active = true
       `;
 
-      // Get total waste cost separately
+      // Get total waste cost separately - using date range
       const totalWasteCostQuery = `
         SELECT COALESCE(SUM(total_cost), 0) as total_waste_cost
         FROM waste_expenses 
-        WHERE created_at >= CURRENT_DATE - INTERVAL '${months} months'
+        WHERE created_at BETWEEN $1 AND $2
       `;
 
       const [
@@ -943,12 +933,12 @@ export class ReportsController {
         materialCountResult,
         totalWasteCostResult,
       ] = await Promise.all([
-        pool.query(usageTrendsQuery),
-        pool.query(wasteAnalysisQuery),
+        pool.query(usageTrendsQuery, params),
+        pool.query(wasteAnalysisQuery, params),
         pool.query(stockAnalysisQuery),
-        pool.query(costEfficiencyQuery),
+        pool.query(costEfficiencyQuery, params),
         pool.query(materialCountQuery),
-        pool.query(totalWasteCostQuery),
+        pool.query(totalWasteCostQuery, params),
       ]);
 
       // Calculate accurate material return average
@@ -960,13 +950,13 @@ export class ReportsController {
       const averageMaterialReturn =
         validReturns.length > 0
           ? validReturns.reduce(
-              (sum, row) => sum + parseFloat(row.return_on_material),
-              0
-            ) / validReturns.length
+            (sum, row) => sum + parseFloat(row.return_on_material),
+            0
+          ) / validReturns.length
           : 0;
 
       res.json({
-        monitoring_period: `${months} months`,
+        monitoring_period: `${start_date} to ${end_date}`,
         material_usage_trends: usageTrendsResult.rows.map((row) => ({
           period: row.period,
           material_name: row.material_name,
@@ -1038,33 +1028,35 @@ export class ReportsController {
         return res.status(400).json({ error: "Invalid period specified" });
       }
 
-      // Revenue trends based on payments actually received - FIXED
+      // Revenue trends - total_revenue from jobs (invoiced), collected_revenue from payments
+      // This matches dashboard logic where collected = SUM of payments
       const revenueTrendsQuery = `
-        WITH revenue AS (
+        WITH payments_data AS (
           SELECT 
             DATE_TRUNC($1, p.date) as period,
-            COALESCE(SUM(p.amount), 0) as total_revenue
+            COALESCE(SUM(p.amount), 0) as collected_revenue
           FROM payments p
           WHERE p.date >= CURRENT_DATE - INTERVAL '12 months'
           GROUP BY DATE_TRUNC($1, p.date)
         ),
-        jobs AS (
+        jobs_data AS (
           SELECT
             DATE_TRUNC($1, j.date_requested) as period,
             COUNT(*) as job_count,
+            COALESCE(SUM(j.total_cost), 0) as total_revenue,
             COALESCE(AVG(j.total_cost), 0) as average_job_value
           FROM jobs j
           WHERE j.date_requested >= CURRENT_DATE - INTERVAL '12 months'
           GROUP BY DATE_TRUNC($1, j.date_requested)
         )
         SELECT 
-          COALESCE(j.period, r.period) as period,
-          COALESCE(j.job_count, 0) as job_count,
-          COALESCE(r.total_revenue, 0) as total_revenue,
-          COALESCE(r.total_revenue, 0) as collected_revenue,
-          COALESCE(j.average_job_value, 0) as average_job_value
-        FROM revenue r
-        FULL OUTER JOIN jobs j ON j.period = r.period
+          COALESCE(jd.period, pd.period) as period,
+          COALESCE(jd.job_count, 0) as job_count,
+          COALESCE(jd.total_revenue, 0) as total_revenue,
+          COALESCE(pd.collected_revenue, 0) as collected_revenue,
+          COALESCE(jd.average_job_value, 0) as average_job_value
+        FROM jobs_data jd
+        FULL OUTER JOIN payments_data pd ON jd.period = pd.period
         ORDER BY period DESC
       `;
 
@@ -1114,16 +1106,16 @@ export class ReportsController {
           average_revenue:
             revenueTrendsResult.rows.length > 0
               ? revenueTrendsResult.rows.reduce(
-                  (sum, row) => sum + parseFloat(row.total_revenue),
-                  0
-                ) / revenueTrendsResult.rows.length
+                (sum, row) => sum + parseFloat(row.total_revenue),
+                0
+              ) / revenueTrendsResult.rows.length
               : 0,
           customer_growth_rate:
             customerTrendsResult.rows.length > 1
               ? (((customerTrendsResult.rows[0]?.new_customers || 0) -
-                  (customerTrendsResult.rows[1]?.new_customers || 0)) /
-                  (customerTrendsResult.rows[1]?.new_customers || 1)) *
-                100
+                (customerTrendsResult.rows[1]?.new_customers || 0)) /
+                (customerTrendsResult.rows[1]?.new_customers || 1)) *
+              100
               : 0,
         },
       });

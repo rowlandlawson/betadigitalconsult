@@ -105,9 +105,9 @@ export const BusinessPerformance: React.FC = () => {
     <div className="space-y-6">
       {/* Period Selector */}
       <Card>
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-2 sm:pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h3 className="text-lg font-semibold">Business Performance</h3>
+            <h3 className="text-base sm:text-lg font-semibold">Business Performance</h3>
             <div className="flex items-center gap-1 sm:gap-2">
               <Button
                 variant={period === 'month' ? 'default' : 'outline'}
@@ -139,16 +139,16 @@ export const BusinessPerformance: React.FC = () => {
       </Card>
 
       {/* Performance Indicators */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+        <Card className="min-w-0">
+          <CardContent className="p-3 sm:p-4 lg:p-6">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-blue-500" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
                   Average Revenue
                 </p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 break-words">
                   {formatCurrency(data.performance_indicators.average_revenue)}
                 </p>
               </div>
@@ -156,15 +156,15 @@ export const BusinessPerformance: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
+        <Card className="min-w-0">
+          <CardContent className="p-3 sm:p-4 lg:p-6">
             <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-purple-500" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Customer Growth Rate
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
+                  Customer Growth
                 </p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 break-words">
                   {data.performance_indicators.customer_growth_rate.toFixed(1)}%
                 </p>
               </div>
@@ -172,15 +172,15 @@ export const BusinessPerformance: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
+        <Card className="min-w-0">
+          <CardContent className="p-3 sm:p-4 lg:p-6">
             <div className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5 text-green-500" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">
+              <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
                   Total Periods
                 </p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 break-words">
                   {data.performance_indicators.total_periods}
                 </p>
               </div>
@@ -191,21 +191,21 @@ export const BusinessPerformance: React.FC = () => {
 
       {/* Revenue Trends */}
       <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Revenue Trends</h3>
+        <CardHeader className="pb-2 sm:pb-4">
+          <h3 className="text-base sm:text-lg font-semibold">Revenue Trends</h3>
         </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+        <CardContent className="p-2 sm:p-6">
+          <ResponsiveContainer width="100%" height={250}>
             <LineChart data={revenueChartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="period" />
-              <YAxis />
+              <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} />
               <Tooltip
                 formatter={(value: number | undefined) =>
                   value !== undefined ? formatCurrency(value) : '-'
                 }
               />
-              <Legend />
+              <Legend wrapperStyle={{ fontSize: '12px' }} />
               <Line
                 type="monotone"
                 dataKey="revenue"
@@ -227,17 +227,17 @@ export const BusinessPerformance: React.FC = () => {
 
       {/* Customer Trends */}
       <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Customer Trends</h3>
+        <CardHeader className="pb-2 sm:pb-4">
+          <h3 className="text-base sm:text-lg font-semibold">Customer Trends</h3>
         </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+        <CardContent className="p-2 sm:p-6">
+          <ResponsiveContainer width="100%" height={250}>
             <BarChart data={customerChartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="period" />
-              <YAxis />
+              <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} />
               <Tooltip />
-              <Legend />
+              <Legend wrapperStyle={{ fontSize: '12px' }} />
               <Bar dataKey="new" fill="#AABD77" name="New Customers" />
               <Bar dataKey="repeat" fill="#8FA66B" name="Repeat Customers" />
             </BarChart>
@@ -247,18 +247,18 @@ export const BusinessPerformance: React.FC = () => {
 
       {/* Efficiency Metrics */}
       <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Efficiency Metrics</h3>
+        <CardHeader className="pb-2 sm:pb-4">
+          <h3 className="text-base sm:text-lg font-semibold">Efficiency Metrics</h3>
         </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+        <CardContent className="p-2 sm:p-6">
+          <ResponsiveContainer width="100%" height={250}>
             <LineChart data={efficiencyChartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="period" />
-              <YAxis yAxisId="left" />
-              <YAxis yAxisId="right" orientation="right" />
+              <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+              <YAxis yAxisId="left" tick={{ fontSize: 10 }} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} />
               <Tooltip />
-              <Legend />
+              <Legend wrapperStyle={{ fontSize: '12px' }} />
               <Line
                 yAxisId="left"
                 type="monotone"
@@ -282,38 +282,38 @@ export const BusinessPerformance: React.FC = () => {
 
       {/* Revenue Trends Table */}
       <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Revenue Trends Details</h3>
+        <CardHeader className="pb-2 sm:pb-4">
+          <h3 className="text-base sm:text-lg font-semibold">Revenue Trends Details</h3>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+        <CardContent className="p-2 sm:p-6">
+          <div className="overflow-x-auto -mx-2 sm:mx-0">
+            <table className="w-full text-xs sm:text-sm min-w-[400px]">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Period</th>
-                  <th className="text-right p-2">Job Count</th>
-                  <th className="text-right p-2">Total Revenue</th>
-                  <th className="text-right p-2">Collected Revenue</th>
-                  <th className="text-right p-2">Average Job Value</th>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left p-2 whitespace-nowrap">Period</th>
+                  <th className="text-right p-2">Jobs</th>
+                  <th className="text-right p-2 whitespace-nowrap">Revenue</th>
+                  <th className="text-right p-2 hidden sm:table-cell">Collected</th>
+                  <th className="text-right p-2 hidden md:table-cell">Avg Value</th>
                 </tr>
               </thead>
               <tbody>
                 {data.revenue_trends.map((item, idx) => (
                   <tr key={idx} className="border-b hover:bg-gray-50">
-                    <td className="p-2 font-medium">
+                    <td className="p-2 font-medium whitespace-nowrap">
                       {new Date(item.period).toLocaleDateString('en-US', {
                         month: 'short',
                         year: 'numeric',
                       })}
                     </td>
                     <td className="p-2 text-right">{item.job_count}</td>
-                    <td className="p-2 text-right font-medium">
+                    <td className="p-2 text-right font-medium whitespace-nowrap">
                       {formatCurrency(item.total_revenue)}
                     </td>
-                    <td className="p-2 text-right">
+                    <td className="p-2 text-right hidden sm:table-cell whitespace-nowrap">
                       {formatCurrency(item.collected_revenue)}
                     </td>
-                    <td className="p-2 text-right">
+                    <td className="p-2 text-right hidden md:table-cell whitespace-nowrap">
                       {formatCurrency(item.average_job_value)}
                     </td>
                   </tr>

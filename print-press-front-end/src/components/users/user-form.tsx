@@ -21,7 +21,6 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  const [generatedPassword, setGeneratedPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
   const [passwordChangeData, setPasswordChangeData] = useState({
     newPassword: '',
@@ -45,6 +44,7 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
     bankName: '',
     accountNumber: '',
     accountName: '',
+    password: '',
   });
 
   useEffect(() => {
@@ -84,16 +84,6 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
 
     fetchUser();
   }, [mode, userId]);
-
-  const generatePassword = () => {
-    const chars =
-      'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
-    let password = '';
-    for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setGeneratedPassword(password);
-  };
 
   const handlePasswordChange = async () => {
     if (
@@ -161,7 +151,15 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
       }
     } catch (err: unknown) {
       console.error('Failed to save user:', err);
-      if (isApiError(err)) {
+      // Extract error message from Axios error response
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { error?: string } } };
+        if (axiosErr.response?.data?.error) {
+          setError(axiosErr.response.data.error);
+        } else {
+          setError(`Failed to ${mode} user`);
+        }
+      } else if (isApiError(err)) {
         setError(err.error);
       } else {
         setError(`Failed to ${mode} user`);
@@ -226,15 +224,18 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
 
               {mode === 'create' && (
                 <div className="md:col-span-2">
-                  <Label>
-                    Generated Password (will be sent to admin email)
+                  <Label htmlFor="password">
+                    Password (Optional - leave blank for auto-generation)
                   </Label>
                   <div className="flex gap-2">
                     <Input
+                      id="password"
                       type={showPassword ? 'text' : 'password'}
-                      value={generatedPassword}
-                      readOnly
-                      placeholder="Click 'Generate Password' to create a secure password"
+                      value={formData.password || ''}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      placeholder="Enter a password or generate one"
                       className="flex-1"
                     />
                     <Button
@@ -251,15 +252,21 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={generatePassword}
+                      onClick={() => {
+                        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+                        let pass = '';
+                        for (let i = 0; i < 12; i++) {
+                          pass += chars.charAt(Math.floor(Math.random() * chars.length));
+                        }
+                        setFormData({ ...formData, password: pass });
+                      }}
                     >
                       <RefreshCw className="h-4 w-4 mr-2" />
-                      Generate Password
+                      Generate
                     </Button>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    A password will be auto-generated when creating the user.
-                    You can generate one here to preview.
+                    If left blank, a random password will be generated and emailed to the admin.
                   </p>
                 </div>
               )}

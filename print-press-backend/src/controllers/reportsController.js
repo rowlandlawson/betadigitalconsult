@@ -71,7 +71,7 @@ export class ReportsController {
       const actualRevenueQuery = `
       SELECT COALESCE(SUM(amount), 0) as total_revenue
       FROM payments
-      WHERE date BETWEEN $1 AND $2
+      WHERE date::DATE BETWEEN $1 AND $2
     `;
 
       // 3. Payments Statistics - UPDATED to use BETWEEN
@@ -79,7 +79,7 @@ export class ReportsController {
       SELECT
         COALESCE(SUM(amount), 0) as total_collected
       FROM payments
-      WHERE date BETWEEN $1 AND $2
+      WHERE date::DATE BETWEEN $1 AND $2
     `;
 
       // NEW: Total jobs cost (ALL TIME - for accurate outstanding calculation)
@@ -411,7 +411,7 @@ export class ReportsController {
       const revenueQuery = `
         SELECT COALESCE(SUM(amount), 0) as total_revenue
         FROM payments
-        WHERE date BETWEEN $1 AND $2
+        WHERE date::DATE BETWEEN $1 AND $2
       `;
 
       // Total invoiced (job costs) for jobs in this period
@@ -453,18 +453,11 @@ export class ReportsController {
         WHERE expense_date BETWEEN $1 AND $2
       `;
 
-      // Labor costs (from worker salaries)
+      // Labor costs (from actual salary payments)
       const laborCostsQuery = `
-        SELECT COALESCE(SUM(
-          CASE 
-            WHEN u.hourly_rate IS NOT NULL THEN u.hourly_rate * 160 -- Approx monthly hours
-            WHEN u.monthly_salary IS NOT NULL THEN u.monthly_salary
-            ELSE 0 
-          END
-        ), 0) as labor_costs
-        FROM users u
-        WHERE u.role = 'worker' 
-        AND u.is_active = true
+        SELECT COALESCE(SUM(amount), 0) as labor_costs
+        FROM salary_payments
+        WHERE payment_date BETWEEN $1 AND $2
       `;
 
       const params = [startDateStr, endDateStr];
@@ -479,8 +472,8 @@ export class ReportsController {
           pool.query(operationalCostsQuery, params),
         ]);
 
-      // Labor costs are calculated independently of the date range in the current logic
-      const laborResult = await pool.query(laborCostsQuery);
+      // Labor costs are calculated based on date range
+      const laborResult = await pool.query(laborCostsQuery, params);
 
       // Cash basis: Revenue = payments received
       const totalRevenue = parseFloat(revenueResult.rows[0].total_revenue);
@@ -634,10 +627,11 @@ export class ReportsController {
     `;
 
       // Get actual payments received in the period (for revenue calculation - consistent with Financial Summary)
+      // Cast date to DATE to ensure all payments on the end date are included (regardless of time)
       const paymentsQuery = `
       SELECT COALESCE(SUM(amount), 0) as total_payments
       FROM payments
-      WHERE date BETWEEN $1 AND $2
+      WHERE date::DATE BETWEEN $1 AND $2
     `;
 
       // 2. Material Costs: Actual materials used for jobs in the period
@@ -678,23 +672,18 @@ export class ReportsController {
       ORDER BY oe.amount DESC
     `;
 
-      // 5. Labor Costs - FIXED VERSION (simpler calculation)
-      // Note: In PostgreSQL, subtracting two dates returns an integer (days), not an interval
+      // 5. Labor Costs - Actual Salaries
       const laborCostsQuery = `
-      SELECT 
-        'Labor' as category,
-        u.name as description,
-        CASE 
-          WHEN u.hourly_rate IS NOT NULL THEN u.hourly_rate * 160 * (($2::date - $1::date)::numeric / 30.0)
-          WHEN u.monthly_salary IS NOT NULL THEN u.monthly_salary * (($2::date - $1::date)::numeric / 30.0)
-          ELSE 0 
-        END as amount,
-        $1 as date
-      FROM users u
-      WHERE u.role = 'worker' 
-        AND u.is_active = true
-      ORDER BY amount DESC
-    `;
+        SELECT 
+          'Labor' as category,
+          COALESCE(u.name, 'Unknown Worker') || ' - ' || TO_CHAR(sp.payment_date, 'Mon DD') as description,
+          sp.amount,
+          sp.payment_date as date
+        FROM salary_payments sp
+        LEFT JOIN users u ON sp.user_id = u.id
+        WHERE sp.payment_date BETWEEN $1 AND $2
+        ORDER BY sp.payment_date DESC
+      `;
 
       const params = [start_date, end_date];
       // ALL TIME outstanding query (not filtered by date)
@@ -1039,33 +1028,35 @@ export class ReportsController {
         return res.status(400).json({ error: "Invalid period specified" });
       }
 
-      // Revenue trends based on payments actually received - FIXED
+      // Revenue trends - total_revenue from jobs (invoiced), collected_revenue from payments
+      // This matches dashboard logic where collected = SUM of payments
       const revenueTrendsQuery = `
-        WITH revenue AS (
+        WITH payments_data AS (
           SELECT 
             DATE_TRUNC($1, p.date) as period,
-            COALESCE(SUM(p.amount), 0) as total_revenue
+            COALESCE(SUM(p.amount), 0) as collected_revenue
           FROM payments p
           WHERE p.date >= CURRENT_DATE - INTERVAL '12 months'
           GROUP BY DATE_TRUNC($1, p.date)
         ),
-        jobs AS (
+        jobs_data AS (
           SELECT
             DATE_TRUNC($1, j.date_requested) as period,
             COUNT(*) as job_count,
+            COALESCE(SUM(j.total_cost), 0) as total_revenue,
             COALESCE(AVG(j.total_cost), 0) as average_job_value
           FROM jobs j
           WHERE j.date_requested >= CURRENT_DATE - INTERVAL '12 months'
           GROUP BY DATE_TRUNC($1, j.date_requested)
         )
         SELECT 
-          COALESCE(j.period, r.period) as period,
-          COALESCE(j.job_count, 0) as job_count,
-          COALESCE(r.total_revenue, 0) as total_revenue,
-          COALESCE(r.total_revenue, 0) as collected_revenue,
-          COALESCE(j.average_job_value, 0) as average_job_value
-        FROM revenue r
-        FULL OUTER JOIN jobs j ON j.period = r.period
+          COALESCE(jd.period, pd.period) as period,
+          COALESCE(jd.job_count, 0) as job_count,
+          COALESCE(jd.total_revenue, 0) as total_revenue,
+          COALESCE(pd.collected_revenue, 0) as collected_revenue,
+          COALESCE(jd.average_job_value, 0) as average_job_value
+        FROM jobs_data jd
+        FULL OUTER JOIN payments_data pd ON jd.period = pd.period
         ORDER BY period DESC
       `;
 

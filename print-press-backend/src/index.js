@@ -16,6 +16,8 @@ import operationalExpensesRoutes from './routes/operationalExpenses.js';
 import customerRoutes from './routes/customers.js';
 import reportRoutes from './routes/reports.js';
 import companySettingsRoutes from './routes/companySettings.js';
+import salaryRoutes from './routes/salary.js';
+import workerStatsRoutes from './routes/workerStats.js';
 
 // Import WebSocket
 import { setupNotificationWebSocket } from './websocket/notificationServer.js';
@@ -60,13 +62,15 @@ app.use('/api/operational-expenses', operationalExpensesRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/company-settings', companySettingsRoutes);
+app.use('/api/salary', salaryRoutes); // Mounted salaryRoutes
+app.use('/api/worker-stats', workerStatsRoutes); // Worker dashboard stats
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV 
+    environment: process.env.NODE_ENV
   });
 });
 

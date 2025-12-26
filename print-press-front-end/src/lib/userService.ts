@@ -23,6 +23,7 @@ export interface CreateUserData {
   bankName?: string;
   accountNumber?: string;
   accountName?: string;
+  password?: string;
 }
 
 export interface UpdateUserData extends Partial<CreateUserData> {

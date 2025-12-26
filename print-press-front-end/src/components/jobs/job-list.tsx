@@ -67,6 +67,25 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
     fetchJobs(pagination.page);
   };
 
+  const handleTicketSearch = async (ticketId: string) => {
+    if (!ticketId.trim()) return;
+    try {
+      setLoading(true);
+      const job = await jobService.getJobByTicketId(ticketId.trim());
+      if (job && job.id) {
+        // Redirect to job detail with ticket_id param
+        window.location.href = `/${userRole}/jobs/${job.id}?ticket_id=${ticketId.trim()}`;
+      } else {
+        setError('Job ticket not found');
+      }
+    } catch (err) {
+      console.error('Ticket search error:', err);
+      setError('Job ticket not found or access denied');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Debounced search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -122,26 +141,54 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
           <h1 className="text-2xl font-bold text-gray-900">Jobs</h1>
           <p className="text-gray-600">Manage and track all printing jobs</p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            size="sm"
-          >
-            <RefreshCw
-              className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`}
-            />
-            Refresh
-          </Button>
-          {userRole === 'admin' && (
-            <Link href="/admin/jobs/create">
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Job
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+          {userRole === 'worker' && (
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-48">
+                <Input
+                  placeholder="Enter Ticket ID..."
+                  id="ticket-search"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const val = (e.target as HTMLInputElement).value;
+                      if (val) handleTicketSearch(val);
+                    }
+                  }}
+                />
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const el = document.getElementById('ticket-search') as HTMLInputElement;
+                  if (el && el.value) handleTicketSearch(el.value);
+                }}
+              >
+                Open Ticket
               </Button>
-            </Link>
+            </div>
           )}
+
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              size="sm"
+            >
+              <RefreshCw
+                className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`}
+              />
+              Refresh
+            </Button>
+            {userRole === 'admin' && (
+              <Link href="/admin/jobs/create">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Job
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 
@@ -235,8 +282,13 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
                     <p className="text-sm text-gray-600 mb-2">
                       {job.description}
                     </p>
-                    <div className="flex flex-wrap items-center space-x-4 text-sm text-gray-500">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
                       <span>Customer: {job.customer_name}</span>
+                      {userRole === 'admin' && job.worker_name && (
+                        <span className="text-blue-600 font-medium">
+                          Worker: {job.worker_name}
+                        </span>
+                      )}
                       <span>Requested: {formatDate(job.date_requested)}</span>
                       {job.delivery_deadline && (
                         <span>
@@ -254,9 +306,8 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
                         Paid: {formatCurrency(job.amount_paid)}
                       </p>
                       <p
-                        className={`text-sm font-medium ${
-                          job.balance > 0 ? 'text-red-600' : 'text-green-600'
-                        }`}
+                        className={`text-sm font-medium ${job.balance > 0 ? 'text-red-600' : 'text-green-600'
+                          }`}
                       >
                         Balance: {formatCurrency(job.balance)}
                       </p>

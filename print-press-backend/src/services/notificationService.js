@@ -2,7 +2,7 @@ import { pool } from '../config/database.js';
 import emailService from './emailService.js';
 
 export class NotificationService {
-  // Database notification methods
+  // Database notification methods - notify all admins
   async createNotification(data) {
     // Get all admin users
     const adminUsers = await pool.query(
@@ -10,7 +10,7 @@ export class NotificationService {
       ['admin']
     );
 
-    const notificationPromises = adminUsers.rows.map(admin => 
+    const notificationPromises = adminUsers.rows.map(admin =>
       pool.query(
         `INSERT INTO notifications (user_id, title, message, type, related_entity_type, related_entity_id, priority, expires_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -30,25 +30,75 @@ export class NotificationService {
     await Promise.all(notificationPromises);
   }
 
+  // Create notification for a specific user only
+  async createUserNotification(userId, data) {
+    await pool.query(
+      `INSERT INTO notifications (user_id, title, message, type, related_entity_type, related_entity_id, priority, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        userId,
+        data.title,
+        data.message,
+        data.type,
+        data.relatedEntityType || null,
+        data.relatedEntityId || null,
+        data.priority || 'medium',
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+      ]
+    );
+  }
+
+  // Create notification for user AND copy to all admins (for worker actions admin should know about)
+  async createNotificationWithAdminCopy(userId, data) {
+    // First notify the user
+    await this.createUserNotification(userId, data);
+
+    // Then notify all admins (except if user is admin)
+    const adminUsers = await pool.query(
+      'SELECT id FROM users WHERE role = $1 AND is_active = true AND id != $2',
+      ['admin', userId]
+    );
+
+    const adminNotificationPromises = adminUsers.rows.map(admin =>
+      pool.query(
+        `INSERT INTO notifications (user_id, title, message, type, related_entity_type, related_entity_id, priority, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          admin.id,
+          data.title,
+          data.message,
+          data.type,
+          data.relatedEntityType || null,
+          data.relatedEntityId || null,
+          data.priority || 'medium',
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        ]
+      )
+    );
+
+    await Promise.all(adminNotificationPromises);
+  }
+
+
   async getUserNotifications(userId, options = {}) {
     let query = `
       SELECT * FROM notifications 
       WHERE user_id = $1 
     `;
-    
+
     const params = [userId];
-    
+
     if (options.unreadOnly) {
       query += ' AND is_read = false';
     }
-    
+
     query += ' ORDER BY created_at DESC';
-    
+
     if (options.limit) {
       query += ' LIMIT $2';
       params.push(options.limit);
     }
-    
+
     const result = await pool.query(query, params);
     return result.rows;
   }
@@ -111,7 +161,7 @@ export class NotificationService {
 
     if (adminResult.rows.length > 0) {
       const adminEmail = adminResult.rows[0].email;
-      
+
       // Get customer details for email
       const customerResult = await pool.query(
         `SELECT c.name, j.total_cost, j.amount_paid, j.balance 
@@ -212,7 +262,7 @@ export class NotificationService {
 
     if (adminResult.rows.length > 0) {
       const adminEmail = adminResult.rows[0].email;
-      
+
       await emailService.sendMonthlyReport(
         adminEmail,
         month,

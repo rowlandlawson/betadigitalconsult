@@ -1,0 +1,20 @@
+0000000000000000000000000000000000000000 dee983c6a23b4f8a336771ba5df2541d6a939c9a Rowland Lawson <lawson.o.rowland@gmail.com> 1764081649 +0100	clone: from https://github.com/rowlandlawson/betadigitalconsult.git
+dee983c6a23b4f8a336771ba5df2541d6a939c9a fda885d57ebe09b8fbef90814f3a9cd6f3d41f52 Rowland Lawson <lawson.o.rowland@gmail.com> 1764090839 +0100	commit: upgrade dependencies: react, next, eslint
+fda885d57ebe09b8fbef90814f3a9cd6f3d41f52 3a6ca9a683a1d618c6e3de0ca07d3e38481bb0e8 Rowland Lawson <lawson.o.rowland@gmail.com> 1764091468 +0100	commit: � Production-ready build: Upgraded stack & fixed pipeline
+3a6ca9a683a1d618c6e3de0ca07d3e38481bb0e8 902f54a7c699c5220007d141044cfaf099d43804 Rowland Lawson <lawson.o.rowland@gmail.com> 1764169577 +0100	commit: fix: add react and react-dom to resolve module resolution error
+902f54a7c699c5220007d141044cfaf099d43804 7fdf0a5576c48aabdc25645c95ac4a97477c5037 Rowland Lawson <lawson.o.rowland@gmail.com> 1765969857 +0100	pull origin main: Fast-forward
+7fdf0a5576c48aabdc25645c95ac4a97477c5037 82c5b1162a5facd07151fb328e4a91688a56475f Rowland Lawson <lawson.o.rowland@gmail.com> 1766122731 +0100	commit: feat: implement outstanding payments dashboard, added real time tracking of unpaid jobs with aging analysis and customer details
+82c5b1162a5facd07151fb328e4a91688a56475f b8851f81600f387dc9bb8786b81f7458df94ef1c Rowland Lawson <lawson.o.rowland@gmail.com> 1766234212 +0100	commit: working on pwa
+b8851f81600f387dc9bb8786b81f7458df94ef1c 6e658c5e21c0e0e8250016b21cda5234b8cf0d16 Rowland Lawson <lawson.o.rowland@gmail.com> 1766246783 +0100	commit: fixed lint errors
+6e658c5e21c0e0e8250016b21cda5234b8cf0d16 6258aca887a03cb0741019fe63da55644ed7b9ff Rowland Lawson <lawson.o.rowland@gmail.com> 1766247084 +0100	commit: lint error
+6258aca887a03cb0741019fe63da55644ed7b9ff 8159f746b20415a22a8b85ba0047ac6be1b47b2e Rowland Lawson <lawson.o.rowland@gmail.com> 1766248332 +0100	commit: fix: resolve TypeScript build errors and naming inconsistencies
+8159f746b20415a22a8b85ba0047ac6be1b47b2e 8159f746b20415a22a8b85ba0047ac6be1b47b2e Rowland Lawson <lawson.o.rowland@gmail.com> 1766249031 +0100	checkout: moving from main to fix/report
+8159f746b20415a22a8b85ba0047ac6be1b47b2e 7df3c47b28fe50fd632dbce6149525242ff5f185 Rowland Lawson <lawson.o.rowland@gmail.com> 1766250273 +0100	commit: change longin button color
+7df3c47b28fe50fd632dbce6149525242ff5f185 c85acbc3f677c45efe1b99519ce8e549e2e613f6 Rowland Lawson <lawson.o.rowland@gmail.com> 1766486623 +0100	commit: working on profit and loss calculation
+c85acbc3f677c45efe1b99519ce8e549e2e613f6 8159f746b20415a22a8b85ba0047ac6be1b47b2e Rowland Lawson <lawson.o.rowland@gmail.com> 1766584251 +0100	checkout: moving from fix/report to main
+8159f746b20415a22a8b85ba0047ac6be1b47b2e deaa6b54c1a0e0dc6cfd7fef57283f0668985cf1 Rowland Lawson <lawson.o.rowland@gmail.com> 1766584389 +0100	pull origin main: Fast-forward
+deaa6b54c1a0e0dc6cfd7fef57283f0668985cf1 deaa6b54c1a0e0dc6cfd7fef57283f0668985cf1 Rowland Lawson <lawson.o.rowland@gmail.com> 1766584641 +0100	checkout: moving from main to fix/revenue
+deaa6b54c1a0e0dc6cfd7fef57283f0668985cf1 7f658f439c9801e4a00ae57eb7302b4d6725429a Rowland Lawson <lawson.o.rowland@gmail.com> 1766591059 +0100	commit: made roport tabs responsive
+7f658f439c9801e4a00ae57eb7302b4d6725429a b94b5e2b048b1538aff5a48edd91d0279f1d65ee Rowland Lawson <lawson.o.rowland@gmail.com> 1766591139 +0100	commit: made revenue to be consistent on all places
+b94b5e2b048b1538aff5a48edd91d0279f1d65ee c25a9bccdebe3bb422cc9df677f20ad0781856ee Rowland Lawson <lawson.o.rowland@gmail.com> 1766592893 +0100	commit: seperated the paid and outstanding payments into two tabs
+c25a9bccdebe3bb422cc9df677f20ad0781856ee d68a49508ab87340db56ff7cdbf520b757345635 Rowland Lawson <lawson.o.rowland@gmail.com> 1766741589 +0100	commit: fixed revenue inconsitency

@@ -1,0 +1,5 @@
+0000000000000000000000000000000000000000 deaa6b54c1a0e0dc6cfd7fef57283f0668985cf1 Rowland Lawson <lawson.o.rowland@gmail.com> 1766584641 +0100	branch: Created from HEAD
+deaa6b54c1a0e0dc6cfd7fef57283f0668985cf1 7f658f439c9801e4a00ae57eb7302b4d6725429a Rowland Lawson <lawson.o.rowland@gmail.com> 1766591059 +0100	commit: made roport tabs responsive
+7f658f439c9801e4a00ae57eb7302b4d6725429a b94b5e2b048b1538aff5a48edd91d0279f1d65ee Rowland Lawson <lawson.o.rowland@gmail.com> 1766591139 +0100	commit: made revenue to be consistent on all places
+b94b5e2b048b1538aff5a48edd91d0279f1d65ee c25a9bccdebe3bb422cc9df677f20ad0781856ee Rowland Lawson <lawson.o.rowland@gmail.com> 1766592893 +0100	commit: seperated the paid and outstanding payments into two tabs
+c25a9bccdebe3bb422cc9df677f20ad0781856ee d68a49508ab87340db56ff7cdbf520b757345635 Rowland Lawson <lawson.o.rowland@gmail.com> 1766741589 +0100	commit: fixed revenue inconsitency

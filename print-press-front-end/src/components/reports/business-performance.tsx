@@ -107,7 +107,9 @@ export const BusinessPerformance: React.FC = () => {
       <Card>
         <CardHeader className="pb-2 sm:pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h3 className="text-base sm:text-lg font-semibold">Business Performance</h3>
+            <h3 className="text-base sm:text-lg font-semibold">
+              Business Performance
+            </h3>
             <div className="flex items-center gap-1 sm:gap-2">
               <Button
                 variant={period === 'month' ? 'default' : 'outline'}
@@ -228,7 +230,9 @@ export const BusinessPerformance: React.FC = () => {
       {/* Customer Trends */}
       <Card>
         <CardHeader className="pb-2 sm:pb-4">
-          <h3 className="text-base sm:text-lg font-semibold">Customer Trends</h3>
+          <h3 className="text-base sm:text-lg font-semibold">
+            Customer Trends
+          </h3>
         </CardHeader>
         <CardContent className="p-2 sm:p-6">
           <ResponsiveContainer width="100%" height={250}>
@@ -248,7 +252,9 @@ export const BusinessPerformance: React.FC = () => {
       {/* Efficiency Metrics */}
       <Card>
         <CardHeader className="pb-2 sm:pb-4">
-          <h3 className="text-base sm:text-lg font-semibold">Efficiency Metrics</h3>
+          <h3 className="text-base sm:text-lg font-semibold">
+            Efficiency Metrics
+          </h3>
         </CardHeader>
         <CardContent className="p-2 sm:p-6">
           <ResponsiveContainer width="100%" height={250}>
@@ -256,7 +262,11 @@ export const BusinessPerformance: React.FC = () => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="period" tick={{ fontSize: 10 }} />
               <YAxis yAxisId="left" tick={{ fontSize: 10 }} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                tick={{ fontSize: 10 }}
+              />
               <Tooltip />
               <Legend wrapperStyle={{ fontSize: '12px' }} />
               <Line
@@ -283,7 +293,9 @@ export const BusinessPerformance: React.FC = () => {
       {/* Revenue Trends Table */}
       <Card>
         <CardHeader className="pb-2 sm:pb-4">
-          <h3 className="text-base sm:text-lg font-semibold">Revenue Trends Details</h3>
+          <h3 className="text-base sm:text-lg font-semibold">
+            Revenue Trends Details
+          </h3>
         </CardHeader>
         <CardContent className="p-2 sm:p-6">
           <div className="overflow-x-auto -mx-2 sm:mx-0">
@@ -293,8 +305,12 @@ export const BusinessPerformance: React.FC = () => {
                   <th className="text-left p-2 whitespace-nowrap">Period</th>
                   <th className="text-right p-2">Jobs</th>
                   <th className="text-right p-2 whitespace-nowrap">Revenue</th>
-                  <th className="text-right p-2 hidden sm:table-cell">Collected</th>
-                  <th className="text-right p-2 hidden md:table-cell">Avg Value</th>
+                  <th className="text-right p-2 hidden sm:table-cell">
+                    Collected
+                  </th>
+                  <th className="text-right p-2 hidden md:table-cell">
+                    Avg Value
+                  </th>
                 </tr>
               </thead>
               <tbody>

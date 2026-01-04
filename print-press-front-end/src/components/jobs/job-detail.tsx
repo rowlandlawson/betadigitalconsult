@@ -63,7 +63,10 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
       setLoading(true);
       setError('');
       try {
-        const jobData = await jobService.getJobById(jobId, ticketId || undefined);
+        const jobData = await jobService.getJobById(
+          jobId,
+          ticketId || undefined
+        );
         if (isMounted) setJob(jobData);
       } catch (err: unknown) {
         console.error('Failed to fetch job details:', err);
@@ -117,7 +120,10 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
 
       // Refresh job data immediately to show updated financials
       // Pass ticket_id for cross-worker access
-      const updatedJob = await jobService.getJobById(jobId, ticketId || job.ticket_id);
+      const updatedJob = await jobService.getJobById(
+        jobId,
+        ticketId || job.ticket_id
+      );
       setJob(updatedJob);
 
       // Close modal if it was open
@@ -165,7 +171,10 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
     try {
       // Refresh the job data to get updated materials, waste, and expenses
       // Pass ticket_id for cross-worker access
-      const updatedJob = await jobService.getJobById(jobId, ticketId || job.ticket_id);
+      const updatedJob = await jobService.getJobById(
+        jobId,
+        ticketId || job.ticket_id
+      );
       setJob(updatedJob);
       setShowEditMaterialsModal(false);
       toast.success('Materials, waste, and expenses updated successfully');
@@ -613,12 +622,13 @@ export const JobDetail: React.FC<JobDetailProps> = ({ jobId, userRole }) => {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 text-sm">Payment Status:</span>
                   <span
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${job.payment_status === 'fully_paid'
-                      ? 'bg-green-100 text-green-800'
-                      : job.payment_status === 'partially_paid'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
-                      }`}
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      job.payment_status === 'fully_paid'
+                        ? 'bg-green-100 text-green-800'
+                        : job.payment_status === 'partially_paid'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-red-100 text-red-800'
+                    }`}
                   >
                     {job.payment_status.replace('_', ' ')}
                   </span>

@@ -4,12 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { passwordService } from '@/lib/passwordService';
+import { Eye, EyeOff } from 'lucide-react';
 
-interface LoginFormProps {
-  isAdmin?: boolean;
-}
-
-export function LoginForm({ isAdmin = false }: LoginFormProps) {
+export function LoginForm() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     identifier: '',
@@ -17,6 +14,7 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
   const [recoveryIdentifier, setRecoveryIdentifier] = useState('');
   const [recoveryMessage, setRecoveryMessage] = useState('');
@@ -29,13 +27,11 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
 
     try {
       console.log('🔐 Attempting login...', {
-        isAdmin,
         identifier: formData.identifier,
       });
 
-      const endpoint = isAdmin ? '/auth/admin/login' : '/auth/login';
-
-      const response = await api.post(endpoint, {
+      // Use unified login endpoint
+      const response = await api.post('/auth/login', {
         identifier: formData.identifier,
         password: formData.password,
       });
@@ -60,6 +56,9 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
       }
       localStorage.setItem('user', JSON.stringify(user));
 
+      // Clear PWA dismiss flag on fresh login (ensures banner shows after logout/login)
+      sessionStorage.removeItem('pwa_install_dismissed');
+
       console.log('💾 Tokens stored successfully:', {
         accessToken: !!accessToken,
         refreshToken: !!refreshToken,
@@ -75,6 +74,7 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
         userRole: storedUser ? JSON.parse(storedUser).role : 'none',
       });
 
+      // Redirect based on user role
       if (user.role === 'admin') {
         console.log('🔄 Redirecting to admin dashboard...');
         router.push('/admin/dashboard');
@@ -164,9 +164,7 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
 
       {/* LOGIN FORM CARD */}
       <div className="p-6 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold text-center mb-6">
-          {isAdmin ? 'Admin Login' : 'User Login'}
-        </h2>
+        <h2 className="text-2xl font-bold text-center mb-6">Sign In</h2>
 
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -180,7 +178,7 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
               htmlFor="identifier"
               className="block text-sm font-medium text-gray-700"
             >
-              {isAdmin ? 'Email or Username' : 'Email or Username'}
+              Email or Username
             </label>
             <input
               id="identifier"
@@ -190,11 +188,7 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
               value={formData.identifier}
               onChange={handleChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder={
-                isAdmin
-                  ? 'Enter admin email or username'
-                  : 'Enter your email or username'
-              }
+              placeholder="Enter your email or username"
             />
           </div>
 
@@ -205,16 +199,30 @@ export function LoginForm({ isAdmin = false }: LoginFormProps) {
             >
               Password
             </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter your password"
-            />
+            <div className="relative mt-1">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter your password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
+            </div>
           </div>
 
           {/* LIGHT GREEN BUTTON */}

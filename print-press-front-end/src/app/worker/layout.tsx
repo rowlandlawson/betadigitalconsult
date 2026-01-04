@@ -20,19 +20,19 @@ export default function WorkerLayout({
     const userData = localStorage.getItem('user');
 
     if (!token || !userData) {
-      router.push('/login');
+      router.push('/auth/login');
       return;
     }
 
     try {
       const parsedUser = JSON.parse(userData);
       if (parsedUser.role !== 'worker') {
-        router.push('/adm/login');
+        router.push('/auth/login');
         return;
       }
       setUser(parsedUser);
     } catch {
-      router.push('/login');
+      router.push('/auth/login');
     } finally {
       setLoading(false);
     }
@@ -41,7 +41,7 @@ export default function WorkerLayout({
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
-    router.push('/login');
+    router.push('/auth/login');
   };
 
   if (loading) {

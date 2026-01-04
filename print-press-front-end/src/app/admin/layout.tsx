@@ -31,7 +31,7 @@ export default function AdminLayout({
     const checkAuth = async () => {
       console.log('🔄 Checking authentication...', { pathname });
 
-      if (pathname && pathname.startsWith('/adm/login')) {
+      if (pathname && pathname.startsWith('/auth/login')) {
         console.log('On login page, skipping auth check');
         setLoading(false);
         return;
@@ -51,7 +51,7 @@ export default function AdminLayout({
 
         if (!token && !refreshToken) {
           console.log('❌ No tokens found, redirecting to login');
-          router.push('/adm/login');
+          router.push('/auth/login');
           return;
         }
 
@@ -68,7 +68,7 @@ export default function AdminLayout({
             return;
           } else {
             console.log('❌ Token refresh failed, redirecting to login');
-            router.push('/adm/login');
+            router.push('/auth/login');
             return;
           }
         }
@@ -82,7 +82,7 @@ export default function AdminLayout({
             return;
           } else if (isValid && storedUser.role !== 'admin') {
             console.log('❌ User is not admin, redirecting to login');
-            router.push('/adm/login');
+            router.push('/auth/login');
             return;
           } else {
             console.log('🔄 Token may be expired, attempting refresh...');
@@ -97,17 +97,17 @@ export default function AdminLayout({
               console.log(
                 '❌ Token refresh failed or user not admin, redirecting to login'
               );
-              router.push('/adm/login');
+              router.push('/auth/login');
               return;
             }
           }
         }
 
         console.log('❌ Authentication failed, redirecting to login');
-        router.push('/adm/login');
+        router.push('/auth/login');
       } catch (error) {
         console.error('❌ Auth check error:', error);
-        router.push('/adm/login');
+        router.push('/auth/login');
       } finally {
         setLoading(false);
       }
@@ -147,7 +147,7 @@ export default function AdminLayout({
     );
   }
 
-  if (pathname?.startsWith('/adm/login')) {
+  if (pathname?.startsWith('/auth/login')) {
     return children;
   }
 
@@ -158,7 +158,7 @@ export default function AdminLayout({
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#AABD77] mx-auto"></div>
           <p className="mt-4 text-gray-600">Authentication required...</p>
           <button
-            onClick={() => router.push('/adm/login')}
+            onClick={() => router.push('/auth/login')}
             className="mt-4 px-4 py-2 bg-[#AABD77] text-white rounded hover:bg-[#acc565]"
           >
             Go to Login

@@ -34,7 +34,9 @@ export const jobService = {
 
   async getJobById(id: string, ticketId?: string): Promise<JobWithDetails> {
     try {
-      const url = ticketId ? `/jobs/${id}?ticket_id=${ticketId}` : `/jobs/${id}`;
+      const url = ticketId
+        ? `/jobs/${id}?ticket_id=${ticketId}`
+        : `/jobs/${id}`;
       const response = await api.get(url);
 
       // Log the response structure for debugging
@@ -69,7 +71,7 @@ export const jobService = {
           jobData.balance !== undefined
             ? jobData.balance
             : parseFloat(jobData.total_cost) -
-            parseFloat(jobData.total_paid || 0),
+              parseFloat(jobData.total_paid || 0),
 
         // Ensure cost breakdown fields exist
         materials_cost:

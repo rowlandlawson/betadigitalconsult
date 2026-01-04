@@ -76,7 +76,10 @@ export const OutstandingPayments: React.FC = () => {
   // Pagination calculations
   const totalPages = Math.ceil(data.detailed.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedJobs = data.detailed.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedJobs = data.detailed.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
 
   return (
     <div className="space-y-6">
@@ -84,7 +87,9 @@ export const OutstandingPayments: React.FC = () => {
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
           Outstanding Payments
         </h2>
-        <p className="text-sm sm:text-base text-gray-600">Track and manage all pending payments</p>
+        <p className="text-sm sm:text-base text-gray-600">
+          Track and manage all pending payments
+        </p>
       </div>
 
       {/* Summary Stats */}
@@ -147,7 +152,9 @@ export const OutstandingPayments: React.FC = () => {
       {/* Aging Analysis */}
       <Card>
         <CardHeader className="pb-2 sm:pb-4">
-          <h3 className="text-base sm:text-lg font-semibold">Payment Aging Analysis</h3>
+          <h3 className="text-base sm:text-lg font-semibold">
+            Payment Aging Analysis
+          </h3>
         </CardHeader>
         <CardContent className="p-2 sm:p-6">
           <div className="space-y-2 sm:space-y-3">
@@ -227,7 +234,9 @@ export const OutstandingPayments: React.FC = () => {
                       <p className="text-base sm:text-lg font-bold text-red-600">
                         {formatCurrency(job.outstanding_amount)}
                       </p>
-                      <p className="text-[10px] sm:text-xs text-gray-500">Outstanding</p>
+                      <p className="text-[10px] sm:text-xs text-gray-500">
+                        Outstanding
+                      </p>
                     </div>
                   </div>
 
@@ -258,7 +267,11 @@ export const OutstandingPayments: React.FC = () => {
                       <span>Updated: {formatDate(job.updated_at)}</span>
                     </div>
                     <Link href={`/admin/jobs/${job.id}`}>
-                      <Button size="sm" variant="outline" className="w-full sm:w-auto text-xs sm:text-sm">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full sm:w-auto text-xs sm:text-sm"
+                      >
                         View Job
                       </Button>
                     </Link>
@@ -285,12 +298,15 @@ export const OutstandingPayments: React.FC = () => {
                 <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Previous
               </Button>
               <span className="text-xs sm:text-sm text-gray-600">
-                Page {currentPage} of {totalPages} ({data.detailed.length} total)
+                Page {currentPage} of {totalPages} ({data.detailed.length}{' '}
+                total)
               </span>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
                 disabled={currentPage === totalPages}
                 className="w-full sm:w-auto text-xs sm:text-sm"
               >

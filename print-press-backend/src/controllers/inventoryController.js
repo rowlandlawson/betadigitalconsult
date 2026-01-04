@@ -304,7 +304,7 @@ export class InventoryController {
       }
 
       // Validate attributes based on category
-      const validatedAttributes = this.validateAttributes(category, attributes);
+      const validatedAttributes = inventoryController.validateAttributes(category, attributes)
 
       // For paper items, convert current_stock and threshold to sheets if unit_of_measure indicates reams
       let stockInSheets = parseFloat(current_stock);
@@ -415,7 +415,7 @@ export class InventoryController {
 
       // Validate attributes if category is being updated
       if (category && updatedAttributes) {
-        updatedAttributes = this.validateAttributes(category, updatedAttributes);
+        updatedAttributes = inventoryController.validateAttributes(category, updatedAttributes);
       }
 
       // For paper items, convert threshold to sheets if unit_of_measure indicates reams

@@ -76,7 +76,10 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({
     try {
       // Workers can search by ticket ID to access any job for payment recording
       // This uses the ticket endpoint which has no worker restriction
-      if (userRole === 'worker' && query.trim().toUpperCase().includes('PRESS-')) {
+      if (
+        userRole === 'worker' &&
+        query.trim().toUpperCase().includes('PRESS-')
+      ) {
         // Try ticket ID lookup first for workers
         try {
           const ticketResponse = await api.get<{ job: Job }>(
@@ -218,9 +221,11 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 type="text"
-                placeholder={userRole === 'worker'
-                  ? "Enter full ticket ID (e.g., PRESS-123456) to find any job..."
-                  : "Search by ticket ID, customer name, or description..."}
+                placeholder={
+                  userRole === 'worker'
+                    ? 'Enter full ticket ID (e.g., PRESS-123456) to find any job...'
+                    : 'Search by ticket ID, customer name, or description...'
+                }
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -299,10 +304,11 @@ export const RecordPaymentForm: React.FC<RecordPaymentFormProps> = ({
                     Paid: {formatCurrency(selectedJob.amount_paid)}
                   </p>
                   <p
-                    className={`font-semibold ${selectedJob.balance > 0
-                      ? 'text-red-600'
-                      : 'text-green-600'
-                      }`}
+                    className={`font-semibold ${
+                      selectedJob.balance > 0
+                        ? 'text-red-600'
+                        : 'text-green-600'
+                    }`}
                   >
                     Balance: {formatCurrency(selectedJob.balance)}
                   </p>

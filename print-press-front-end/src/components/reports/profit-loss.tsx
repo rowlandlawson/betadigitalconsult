@@ -217,7 +217,9 @@ export const ProfitLoss: React.FC = () => {
 
             <Card className="min-w-0">
               <CardContent className="p-3 sm:p-4 lg:p-6">
-                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Amount Owed</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
+                  Amount Owed
+                </p>
                 <p className="text-base sm:text-lg lg:text-2xl font-bold text-orange-600 mt-1 break-words">
                   {formatCurrency(data.summary.outstanding_amount || 0)}
                 </p>
@@ -254,7 +256,9 @@ export const ProfitLoss: React.FC = () => {
 
             <Card className="min-w-0">
               <CardContent className="p-3 sm:p-4 lg:p-6">
-                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Net Profit</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
+                  Net Profit
+                </p>
                 <p
                   className={`text-base sm:text-lg lg:text-2xl font-bold mt-1 break-words ${data.summary.net_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}
                 >
@@ -270,7 +274,10 @@ export const ProfitLoss: React.FC = () => {
           {/* Explanatory Note */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
             <p className="text-xs sm:text-sm text-blue-800">
-              <strong>Note:</strong> Revenue (Collected) shows actual payments received in this period, which may include payments for jobs created before this period. Total Invoiced shows the value of jobs created within this period.
+              <strong>Note:</strong> Revenue (Collected) shows actual payments
+              received in this period, which may include payments for jobs
+              created before this period. Total Invoiced shows the value of jobs
+              created within this period.
             </p>
           </div>
 
@@ -339,7 +346,9 @@ export const ProfitLoss: React.FC = () => {
               <Card>
                 <CardHeader className="pb-2 sm:pb-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <h3 className="text-base sm:text-lg font-semibold">Revenue Breakdown</h3>
+                    <h3 className="text-base sm:text-lg font-semibold">
+                      Revenue Breakdown
+                    </h3>
                     <p className="text-xs sm:text-sm text-gray-500">
                       Showing {revenueStartIndex + 1}-
                       {Math.min(
@@ -355,12 +364,22 @@ export const ProfitLoss: React.FC = () => {
                     <table className="w-full text-xs sm:text-sm min-w-[600px]">
                       <thead>
                         <tr className="border-b bg-gray-50">
-                          <th className="text-left p-2 whitespace-nowrap">Ticket ID</th>
-                          <th className="text-left p-2 hidden md:table-cell">Description</th>
-                          <th className="text-left p-2 hidden sm:table-cell">Customer</th>
-                          <th className="text-right p-2 whitespace-nowrap">Revenue</th>
+                          <th className="text-left p-2 whitespace-nowrap">
+                            Ticket ID
+                          </th>
+                          <th className="text-left p-2 hidden md:table-cell">
+                            Description
+                          </th>
+                          <th className="text-left p-2 hidden sm:table-cell">
+                            Customer
+                          </th>
+                          <th className="text-right p-2 whitespace-nowrap">
+                            Revenue
+                          </th>
                           <th className="text-right p-2">Payments</th>
-                          <th className="text-left p-2 hidden lg:table-cell">Date</th>
+                          <th className="text-left p-2 hidden lg:table-cell">
+                            Date
+                          </th>
                           <th className="text-left p-2">Status</th>
                         </tr>
                       </thead>
@@ -370,7 +389,9 @@ export const ProfitLoss: React.FC = () => {
                             <td className="p-2 font-medium whitespace-nowrap">
                               {item.ticket_id}
                             </td>
-                            <td className="p-2 hidden md:table-cell max-w-[200px] truncate">{item.description}</td>
+                            <td className="p-2 hidden md:table-cell max-w-[200px] truncate">
+                              {item.description}
+                            </td>
                             <td className="p-2 hidden sm:table-cell">
                               {item.customer_name || 'N/A'}
                             </td>
@@ -392,14 +413,15 @@ export const ProfitLoss: React.FC = () => {
                             </td>
                             <td className="p-2">
                               <span
-                                className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs whitespace-nowrap ${item.status === 'completed'
-                                  ? 'bg-green-100 text-green-800'
-                                  : item.status === 'delivered'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : item.status === 'in_progress'
-                                      ? 'bg-yellow-100 text-yellow-800'
-                                      : 'bg-gray-100 text-gray-800'
-                                  }`}
+                                className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs whitespace-nowrap ${
+                                  item.status === 'completed'
+                                    ? 'bg-green-100 text-green-800'
+                                    : item.status === 'delivered'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : item.status === 'in_progress'
+                                        ? 'bg-yellow-100 text-yellow-800'
+                                        : 'bg-gray-100 text-gray-800'
+                                }`}
                               >
                                 {item.status}
                               </span>
@@ -416,10 +438,10 @@ export const ProfitLoss: React.FC = () => {
                             <td className="p-2 text-right">
                               {formatCurrency(
                                 data.summary.total_invoiced ||
-                                data.revenue_breakdown.reduce(
-                                  (sum, item) => sum + item.revenue,
-                                  0
-                                )
+                                  data.revenue_breakdown.reduce(
+                                    (sum, item) => sum + item.revenue,
+                                    0
+                                  )
                               )}
                             </td>
                             <td className="p-2 text-right">
@@ -453,7 +475,8 @@ export const ProfitLoss: React.FC = () => {
                         disabled={revenueCurrentPage === 1}
                         className="w-full sm:w-auto text-xs sm:text-sm"
                       >
-                        <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Previous
+                        <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />{' '}
+                        Previous
                       </Button>
                       <span className="text-xs sm:text-sm text-gray-600">
                         Page {revenueCurrentPage} of {totalRevenuePages}
@@ -469,7 +492,8 @@ export const ProfitLoss: React.FC = () => {
                         disabled={revenueCurrentPage === totalRevenuePages}
                         className="w-full sm:w-auto text-xs sm:text-sm"
                       >
-                        Next <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
+                        Next{' '}
+                        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
                       </Button>
                     </div>
                   )}
@@ -493,7 +517,9 @@ export const ProfitLoss: React.FC = () => {
               <Card>
                 <CardHeader className="pb-2 sm:pb-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <h3 className="text-base sm:text-lg font-semibold">Expense Breakdown</h3>
+                    <h3 className="text-base sm:text-lg font-semibold">
+                      Expense Breakdown
+                    </h3>
                     <p className="text-xs sm:text-sm text-gray-500">
                       Showing {expenseStartIndex + 1}-
                       {Math.min(
@@ -509,21 +535,33 @@ export const ProfitLoss: React.FC = () => {
                     <table className="w-full text-xs sm:text-sm min-w-[400px]">
                       <thead>
                         <tr className="border-b bg-gray-50">
-                          <th className="text-left p-2 whitespace-nowrap">Category</th>
+                          <th className="text-left p-2 whitespace-nowrap">
+                            Category
+                          </th>
                           <th className="text-left p-2">Description</th>
-                          <th className="text-right p-2 whitespace-nowrap">Amount</th>
-                          <th className="text-left p-2 hidden sm:table-cell">Date</th>
+                          <th className="text-right p-2 whitespace-nowrap">
+                            Amount
+                          </th>
+                          <th className="text-left p-2 hidden sm:table-cell">
+                            Date
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {paginatedExpenses.map((item, idx) => (
                           <tr key={idx} className="border-b hover:bg-gray-50">
-                            <td className="p-2 font-medium whitespace-nowrap">{item.category}</td>
-                            <td className="p-2 max-w-[150px] sm:max-w-none truncate">{item.description}</td>
+                            <td className="p-2 font-medium whitespace-nowrap">
+                              {item.category}
+                            </td>
+                            <td className="p-2 max-w-[150px] sm:max-w-none truncate">
+                              {item.description}
+                            </td>
                             <td className="p-2 text-right font-medium text-red-600 whitespace-nowrap">
                               {formatCurrency(item.amount)}
                             </td>
-                            <td className="p-2 hidden sm:table-cell whitespace-nowrap">{formatDate(item.date)}</td>
+                            <td className="p-2 hidden sm:table-cell whitespace-nowrap">
+                              {formatDate(item.date)}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -555,7 +593,8 @@ export const ProfitLoss: React.FC = () => {
                         disabled={expenseCurrentPage === 1}
                         className="w-full sm:w-auto text-xs sm:text-sm"
                       >
-                        <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Previous
+                        <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />{' '}
+                        Previous
                       </Button>
                       <span className="text-xs sm:text-sm text-gray-600">
                         Page {expenseCurrentPage} of {totalExpensePages}
@@ -571,7 +610,8 @@ export const ProfitLoss: React.FC = () => {
                         disabled={expenseCurrentPage === totalExpensePages}
                         className="w-full sm:w-auto text-xs sm:text-sm"
                       >
-                        Next <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
+                        Next{' '}
+                        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
                       </Button>
                     </div>
                   )}

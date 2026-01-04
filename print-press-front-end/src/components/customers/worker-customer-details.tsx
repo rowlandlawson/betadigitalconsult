@@ -264,7 +264,6 @@ export const WorkerCustomerDetail: React.FC<CustomerDetailProps> = ({
             </CardContent>
           </Card>
 
-
           {/* Job History */}
           <Card>
             <CardHeader className="pb-3">
@@ -392,7 +391,7 @@ export const WorkerCustomerDetail: React.FC<CustomerDetailProps> = ({
                   {Math.floor(
                     (new Date().getTime() -
                       new Date(customer.last_interaction_date).getTime()) /
-                    (1000 * 60 * 60 * 24)
+                      (1000 * 60 * 60 * 24)
                   )}{' '}
                   days
                 </p>

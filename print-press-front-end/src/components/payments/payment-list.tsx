@@ -7,7 +7,14 @@ import { Input } from '@/components/ui/input';
 import { api, isApiError } from '@/lib/api';
 import { Payment } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Search, Download, Plus, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import {
+  Search,
+  Download,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+} from 'lucide-react';
 import Link from 'next/link';
 import { OutstandingPayments } from './outstanding-payments';
 
@@ -18,7 +25,9 @@ interface PaymentListProps {
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50];
 
 export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
-  const [activeTab, setActiveTab] = useState<'collected' | 'outstanding'>('collected');
+  const [activeTab, setActiveTab] = useState<'collected' | 'outstanding'>(
+    'collected'
+  );
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -103,7 +112,10 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
   // Pagination calculations
   const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedPayments = filteredPayments.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedPayments = filteredPayments.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
 
   const getPaymentTypeColor = (type: string) => {
     switch (type) {
@@ -158,9 +170,10 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
         <button
           onClick={() => setActiveTab('collected')}
           className={`w-40 rounded-lg py-2.5 text-sm font-medium leading-5 transition-all
-            ${activeTab === 'collected'
-              ? 'bg-white text-blue-700 shadow'
-              : 'text-gray-500 hover:text-gray-700'
+            ${
+              activeTab === 'collected'
+                ? 'bg-white text-blue-700 shadow'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
         >
           Collected Amount
@@ -168,9 +181,10 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
         <button
           onClick={() => setActiveTab('outstanding')}
           className={`w-40 rounded-lg py-2.5 text-sm font-medium leading-5 transition-all
-            ${activeTab === 'outstanding'
-              ? 'bg-white text-blue-700 shadow'
-              : 'text-gray-500 hover:text-gray-700'
+            ${
+              activeTab === 'outstanding'
+                ? 'bg-white text-blue-700 shadow'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
         >
           Outstanding
@@ -181,8 +195,12 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
         <>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Paid Payments</h1>
-              <p className="text-sm sm:text-base text-gray-600">View and track all received payments</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                Paid Payments
+              </h1>
+              <p className="text-sm sm:text-base text-gray-600">
+                View and track all received payments
+              </p>
             </div>
             <Link href={`/${userRole}/payments/record`}>
               <Button className="text-sm">
@@ -201,7 +219,9 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
             <CardHeader className="pb-2 sm:pb-4">
               <div className="flex items-center gap-2 mb-3">
                 <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
-                <h3 className="text-sm sm:text-base font-semibold">Date Range</h3>
+                <h3 className="text-sm sm:text-base font-semibold">
+                  Date Range
+                </h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr_auto] gap-2 items-center">
                 <Input
@@ -253,7 +273,9 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                 <Card className="min-w-0">
                   <CardContent className="p-3 sm:p-4">
-                    <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Total Payments</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
+                      Total Payments
+                    </p>
                     <p className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 break-words">
                       {filteredPayments.length}
                     </p>
@@ -261,7 +283,9 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
                 </Card>
                 <Card className="min-w-0">
                   <CardContent className="p-3 sm:p-4">
-                    <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Total Amount</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
+                      Total Amount
+                    </p>
                     <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 break-words">
                       {formatCurrency(totalAmount)}
                     </p>
@@ -269,17 +293,23 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
                 </Card>
                 <Card className="min-w-0">
                   <CardContent className="p-3 sm:p-4">
-                    <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Average Payment</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
+                      Average Payment
+                    </p>
                     <p className="text-base sm:text-lg lg:text-2xl font-bold text-blue-600 break-words">
                       {formatCurrency(
-                        filteredPayments.length > 0 ? totalAmount / filteredPayments.length : 0
+                        filteredPayments.length > 0
+                          ? totalAmount / filteredPayments.length
+                          : 0
                       )}
                     </p>
                   </CardContent>
                 </Card>
                 <Card className="min-w-0">
                   <CardContent className="p-3 sm:p-4">
-                    <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Unique Jobs</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
+                      Unique Jobs
+                    </p>
                     <p className="text-base sm:text-lg lg:text-2xl font-bold text-purple-600 break-words">
                       {new Set(payments.map((p) => p.job_id)).size}
                     </p>
@@ -313,7 +343,9 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
                       Payment History ({filteredPayments.length})
                     </h3>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs sm:text-sm text-gray-600">Show:</span>
+                      <span className="text-xs sm:text-sm text-gray-600">
+                        Show:
+                      </span>
                       <select
                         value={itemsPerPage}
                         onChange={(e) => {
@@ -367,12 +399,13 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
                               </div>
                               <div className="truncate">
                                 <span className="font-medium">Customer:</span>{' '}
-                                {(payment as ExtendedPayment).customer_name || '-'}
+                                {(payment as ExtendedPayment).customer_name ||
+                                  '-'}
                               </div>
                               <div className="truncate">
                                 <span className="font-medium">By:</span>{' '}
-                                {(payment as ExtendedPayment).recorded_by_name ||
-                                  payment.recorded_by}
+                                {(payment as ExtendedPayment)
+                                  .recorded_by_name || payment.recorded_by}
                               </div>
                               <div className="truncate">
                                 <span className="font-medium">Date:</span>{' '}
@@ -398,7 +431,11 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
                               <Link
                                 href={`/${userRole}/payments/receipt/${payment.id}`}
                               >
-                                <Button variant="outline" size="sm" className="text-xs sm:text-sm">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs sm:text-sm"
+                                >
                                   View
                                 </Button>
                               </Link>
@@ -423,23 +460,30 @@ export const PaymentList: React.FC<PaymentListProps> = ({ userRole }) => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        onClick={() =>
+                          setCurrentPage((p) => Math.max(1, p - 1))
+                        }
                         disabled={currentPage === 1}
                         className="w-full sm:w-auto text-xs sm:text-sm"
                       >
-                        <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Previous
+                        <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />{' '}
+                        Previous
                       </Button>
                       <span className="text-xs sm:text-sm text-gray-600">
-                        Page {currentPage} of {totalPages} ({filteredPayments.length} total)
+                        Page {currentPage} of {totalPages} (
+                        {filteredPayments.length} total)
                       </span>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        onClick={() =>
+                          setCurrentPage((p) => Math.min(totalPages, p + 1))
+                        }
                         disabled={currentPage === totalPages}
                         className="w-full sm:w-auto text-xs sm:text-sm"
                       >
-                        Next <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
+                        Next{' '}
+                        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
                       </Button>
                     </div>
                   )}

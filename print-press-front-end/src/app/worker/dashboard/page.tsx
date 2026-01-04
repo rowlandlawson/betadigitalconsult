@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api, isApiError } from '@/lib/api';
-import { Job, PaginatedResponse } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import {
   Plus,
@@ -15,7 +14,7 @@ import {
   TrendingUp,
   AlertCircle,
   Search,
-  ArrowRight
+  ArrowRight,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -126,7 +125,9 @@ export default function WorkerDashboard() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">My Dashboard</h1>
-          <p className="text-gray-600">Monitor your work activity and performance</p>
+          <p className="text-gray-600">
+            Monitor your work activity and performance
+          </p>
         </div>
         <Link href="/worker/jobs/create">
           <Button>
@@ -160,11 +161,11 @@ export default function WorkerDashboard() {
                 className="pl-10"
               />
             </div>
-            <Button onClick={handleTicketSearch}>
-              Open Ticket
-            </Button>
+            <Button onClick={handleTicketSearch}>Open Ticket</Button>
           </div>
-          {searchError && <p className="text-red-500 text-sm mt-2">{searchError}</p>}
+          {searchError && (
+            <p className="text-red-500 text-sm mt-2">{searchError}</p>
+          )}
         </CardContent>
       </Card>
 
@@ -175,7 +176,9 @@ export default function WorkerDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Jobs</p>
-                <p className="text-3xl font-bold text-gray-900">{stats?.jobs.total || 0}</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {stats?.jobs.total || 0}
+                </p>
               </div>
               <div className="p-3 bg-blue-100 rounded-full">
                 <Briefcase className="h-6 w-6 text-blue-600" />
@@ -205,7 +208,9 @@ export default function WorkerDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">In Progress</p>
-                <p className="text-3xl font-bold text-blue-600">{stats?.jobs.in_progress || 0}</p>
+                <p className="text-3xl font-bold text-blue-600">
+                  {stats?.jobs.in_progress || 0}
+                </p>
               </div>
               <div className="p-3 bg-yellow-100 rounded-full">
                 <Clock className="h-6 w-6 text-yellow-600" />
@@ -222,7 +227,9 @@ export default function WorkerDashboard() {
                 <p className="text-2xl font-bold text-gray-900">
                   {formatCurrency(stats?.this_month.revenue || 0)}
                 </p>
-                <p className="text-xs text-gray-500">{stats?.this_month.jobs || 0} jobs</p>
+                <p className="text-xs text-gray-500">
+                  {stats?.this_month.jobs || 0} jobs
+                </p>
               </div>
               <div className="p-3 bg-purple-100 rounded-full">
                 <TrendingUp className="h-6 w-6 text-purple-600" />
@@ -237,7 +244,10 @@ export default function WorkerDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">My Recent Jobs</CardTitle>
-            <Link href="/worker/jobs" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+            <Link
+              href="/worker/jobs"
+              className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+            >
               View All <ArrowRight className="h-4 w-4" />
             </Link>
           </CardHeader>
@@ -253,12 +263,20 @@ export default function WorkerDashboard() {
                     className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <div>
-                      <p className="font-medium text-gray-900">{job.ticket_id}</p>
-                      <p className="text-sm text-gray-500 truncate max-w-[200px]">{job.description}</p>
-                      <p className="text-xs text-gray-400">{job.customer_name}</p>
+                      <p className="font-medium text-gray-900">
+                        {job.ticket_id}
+                      </p>
+                      <p className="text-sm text-gray-500 truncate max-w-[200px]">
+                        {job.description}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {job.customer_name}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}
+                      >
                         {job.status.replace('_', ' ')}
                       </span>
                       <p className="text-sm font-semibold text-gray-900 mt-1">
@@ -276,13 +294,18 @@ export default function WorkerDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">My Recent Activity</CardTitle>
-            <Link href="/worker/notifications" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+            <Link
+              href="/worker/notifications"
+              className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+            >
               View All <ArrowRight className="h-4 w-4" />
             </Link>
           </CardHeader>
           <CardContent>
             {!stats?.recent_activity?.length ? (
-              <p className="text-gray-500 text-center py-8">No recent activity</p>
+              <p className="text-gray-500 text-center py-8">
+                No recent activity
+              </p>
             ) : (
               <div className="space-y-3">
                 {stats.recent_activity.map((activity) => (
@@ -290,9 +313,13 @@ export default function WorkerDashboard() {
                     key={activity.id}
                     className={`p-3 border rounded-lg ${activity.is_read ? 'bg-white' : 'bg-blue-50'}`}
                   >
-                    <p className="font-medium text-gray-900">{activity.title}</p>
+                    <p className="font-medium text-gray-900">
+                      {activity.title}
+                    </p>
                     <p className="text-sm text-gray-600">{activity.message}</p>
-                    <p className="text-xs text-gray-400 mt-1">{formatDate(activity.created_at)}</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {formatDate(activity.created_at)}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -306,7 +333,9 @@ export default function WorkerDashboard() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Completion Rate</span>
+              <span className="text-sm font-medium text-gray-700">
+                Completion Rate
+              </span>
               <span className="text-sm font-bold text-gray-900">
                 {stats.jobs.completion_rate}%
               </span>
@@ -314,7 +343,9 @@ export default function WorkerDashboard() {
             <div className="w-full bg-gray-200 rounded-full h-3">
               <div
                 className="bg-green-500 h-3 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(stats.jobs.completion_rate, 100)}%` }}
+                style={{
+                  width: `${Math.min(stats.jobs.completion_rate, 100)}%`,
+                }}
               ></div>
             </div>
           </CardContent>

@@ -159,7 +159,9 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
               <Button
                 variant="secondary"
                 onClick={() => {
-                  const el = document.getElementById('ticket-search') as HTMLInputElement;
+                  const el = document.getElementById(
+                    'ticket-search'
+                  ) as HTMLInputElement;
                   if (el && el.value) handleTicketSearch(el.value);
                 }}
               >
@@ -306,8 +308,9 @@ export const JobList: React.FC<JobListProps> = ({ userRole }) => {
                         Paid: {formatCurrency(job.amount_paid)}
                       </p>
                       <p
-                        className={`text-sm font-medium ${job.balance > 0 ? 'text-red-600' : 'text-green-600'
-                          }`}
+                        className={`text-sm font-medium ${
+                          job.balance > 0 ? 'text-red-600' : 'text-green-600'
+                        }`}
                       >
                         Balance: {formatCurrency(job.balance)}
                       </p>

@@ -253,10 +253,13 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                       type="button"
                       variant="outline"
                       onClick={() => {
-                        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+                        const chars =
+                          'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
                         let pass = '';
                         for (let i = 0; i < 12; i++) {
-                          pass += chars.charAt(Math.floor(Math.random() * chars.length));
+                          pass += chars.charAt(
+                            Math.floor(Math.random() * chars.length)
+                          );
                         }
                         setFormData({ ...formData, password: pass });
                       }}
@@ -266,7 +269,8 @@ export const UserForm: React.FC<UserFormProps> = ({ userId, mode }) => {
                     </Button>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    If left blank, a random password will be generated and emailed to the admin.
+                    If left blank, a random password will be generated and
+                    emailed to the admin.
                   </p>
                 </div>
               )}

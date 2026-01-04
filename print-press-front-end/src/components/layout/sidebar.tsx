@@ -27,7 +27,6 @@ import {
   Banknote,
 } from 'lucide-react';
 
-
 interface SidebarProps {
   userRole: 'admin' | 'worker';
   isMobileOpen?: boolean;
@@ -127,7 +126,6 @@ const adminNavGroups: NavGroup[] = [
     ],
   },
 ];
-
 
 const workerNavItems: NavItem[] = [
   { href: '/worker/dashboard', label: 'Dashboard', icon: LayoutDashboard },

@@ -77,7 +77,9 @@ export const MaterialMonitoringReport: React.FC = () => {
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-gray-500" />
-              <h3 className="text-lg font-semibold">Material Monitoring Dashboard</h3>
+              <h3 className="text-lg font-semibold">
+                Material Monitoring Dashboard
+              </h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr_auto] gap-2 items-center">
               <Input
@@ -126,7 +128,6 @@ export const MaterialMonitoringReport: React.FC = () => {
 
       {data && !loading && (
         <>
-
           {/* Summary Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <Card className="min-w-0">
@@ -186,9 +187,9 @@ export const MaterialMonitoringReport: React.FC = () => {
                       Avg Material Return
                     </p>
                     <p className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 break-words">
-                      {(Number(data.summary.average_material_return) || 0).toFixed(
-                        1
-                      )}
+                      {(
+                        Number(data.summary.average_material_return) || 0
+                      ).toFixed(1)}
                       %
                     </p>
                   </div>
@@ -200,29 +201,49 @@ export const MaterialMonitoringReport: React.FC = () => {
           {/* Stock Levels */}
           <Card>
             <CardHeader className="pb-2 sm:pb-4">
-              <h3 className="text-base sm:text-lg font-semibold">Stock Levels</h3>
+              <h3 className="text-base sm:text-lg font-semibold">
+                Stock Levels
+              </h3>
             </CardHeader>
             <CardContent className="p-2 sm:p-6">
               <div className="overflow-x-auto -mx-2 sm:mx-0">
                 <table className="w-full text-xs sm:text-sm min-w-[600px]">
                   <thead>
                     <tr className="border-b bg-gray-50">
-                      <th className="text-left p-2 whitespace-nowrap">Material</th>
-                      <th className="text-right p-2 whitespace-nowrap">Stock</th>
-                      <th className="text-right p-2 hidden sm:table-cell">Threshold</th>
-                      <th className="text-left p-2 hidden md:table-cell">Unit</th>
-                      <th className="text-right p-2 whitespace-nowrap">Value</th>
-                      <th className="text-right p-2 hidden lg:table-cell">Stock %</th>
+                      <th className="text-left p-2 whitespace-nowrap">
+                        Material
+                      </th>
+                      <th className="text-right p-2 whitespace-nowrap">
+                        Stock
+                      </th>
+                      <th className="text-right p-2 hidden sm:table-cell">
+                        Threshold
+                      </th>
+                      <th className="text-left p-2 hidden md:table-cell">
+                        Unit
+                      </th>
+                      <th className="text-right p-2 whitespace-nowrap">
+                        Value
+                      </th>
+                      <th className="text-right p-2 hidden lg:table-cell">
+                        Stock %
+                      </th>
                       <th className="text-left p-2">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.stock_levels.map((item, idx) => (
                       <tr key={idx} className="border-b hover:bg-gray-50">
-                        <td className="p-2 font-medium whitespace-nowrap">{item.material_name}</td>
+                        <td className="p-2 font-medium whitespace-nowrap">
+                          {item.material_name}
+                        </td>
                         <td className="p-2 text-right">{item.current_stock}</td>
-                        <td className="p-2 text-right hidden sm:table-cell">{item.threshold}</td>
-                        <td className="p-2 hidden md:table-cell">{item.unit_of_measure}</td>
+                        <td className="p-2 text-right hidden sm:table-cell">
+                          {item.threshold}
+                        </td>
+                        <td className="p-2 hidden md:table-cell">
+                          {item.unit_of_measure}
+                        </td>
                         <td className="p-2 text-right font-medium whitespace-nowrap">
                           {formatCurrency(item.stock_value)}
                         </td>
@@ -247,27 +268,39 @@ export const MaterialMonitoringReport: React.FC = () => {
           {/* Cost Efficiency */}
           <Card>
             <CardHeader className="pb-2 sm:pb-4">
-              <h3 className="text-base sm:text-lg font-semibold">Material Cost Efficiency</h3>
+              <h3 className="text-base sm:text-lg font-semibold">
+                Material Cost Efficiency
+              </h3>
             </CardHeader>
             <CardContent className="p-2 sm:p-6">
               <div className="overflow-x-auto -mx-2 sm:mx-0">
                 <table className="w-full text-xs sm:text-sm min-w-[500px]">
                   <thead>
                     <tr className="border-b bg-gray-50">
-                      <th className="text-left p-2 whitespace-nowrap">Material</th>
+                      <th className="text-left p-2 whitespace-nowrap">
+                        Material
+                      </th>
                       <th className="text-right p-2">Jobs</th>
-                      <th className="text-right p-2 hidden sm:table-cell">Qty</th>
+                      <th className="text-right p-2 hidden sm:table-cell">
+                        Qty
+                      </th>
                       <th className="text-right p-2 whitespace-nowrap">Cost</th>
-                      <th className="text-right p-2 whitespace-nowrap">Profit</th>
+                      <th className="text-right p-2 whitespace-nowrap">
+                        Profit
+                      </th>
                       <th className="text-right p-2">ROI</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.cost_efficiency.map((item, idx) => (
                       <tr key={idx} className="border-b hover:bg-gray-50">
-                        <td className="p-2 font-medium whitespace-nowrap">{item.material_name}</td>
+                        <td className="p-2 font-medium whitespace-nowrap">
+                          {item.material_name}
+                        </td>
                         <td className="p-2 text-right">{item.jobs_count}</td>
-                        <td className="p-2 text-right hidden sm:table-cell">{item.total_quantity}</td>
+                        <td className="p-2 text-right hidden sm:table-cell">
+                          {item.total_quantity}
+                        </td>
                         <td className="p-2 text-right whitespace-nowrap">
                           {formatCurrency(item.total_cost)}
                         </td>
@@ -288,7 +321,9 @@ export const MaterialMonitoringReport: React.FC = () => {
           {/* Waste Analysis */}
           <Card>
             <CardHeader className="pb-2 sm:pb-4">
-              <h3 className="text-base sm:text-lg font-semibold">Waste Analysis</h3>
+              <h3 className="text-base sm:text-lg font-semibold">
+                Waste Analysis
+              </h3>
             </CardHeader>
             <CardContent className="p-2 sm:p-6">
               <div className="overflow-x-auto -mx-2 sm:mx-0">
@@ -296,21 +331,35 @@ export const MaterialMonitoringReport: React.FC = () => {
                   <thead>
                     <tr className="border-b bg-gray-50">
                       <th className="text-left p-2 whitespace-nowrap">Type</th>
-                      <th className="text-left p-2 hidden sm:table-cell">Material</th>
-                      <th className="text-left p-2 hidden md:table-cell">Reason</th>
+                      <th className="text-left p-2 hidden sm:table-cell">
+                        Material
+                      </th>
+                      <th className="text-left p-2 hidden md:table-cell">
+                        Reason
+                      </th>
                       <th className="text-right p-2">#</th>
                       <th className="text-right p-2 whitespace-nowrap">Cost</th>
-                      <th className="text-right p-2 hidden lg:table-cell">Avg</th>
+                      <th className="text-right p-2 hidden lg:table-cell">
+                        Avg
+                      </th>
                       <th className="text-right p-2">%</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.waste_analysis.map((item, idx) => (
                       <tr key={idx} className="border-b hover:bg-gray-50">
-                        <td className="p-2 font-medium whitespace-nowrap">{item.type}</td>
-                        <td className="p-2 hidden sm:table-cell">{item.material_name || 'General'}</td>
-                        <td className="p-2 hidden md:table-cell">{item.waste_reason || 'N/A'}</td>
-                        <td className="p-2 text-right">{item.occurrence_count}</td>
+                        <td className="p-2 font-medium whitespace-nowrap">
+                          {item.type}
+                        </td>
+                        <td className="p-2 hidden sm:table-cell">
+                          {item.material_name || 'General'}
+                        </td>
+                        <td className="p-2 hidden md:table-cell">
+                          {item.waste_reason || 'N/A'}
+                        </td>
+                        <td className="p-2 text-right">
+                          {item.occurrence_count}
+                        </td>
                         <td className="p-2 text-right font-medium text-red-600 whitespace-nowrap">
                           {formatCurrency(item.total_cost)}
                         </td>

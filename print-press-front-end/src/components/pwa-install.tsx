@@ -63,7 +63,8 @@ const checkIsStandalone = (): boolean => {
   if (typeof window === 'undefined') return false;
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as unknown as { standalone?: boolean }).standalone === true
+    (window.navigator as unknown as { standalone?: boolean }).standalone ===
+      true
   );
 };
 
@@ -95,8 +96,10 @@ const supportsNativeInstall = (): boolean => {
   const os = detectOS();
   if (os === 'ios') return false;
   // Check if the event is potentially available (Chrome, Edge, Samsung Internet, etc.)
-  return 'BeforeInstallPromptEvent' in window ||
-    /chrome|edge|samsung/i.test(navigator.userAgent);
+  return (
+    'BeforeInstallPromptEvent' in window ||
+    /chrome|edge|samsung/i.test(navigator.userAgent)
+  );
 };
 
 export const PWAInstallPrompt = () => {
@@ -239,7 +242,9 @@ export const PWAInstallPrompt = () => {
       // This likely means the PWA criteria aren't met or the browser doesn't support it
       console.log('⏳ Native install prompt not available yet');
       // Try to help the user understand
-      alert('Please use Chrome, Edge, or Samsung Internet browser to install this app. Make sure you are accessing the site via HTTPS.');
+      alert(
+        'Please use Chrome, Edge, or Samsung Internet browser to install this app. Make sure you are accessing the site via HTTPS.'
+      );
     }
   }, [deferredPrompt, currentOS]);
 

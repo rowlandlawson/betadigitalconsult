@@ -145,9 +145,8 @@ export const apiCall = async <T>(
     const response = await api.request<T>(config);
     return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      logout();
-    }
+    // Let the interceptor handle 401 errors - don't logout here
+    // The interceptor will attempt token refresh and only logout if refresh fails
     throw error;
   }
 };

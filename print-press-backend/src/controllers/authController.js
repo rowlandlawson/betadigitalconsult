@@ -57,7 +57,7 @@ export const adminLogin = async (req, res) => {
 
     // Generate tokens
     const accessToken = jwt.sign(
-      { 
+      {
         userId: user.id,
         email: user.email,
         username: user.user_name,
@@ -65,7 +65,7 @@ export const adminLogin = async (req, res) => {
         name: user.name
       },
       process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '8h' } // Extended from 1h to 8h
     );
 
     const refreshToken = jwt.sign(
@@ -102,7 +102,7 @@ export const refreshToken = async (req, res) => {
 
     // Verify refresh token
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key');
-    
+
     // Find user
     const userResult = await pool.query(
       'SELECT * FROM users WHERE id = $1 AND is_active = true',
@@ -117,7 +117,7 @@ export const refreshToken = async (req, res) => {
 
     // Generate new tokens
     const newAccessToken = jwt.sign(
-      { 
+      {
         userId: user.id,
         email: user.email,
         username: user.user_name,
@@ -125,7 +125,7 @@ export const refreshToken = async (req, res) => {
         name: user.name
       },
       process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '8h' } // Extended from 1h to 8h
     );
 
     const newRefreshToken = jwt.sign(
@@ -143,13 +143,13 @@ export const refreshToken = async (req, res) => {
     });
   } catch (error) {
     console.error('Token refresh error:', error);
-    
+
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Refresh token expired' });
     } else if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ error: 'Invalid refresh token' });
     }
-    
+
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -177,7 +177,7 @@ export const register = async (req, res) => {
     // Optional: validate password strength
     const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{6,}$/;
     if (!passwordRegex.test(password)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Password must be at least 6 characters long, include at least one uppercase letter and one special character'
       });
     }
@@ -234,15 +234,15 @@ export const login = async (req, res) => {
 
     // Generate both access and refresh tokens
     const accessToken = jwt.sign(
-      { 
-        userId: user.id, 
-        email: user.email, 
+      {
+        userId: user.id,
+        email: user.email,
         username: user.user_name,
         role: user.role,
-        name: user.name 
+        name: user.name
       },
       process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '8h' } // Extended from 1h to 8h
     );
 
     const refreshToken = jwt.sign(
@@ -303,8 +303,8 @@ export const changePassword = async (req, res) => {
     const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{6,}$/;
 
     if (!passwordRegex.test(newPassword)) {
-      return res.status(400).json({ 
-        error: 'New password must be at least 6 characters long, include at least one uppercase letter and one special character' 
+      return res.status(400).json({
+        error: 'New password must be at least 6 characters long, include at least one uppercase letter and one special character'
       });
     }
 
@@ -377,7 +377,7 @@ export const updateProfile = async (req, res) => {
  */
 export const forgotPassword = async (req, res) => {
   try {
-    const { identifier } = req.body; 
+    const { identifier } = req.body;
     if (!identifier) {
       return res.status(400).json({ error: 'Email or username is required' });
     }
@@ -410,9 +410,9 @@ export const forgotPassword = async (req, res) => {
       'SELECT email FROM users WHERE role = $1 LIMIT 1',
       ['admin']
     );
-    
+
     const adminEmail = adminResult.rows[0]?.email || process.env.ADMIN_EMAIL || 'admin@printpress.com';
-    
+
     // Send email to admin with reset link
     try {
       await emailService.sendPasswordResetRequest(adminEmail, user.email, token);
@@ -471,7 +471,7 @@ export const adminResetUserPassword = async (req, res) => {
 
     console.log(`📩 Admin ${adminEmail} can reset password for ${user.user_name} (${user.email}): ${resetLink}`);
 
-    res.json({ 
+    res.json({
       message: 'Reset link sent to admin successfully',
       resetLink: resetLink // Optional: return link in response for testing
     });
@@ -506,7 +506,7 @@ export const resetPassword = async (req, res) => {
 
     const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{6,}$/;
     if (!passwordRegex.test(newPassword)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Password must be at least 6 characters long, include at least one uppercase letter and one special character'
       });
     }

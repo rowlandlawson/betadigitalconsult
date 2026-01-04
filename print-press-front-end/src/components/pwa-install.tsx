@@ -28,6 +28,14 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+// Extend Window interface for global prompt storage
+declare global {
+  interface Window {
+    __pwaInstallPrompt?: BeforeInstallPromptEvent | null;
+    __pwaPromptHandled?: boolean;
+  }
+}
+
 type OSType =
   | 'windows'
   | 'mac'
@@ -55,7 +63,7 @@ const checkIsStandalone = (): boolean => {
   if (typeof window === 'undefined') return false;
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as any).standalone === true
+    (window.navigator as unknown as { standalone?: boolean }).standalone === true
   );
 };
 
@@ -63,17 +71,32 @@ const getInstallInstructions = (os: OSType): string => {
   switch (os) {
     case 'ios':
       return 'Tap the Share button (□↑) in Safari, then tap "Add to Home Screen"';
-    case 'android':
-      return 'Tap the menu (⋮) then select "Add to Home Screen" or "Install App"';
-    case 'windows':
-    case 'mac':
-    case 'linux':
-      return 'Click the install icon (⊕) in the address bar, or go to Menu → Install Print Press';
-    case 'chromeos':
-      return 'Click the install icon in the address bar, or go to Menu → Install';
     default:
       return 'Look for "Add to Home Screen" or "Install" in your browser menu';
   }
+};
+
+// Check if user dismissed the banner this session
+const isDismissedThisSession = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return sessionStorage.getItem('pwa_install_dismissed') === 'true';
+};
+
+// Set dismissed flag for this session
+const setDismissedThisSession = (): void => {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem('pwa_install_dismissed', 'true');
+};
+
+// Check if browser supports native PWA install
+const supportsNativeInstall = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  // iOS Safari doesn't support beforeinstallprompt
+  const os = detectOS();
+  if (os === 'ios') return false;
+  // Check if the event is potentially available (Chrome, Edge, Samsung Internet, etc.)
+  return 'BeforeInstallPromptEvent' in window ||
+    /chrome|edge|samsung/i.test(navigator.userAgent);
 };
 
 export const PWAInstallPrompt = () => {
@@ -83,6 +106,7 @@ export const PWAInstallPrompt = () => {
   const [isInstalling, setIsInstalling] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [currentOS, setCurrentOS] = useState<OSType>('unknown');
+  const [promptReady, setPromptReady] = useState(false);
   const hasInitialized = useRef(false);
 
   // Initialize on mount
@@ -93,6 +117,12 @@ export const PWAInstallPrompt = () => {
     // Check if already installed
     if (checkIsStandalone()) {
       console.log('✅ App already installed');
+      return;
+    }
+
+    // Check if user dismissed the banner this session
+    if (isDismissedThisSession()) {
+      console.log('⏸️ User dismissed install banner this session');
       return;
     }
 
@@ -109,7 +139,16 @@ export const PWAInstallPrompt = () => {
         .catch((err) => console.error('❌ SW registration failed:', err));
     }
 
-    // For iOS, show banner after delay
+    // Check if we already captured the prompt globally (before React mounted)
+    if (window.__pwaInstallPrompt) {
+      console.log('📲 Using globally captured beforeinstallprompt');
+      setDeferredPrompt(window.__pwaInstallPrompt);
+      setPromptReady(true);
+      setShowBanner(true);
+      return;
+    }
+
+    // For iOS, show banner with instructions after delay
     if (os === 'ios') {
       const timer = setTimeout(() => setShowBanner(true), 1000);
       return () => clearTimeout(timer);
@@ -120,63 +159,109 @@ export const PWAInstallPrompt = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (checkIsStandalone()) return;
+    if (isDismissedThisSession()) return;
 
     const handler = (e: Event) => {
       console.log('📲 beforeinstallprompt event received');
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      const promptEvent = e as BeforeInstallPromptEvent;
+      // Store globally in case component remounts
+      window.__pwaInstallPrompt = promptEvent;
+      setDeferredPrompt(promptEvent);
+      setPromptReady(true);
       setShowBanner(true);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
 
-    // Fallback: show banner after delay if no prompt received
-    const fallbackTimer = setTimeout(() => {
-      setShowBanner((prev) => {
-        if (!prev) {
-          console.log('⏱️ Showing manual install banner');
-          return true;
+    // Listen for successful installation
+    const installedHandler = () => {
+      console.log('✅ App was installed');
+      setShowBanner(false);
+      setDeferredPrompt(null);
+      window.__pwaInstallPrompt = null;
+    };
+    window.addEventListener('appinstalled', installedHandler);
+
+    // For non-iOS devices that support native install, wait longer for the prompt
+    // Only show fallback banner for iOS devices
+    const os = detectOS();
+    if (os === 'ios') {
+      const fallbackTimer = setTimeout(() => {
+        if (!isDismissedThisSession()) {
+          setShowBanner(true);
         }
-        return prev;
-      });
-    }, 3000);
+      }, 1500);
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handler);
+        window.removeEventListener('appinstalled', installedHandler);
+        clearTimeout(fallbackTimer);
+      };
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
-      clearTimeout(fallbackTimer);
+      window.removeEventListener('appinstalled', installedHandler);
     };
   }, []);
 
   const handleInstall = useCallback(async () => {
-    if (deferredPrompt) {
+    // Try to use the stored prompt
+    const prompt = deferredPrompt || window.__pwaInstallPrompt;
+
+    if (prompt) {
       // Native install available
       setIsInstalling(true);
       try {
-        await deferredPrompt.prompt();
-        const result = await deferredPrompt.userChoice;
+        console.log('📲 Triggering native install prompt...');
+        await prompt.prompt();
+        const result = await prompt.userChoice;
         console.log('Install result:', result.outcome);
         if (result.outcome === 'accepted') {
           setShowBanner(false);
           setDeferredPrompt(null);
+          window.__pwaInstallPrompt = null;
         }
       } catch (error) {
         console.error('Install error:', error);
+        // If native prompt fails, show instructions only for iOS
+        if (currentOS === 'ios') {
+          setShowInstructions(true);
+        }
       } finally {
         setIsInstalling(false);
       }
-    } else {
-      // Show manual instructions
+    } else if (currentOS === 'ios') {
+      // iOS doesn't support beforeinstallprompt, show manual instructions
       setShowInstructions(true);
+    } else {
+      // For other platforms, the native prompt event hasn't fired yet
+      // This likely means the PWA criteria aren't met or the browser doesn't support it
+      console.log('⏳ Native install prompt not available yet');
+      // Try to help the user understand
+      alert('Please use Chrome, Edge, or Samsung Internet browser to install this app. Make sure you are accessing the site via HTTPS.');
     }
-  }, [deferredPrompt]);
+  }, [deferredPrompt, currentOS]);
 
   const handleDismiss = useCallback(() => {
+    // Store dismissal in sessionStorage (resets on logout/new session)
+    setDismissedThisSession();
     setShowBanner(false);
     setShowInstructions(false);
   }, []);
 
-  // Don't render if already installed or banner not shown
+  // Don't render if already installed, dismissed this session, or banner not shown
   if (checkIsStandalone() || !showBanner) {
+    return null;
+  }
+
+  // For non-iOS platforms, only show banner if we have the native prompt ready
+  // OR if we're waiting for it (to avoid showing instructions modal inappropriately)
+  const isIOS = currentOS === 'ios';
+  const hasNativePrompt = promptReady || !!window.__pwaInstallPrompt;
+
+  // Don't show banner on non-iOS if no prompt available (PWA criteria not met)
+  if (!isIOS && !hasNativePrompt && !supportsNativeInstall()) {
     return null;
   }
 
@@ -193,7 +278,9 @@ export const PWAInstallPrompt = () => {
               Install Print Press
             </h3>
             <p className="text-xs text-gray-600 mt-1">
-              Install our app for quick access and offline support
+              {isIOS
+                ? 'Add to your home screen for quick access'
+                : 'Install our app for quick access and offline support'}
             </p>
             <div className="flex gap-2 mt-3">
               <Button
@@ -210,7 +297,7 @@ export const PWAInstallPrompt = () => {
                 size="sm"
                 className="text-xs text-gray-500"
               >
-                Not now
+                Later
               </Button>
             </div>
           </div>
@@ -224,54 +311,27 @@ export const PWAInstallPrompt = () => {
         </div>
       </div>
 
-      {/* Manual Instructions Modal */}
-      {showInstructions && (
+      {/* Manual Instructions Modal - Only for iOS */}
+      {showInstructions && isIOS && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-in zoom-in-95">
             <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-4 text-white rounded-t-2xl">
               <h2 className="text-lg font-bold">How to Install</h2>
               <p className="text-sm opacity-90 mt-1">
-                Follow these steps for {currentOS}
+                Follow these steps for iOS
               </p>
             </div>
             <div className="p-5">
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-4">
                 <p className="text-sm text-emerald-800">
-                  {getInstallInstructions(currentOS)}
+                  {getInstallInstructions('ios')}
                 </p>
               </div>
               <div className="text-xs text-gray-500 mb-4">
                 <p>After installing, look for &quot;Print Press&quot; in:</p>
                 <ul className="list-disc list-inside mt-2 space-y-1">
-                  {currentOS === 'ios' && (
-                    <>
-                      <li>Your home screen</li>
-                      <li>App Library (swipe left)</li>
-                    </>
-                  )}
-                  {currentOS === 'android' && (
-                    <>
-                      <li>Home screen</li>
-                      <li>App drawer</li>
-                    </>
-                  )}
-                  {(currentOS === 'windows' ||
-                    currentOS === 'mac' ||
-                    currentOS === 'linux') && (
-                    <>
-                      <li>Start menu / Applications</li>
-                      <li>Desktop shortcut</li>
-                    </>
-                  )}
-                  {currentOS === 'chromeos' && (
-                    <>
-                      <li>Launcher</li>
-                      <li>Shelf (if pinned)</li>
-                    </>
-                  )}
-                  {currentOS === 'unknown' && (
-                    <li>Your app list or home screen</li>
-                  )}
+                  <li>Your home screen</li>
+                  <li>App Library (swipe left)</li>
                 </ul>
               </div>
               <Button

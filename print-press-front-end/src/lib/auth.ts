@@ -36,7 +36,8 @@ export const refreshAuthToken = async (): Promise<AuthResponse | null> => {
 
     if (!refreshToken) {
       console.log('❌ No refresh token available');
-      throw new Error('No refresh token available');
+      // No refresh token means user needs to login again
+      return null;
     }
 
     const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
@@ -60,15 +61,21 @@ export const refreshAuthToken = async (): Promise<AuthResponse | null> => {
 
       return data;
     } else {
-      const errorData: ApiError = await response.json();
-      console.error('❌ Token refresh failed:', errorData.error);
-      // Refresh token is also expired, logout user
-      logout();
+      // Check if it's an auth error (expired refresh token) vs other error
+      if (response.status === 401) {
+        console.error('❌ Refresh token expired, user needs to login again');
+        // Only logout if it's a definitive auth failure
+        logout();
+        return null;
+      }
+      // For other errors, don't logout - might be network issue
+      console.error('❌ Token refresh failed with status:', response.status);
       return null;
     }
   } catch (error) {
-    console.error('❌ Token refresh failed:', error);
-    logout();
+    // Network error or other issue - DON'T logout, just return null
+    // The user might still have a valid token and just have a temporary network issue
+    console.error('❌ Token refresh network error:', error);
     return null;
   }
 };
@@ -108,7 +115,7 @@ export const logout = (): void => {
   // Redirect to login page
   if (typeof window !== 'undefined') {
     console.log('🔄 Redirecting to login page...');
-    window.location.href = '/adm/login';
+    window.location.href = '/auth/login';
   }
 };
 
@@ -124,7 +131,7 @@ export const isTokenExpired = (token: string): boolean => {
     const payload = JSON.parse(atob(parts[1]));
     const expirationTime = payload.exp * 1000; // Convert to milliseconds
     const currentTime = Date.now();
-    const bufferTime = 5 * 60 * 1000; // 5 minutes buffer
+    const bufferTime = 1 * 60 * 1000; // 1 minute buffer (reduced from 5 minutes)
 
     const isExpired = expirationTime - bufferTime <= currentTime;
     console.log('🔍 JWT expiration check:', {

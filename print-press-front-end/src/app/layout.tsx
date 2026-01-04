@@ -35,6 +35,20 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap"
           rel="stylesheet"
         />
+
+        {/* Capture PWA install prompt early, before React hydrates */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.__pwaInstallPrompt = null;
+              window.addEventListener('beforeinstallprompt', function(e) {
+                console.log('📲 [Early] beforeinstallprompt captured');
+                e.preventDefault();
+                window.__pwaInstallPrompt = e;
+              });
+            `,
+          }}
+        />
       </head>
       <body className="antialiased">
         <div className="min-h-screen bg-gray-50 font-sans">{children}</div>

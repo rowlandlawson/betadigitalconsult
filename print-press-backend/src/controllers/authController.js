@@ -405,13 +405,16 @@ export const forgotPassword = async (req, res) => {
 
     const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
 
-    // Get admin email to send reset link
-    const adminResult = await pool.query(
-      'SELECT email FROM users WHERE role = $1 LIMIT 1',
-      ['admin']
+    // Get admin email from company settings to send reset link
+    const settingsResult = await pool.query(
+      'SELECT email FROM company_settings LIMIT 1'
     );
 
-    const adminEmail = adminResult.rows[0]?.email || process.env.ADMIN_EMAIL || 'admin@printpress.com';
+    const adminEmail = settingsResult.rows[0]?.email || process.env.ADMIN_EMAIL || 'admin@printpress.com';
+
+    if (!settingsResult.rows[0]?.email) {
+      console.warn('⚠️ No email configured in company settings. Using fallback:', adminEmail);
+    }
 
     // Send email to admin with reset link
     try {
@@ -439,7 +442,7 @@ export const adminResetUserPassword = async (req, res) => {
 
     // Check admin privileges
     const adminResult = await pool.query(
-      'SELECT role, email FROM users WHERE id = $1 AND is_active = true',
+      'SELECT role FROM users WHERE id = $1 AND is_active = true',
       [adminId]
     );
 
@@ -447,7 +450,16 @@ export const adminResetUserPassword = async (req, res) => {
       return res.status(403).json({ error: 'Only admins can reset passwords for other users' });
     }
 
-    const adminEmail = adminResult.rows[0].email;
+    // Get admin email from company settings
+    const settingsResult = await pool.query(
+      'SELECT email FROM company_settings LIMIT 1'
+    );
+
+    const adminEmail = settingsResult.rows[0]?.email || process.env.ADMIN_EMAIL || 'admin@printpress.com';
+
+    if (!settingsResult.rows[0]?.email) {
+      console.warn('⚠️ No email configured in company settings. Using fallback:', adminEmail);
+    }
 
     const userResult = await pool.query(
       'SELECT id, user_name, email FROM users WHERE id = $1 AND is_active = true',

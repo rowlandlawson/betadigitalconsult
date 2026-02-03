@@ -1,9 +1,9 @@
 {
-  "name": "Print Press Management System",
-  "short_name": "Print Press",
+  "name": "Beta Digital Consult",
+  "short_name": "Beta",
   "description": "Comprehensive print press management system",
   "id": "/",
-  "start_url": "/",
+  "start_url": "/auth/login",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",

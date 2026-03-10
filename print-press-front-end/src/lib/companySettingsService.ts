@@ -7,6 +7,7 @@ export interface CompanySettings {
   tagline: string;
   address: string;
   phone: string;
+  whatsapp_number?: string;
   email: string;
   logo?: string;
   logoFile?: File;

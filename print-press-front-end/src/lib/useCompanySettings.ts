@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS: CompanySettings = {
   tagline: 'Your Business Tagline',
   address: 'Your Address, City, Country',
   phone: '+234 (0) Your Phone Number',
+  whatsapp_number: '+234 (0) Your Phone Number',
   email: 'your-email@company.com',
 };
 

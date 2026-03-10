@@ -2,7 +2,7 @@
   "name": "Beta Digital Consult",
   "short_name": "Beta",
   "description": "Comprehensive print press management system",
-  "id": "/",
+  "id": "/auth/login",
   "start_url": "/auth/login",
   "scope": "/",
   "display": "standalone",

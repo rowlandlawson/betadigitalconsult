@@ -55,8 +55,12 @@ async function cleanupLogoDirectory(fileToKeep = null) {
  */
 export const getCompanySettings = async (req, res) => {
   try {
+    await pool.query(
+      'ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(50)'
+    );
+
     const result = await pool.query(
-      'SELECT id, name, tagline, address, phone, email, logo FROM company_settings LIMIT 1'
+      'SELECT id, name, tagline, address, phone, email, logo, whatsapp_number FROM company_settings LIMIT 1'
     );
 
     if (result.rows.length === 0) {
@@ -66,6 +70,7 @@ export const getCompanySettings = async (req, res) => {
         tagline: 'Your Business Tagline',
         address: 'Your Address, City, Country',
         phone: '+234 (0) Your Phone Number',
+        whatsapp_number: '+234 (0) Your Phone Number',
         email: 'your-email@company.com',
         logo: null
       });
@@ -93,7 +98,11 @@ export const getCompanySettings = async (req, res) => {
  */
 export const updateCompanySettings = async (req, res) => {
   try {
-    const { name, tagline, address, phone, email, logo } = req.body;
+    await pool.query(
+      'ALTER TABLE company_settings ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(50)'
+    );
+
+    const { name, tagline, address, phone, email, logo, whatsapp_number } = req.body;
 
     // Validate required fields
     if (!name || !address || !phone || !email) {
@@ -119,20 +128,20 @@ export const updateCompanySettings = async (req, res) => {
     if (existsResult.rows.length === 0) {
       // Insert new settings
       result = await pool.query(
-        `INSERT INTO company_settings (name, tagline, address, phone, email, logo, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
-         RETURNING id, name, tagline, address, phone, email, logo`,
-        [name, tagline || '', address, phone, email, logo || null]
+        `INSERT INTO company_settings (name, tagline, address, phone, email, logo, whatsapp_number, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+         RETURNING id, name, tagline, address, phone, email, logo, whatsapp_number`,
+        [name, tagline || '', address, phone, email, logo || null, whatsapp_number || phone]
       );
     } else {
       // Update existing settings
       result = await pool.query(
         `UPDATE company_settings 
          SET name = $1, tagline = $2, address = $3, phone = $4, email = $5, 
-             logo = COALESCE($6, logo), updated_at = CURRENT_TIMESTAMP
+             logo = COALESCE($6, logo), whatsapp_number = $7, updated_at = CURRENT_TIMESTAMP
          WHERE id = (SELECT id FROM company_settings LIMIT 1)
-         RETURNING id, name, tagline, address, phone, email, logo`,
-        [name, tagline || '', address, phone, email, logo || null]
+         RETURNING id, name, tagline, address, phone, email, logo, whatsapp_number`,
+        [name, tagline || '', address, phone, email, logo || null, whatsapp_number || phone]
       );
     }
 
@@ -264,7 +273,7 @@ export const uploadLogo = async (req, res) => {
       result = await pool.query(
         `INSERT INTO company_settings (name, logo, logo_file_path, updated_at)
          VALUES ('YOUR COMPANY NAME HERE', $1, $2, CURRENT_TIMESTAMP)
-         RETURNING id, name, logo`,
+         RETURNING id, name, logo, whatsapp_number`,
         [logoUrl, filepath]
       );
     } else {
@@ -274,7 +283,7 @@ export const uploadLogo = async (req, res) => {
         `UPDATE company_settings 
          SET logo = $1, logo_file_path = $2, updated_at = CURRENT_TIMESTAMP
          WHERE id = (SELECT id FROM company_settings LIMIT 1)
-         RETURNING id, name, tagline, address, phone, email, logo`,
+         RETURNING id, name, tagline, address, phone, email, logo, whatsapp_number`,
         [logoUrl, filepath]
       );
     }

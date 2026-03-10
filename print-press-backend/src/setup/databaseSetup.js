@@ -32,6 +32,7 @@ async function setupCompanySettingsTable() {
         tagline VARCHAR(255) DEFAULT 'Your Business Tagline',
         address TEXT DEFAULT 'Your Address, City, Country',
         phone VARCHAR(50) DEFAULT '+234 (0) Your Phone Number',
+        whatsapp_number VARCHAR(50) DEFAULT '+234 (0) Your Phone Number',
         email VARCHAR(255) DEFAULT 'your-email@company.com',
         logo VARCHAR(500),
         logo_file_path VARCHAR(500),
@@ -42,8 +43,8 @@ async function setupCompanySettingsTable() {
 
     // Insert default settings if none exist
     await pool.query(`
-      INSERT INTO company_settings (name, tagline, address, phone, email)
-      SELECT 'YOUR COMPANY NAME HERE', 'Your Business Tagline', 'Your Address, City, Country', '+234 (0) Your Phone Number', 'your-email@company.com'
+      INSERT INTO company_settings (name, tagline, address, phone, whatsapp_number, email)
+      SELECT 'YOUR COMPANY NAME HERE', 'Your Business Tagline', 'Your Address, City, Country', '+234 (0) Your Phone Number', '+234 (0) Your Phone Number', 'your-email@company.com'
       WHERE NOT EXISTS (SELECT 1 FROM company_settings LIMIT 1);
     `);
 

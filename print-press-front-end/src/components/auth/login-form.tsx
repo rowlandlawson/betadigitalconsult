@@ -55,6 +55,9 @@ export function LoginForm() {
         localStorage.setItem('refresh_token', refreshToken);
       }
       localStorage.setItem('user', JSON.stringify(user));
+      if (user.role === 'admin' || user.role === 'worker') {
+        localStorage.setItem('staff_device_eligible', 'true');
+      }
 
       // Clear PWA dismiss flag on fresh login (ensures banner shows after logout/login)
       sessionStorage.removeItem('pwa_install_dismissed');

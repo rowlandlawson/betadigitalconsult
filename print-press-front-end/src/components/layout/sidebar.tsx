@@ -125,6 +125,13 @@ const adminNavGroups: NavGroup[] = [
       { href: '/admin/salary', label: 'Salary Management', icon: Banknote },
     ],
   },
+  {
+    title: 'Website',
+    items: [
+      { href: '/admin/website?tab=web', label: 'Web Content', icon: Settings },
+      { href: '/admin/website?tab=jobs', label: 'Our Jobs', icon: Briefcase },
+    ],
+  },
 ];
 
 const workerNavItems: NavItem[] = [

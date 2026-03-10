@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import type { SVGProps } from 'react';
 import { Button } from './ui/button';
 import { X as XIcon } from 'lucide-react';
@@ -102,7 +103,16 @@ const supportsNativeInstall = (): boolean => {
   );
 };
 
-export const PWAInstallPrompt = () => {
+type PWAInstallPromptProps = {
+  staffOnly?: boolean;
+};
+
+const hasStaffInstallAccess = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('staff_device_eligible') === 'true';
+};
+
+export const PWAInstallPrompt = ({ staffOnly = false }: PWAInstallPromptProps) => {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [showBanner, setShowBanner] = useState(false);
@@ -116,6 +126,10 @@ export const PWAInstallPrompt = () => {
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
+
+    if (staffOnly && !hasStaffInstallAccess()) {
+      return;
+    }
 
     // Check if already installed
     if (checkIsStandalone()) {
@@ -161,6 +175,7 @@ export const PWAInstallPrompt = () => {
   // Listen for beforeinstallprompt (separate effect)
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (staffOnly && !hasStaffInstallAccess()) return;
     if (checkIsStandalone()) return;
     if (isDismissedThisSession()) return;
 
@@ -206,7 +221,7 @@ export const PWAInstallPrompt = () => {
       window.removeEventListener('beforeinstallprompt', handler);
       window.removeEventListener('appinstalled', installedHandler);
     };
-  }, []);
+  }, [staffOnly]);
 
   const handleInstall = useCallback(async () => {
     // Try to use the stored prompt

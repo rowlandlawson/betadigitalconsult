@@ -18,6 +18,7 @@ import reportRoutes from './routes/reports.js';
 import companySettingsRoutes from './routes/companySettings.js';
 import salaryRoutes from './routes/salary.js';
 import workerStatsRoutes from './routes/workerStats.js';
+import landingRoutes from './routes/landing.js';
 
 // Import WebSocket
 import { setupNotificationWebSocket } from './websocket/notificationServer.js';
@@ -64,6 +65,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/company-settings', companySettingsRoutes);
 app.use('/api/salary', salaryRoutes); // Mounted salaryRoutes
 app.use('/api/worker-stats', workerStatsRoutes); // Worker dashboard stats
+app.use('/api/landing', landingRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

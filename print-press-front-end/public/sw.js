@@ -1,7 +1,7 @@
 // Service Worker for Print Press Management System
-const CACHE_NAME = 'print-press-v1';
+const CACHE_NAME = 'print-press-v2';
 const urlsToCache = [
-  '/',
+  '/auth/login',
   '/admin/dashboard',
   '/admin/jobs',
   '/admin/customers',
@@ -119,4 +119,3 @@ self.addEventListener('activate', (event) => {
 });
 
 console.log('[SW] Service Worker loaded successfully');
-

@@ -231,6 +231,23 @@ export const CompanySettingsForm: React.FC = () => {
             </p>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              WhatsApp Number *
+            </label>
+            <Input
+              name="whatsapp_number"
+              type="tel"
+              value={formData.whatsapp_number || ''}
+              onChange={handleChange}
+              placeholder="e.g., +2348023456789"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Used for landing page WhatsApp CTA
+            </p>
+          </div>
+
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

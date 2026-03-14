@@ -268,13 +268,39 @@ export const PWAInstallPrompt = ({ staffOnly = false }: PWAInstallPromptProps) =
       // iOS doesn't support beforeinstallprompt, show manual instructions
       setShowInstructions(true);
     } else {
-      // For other platforms, the native prompt event hasn't fired yet
-      // This likely means the PWA criteria aren't met or the browser doesn't support it
-      console.log('⏳ Native install prompt not available yet');
-      // Try to help the user understand
-      alert(
-        'Please use Chrome, Edge, or Samsung Internet browser to install this app. Make sure you are accessing the site via HTTPS.'
-      );
+      // The beforeinstallprompt event hasn't fired yet.
+      // Wait briefly in case it's just delayed (common after fresh SW install)
+      setIsInstalling(true);
+      const waitForPrompt = new Promise<BeforeInstallPromptEvent | null>((resolve) => {
+        const handler = (e: Event) => {
+          e.preventDefault();
+          window.removeEventListener('beforeinstallprompt', handler);
+          resolve(e as BeforeInstallPromptEvent);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        setTimeout(() => {
+          window.removeEventListener('beforeinstallprompt', handler);
+          resolve(null);
+        }, 3000);
+      });
+
+      const delayedPrompt = await waitForPrompt;
+      setIsInstalling(false);
+
+      if (delayedPrompt) {
+        setDeferredPrompt(delayedPrompt);
+        window.__pwaInstallPrompt = delayedPrompt;
+        await delayedPrompt.prompt();
+        const result = await delayedPrompt.userChoice;
+        if (result.outcome === 'accepted') {
+          setShowBanner(false);
+          setDeferredPrompt(null);
+          window.__pwaInstallPrompt = null;
+        }
+      } else {
+        // Prompt still not available — show helpful instructions
+        setShowInstructions(true);
+      }
     }
   }, [deferredPrompt, currentOS]);
 
@@ -346,27 +372,30 @@ export const PWAInstallPrompt = ({ staffOnly = false }: PWAInstallPromptProps) =
         </div>
       </div>
 
-      {/* Manual Instructions Modal - Only for iOS */}
-      {showInstructions && isIOS && (
+      {/* Manual Instructions Modal */}
+      {showInstructions && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-in zoom-in-95">
             <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-4 text-white rounded-t-2xl">
               <h2 className="text-lg font-bold">How to Install</h2>
               <p className="text-sm opacity-90 mt-1">
-                Follow these steps for iOS
+                {isIOS ? 'Follow these steps for iOS' : 'Follow these steps to install'}
               </p>
             </div>
             <div className="p-5">
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-4">
                 <p className="text-sm text-emerald-800">
-                  {getInstallInstructions('ios')}
+                  {isIOS
+                    ? getInstallInstructions('ios')
+                    : 'Tap the three-dot menu (⋮) in your browser, then tap "Install app" or "Add to Home Screen"'}
                 </p>
               </div>
               <div className="text-xs text-gray-500 mb-4">
-                <p>After installing, look for &quot;Print Press&quot; in:</p>
+                <p>After installing, look for &quot;{isIOS ? 'Print Press' : 'Beta Digital Consult'}&quot; in:</p>
                 <ul className="list-disc list-inside mt-2 space-y-1">
                   <li>Your home screen</li>
-                  <li>App Library (swipe left)</li>
+                  {isIOS && <li>App Library (swipe left)</li>}
+                  {!isIOS && <li>Your app drawer or desktop</li>}
                 </ul>
               </div>
               <Button

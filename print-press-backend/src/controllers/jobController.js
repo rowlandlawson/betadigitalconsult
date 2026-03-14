@@ -382,8 +382,8 @@ export const createJob = async (req, res) => {
         broadcastToAdmins({
           type: 'new_notification',
           notification: {
-            title: 'New Job Created',
-            message: `New job ${job.ticket_id} created by ${req.user.name} for ${customer_name}`,
+            title: `New Job: ${job.ticket_id}`,
+            message: `Customer: ${customer_name}\nJob: ${description}\nTotal: ₦${Number(total_cost).toLocaleString()}\nCreated by: ${req.user.name}`,
             type: 'new_job',
             relatedEntityId: job.id,
             createdAt: new Date()

@@ -40,7 +40,7 @@ export const refreshAuthToken = async (): Promise<AuthResponse | null> => {
       return null;
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

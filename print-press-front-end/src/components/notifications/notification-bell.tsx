@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Notification } from '@/types';
 import { api, isApiError } from '@/lib/api';
@@ -33,6 +33,7 @@ export const NotificationBell: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string>('');
   const [wsConnected, setWsConnected] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -41,9 +42,10 @@ export const NotificationBell: React.FC = () => {
       );
       setUnreadCount(response.data.count);
     } catch (err: unknown) {
-      console.error('Failed to fetch unread count:', err);
-      if (isApiError(err)) {
-        setError(err.error);
+      // Silently ignore auth errors (401/403) — the interceptor handles token refresh
+      const status = (err as any)?.response?.status;
+      if (status !== 401 && status !== 403) {
+        console.error('Failed to fetch unread count:', err);
       }
     }
   }, []);
@@ -55,9 +57,10 @@ export const NotificationBell: React.FC = () => {
       );
       setNotifications(response.data.notifications);
     } catch (err: unknown) {
-      console.error('Failed to fetch notifications:', err);
-      if (isApiError(err)) {
-        setError(err.error);
+      // Silently ignore auth errors — the interceptor handles token refresh
+      const status = (err as any)?.response?.status;
+      if (status !== 401 && status !== 403) {
+        console.error('Failed to fetch notifications:', err);
       }
     }
   }, []);
@@ -126,6 +129,9 @@ export const NotificationBell: React.FC = () => {
     let reconnectTimeout: NodeJS.Timeout;
     let pingInterval: NodeJS.Timeout;
 
+    let retryCount = 0;
+    const MAX_RETRIES = 5;
+
     const connectWebSocket = () => {
       try {
         // Get JWT token from localStorage
@@ -142,6 +148,7 @@ export const NotificationBell: React.FC = () => {
           console.log('🔌 WebSocket connection established');
           setWsConnected(true);
           setError('');
+          retryCount = 0; // Reset retry count on successful connection
 
           // Send subscription message
           ws?.send(
@@ -215,12 +222,23 @@ export const NotificationBell: React.FC = () => {
           setWsConnected(false);
           clearInterval(pingInterval);
 
-          // Attempt to reconnect after 5 seconds if not a normal closure
-          if (event.code !== 1000) {
+          // Don't retry on auth failures (expired JWT, invalid token)
+          const reason = (event.reason || '').toLowerCase();
+          if (reason.includes('expired') || reason.includes('auth') || reason.includes('invalid') || event.code === 4001) {
+            console.log('🛑 WebSocket closed due to auth failure — not retrying. Please log in again.');
+            return;
+          }
+
+          // Attempt to reconnect with backoff, up to MAX_RETRIES
+          if (event.code !== 1000 && retryCount < MAX_RETRIES) {
+            retryCount++;
+            const delay = Math.min(5000 * retryCount, 30000); // 5s, 10s, 15s, 20s, 25s
+            console.log(`🔄 Reconnecting WebSocket in ${delay / 1000}s (attempt ${retryCount}/${MAX_RETRIES})...`);
             reconnectTimeout = setTimeout(() => {
-              console.log('🔄 Attempting to reconnect WebSocket...');
               connectWebSocket();
-            }, 5000);
+            }, delay);
+          } else if (retryCount >= MAX_RETRIES) {
+            console.log('🛑 Max WebSocket reconnect attempts reached. Refresh the page to retry.');
           }
         };
       } catch (wsError) {
@@ -249,131 +267,227 @@ export const NotificationBell: React.FC = () => {
   }, [fetchUnreadCount]);
 
   return (
-    <div className="relative notification-container">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => {
-          setIsOpen(!isOpen);
-        }}
-        className="relative p-2"
-        title={wsConnected ? 'Connected to notifications' : 'Connecting...'}
-      >
-        <Bell className="h-5 w-5" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
-        {!wsConnected && (
-          <span className="absolute -top-1 -right-1 flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
-          </span>
-        )}
-      </Button>
+    <>
+      <div className="relative notification-container">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setIsOpen(!isOpen);
+          }}
+          className="relative p-2"
+          title={wsConnected ? 'Connected to notifications' : 'Connecting...'}
+        >
+          <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+          {!wsConnected && (
+            <span className="absolute -top-1 -right-1 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
+            </span>
+          )}
+        </Button>
 
-      {isOpen && (
-        <React.Fragment>
-          {/* Mobile backdrop */}
-          <div
-            key="backdrop"
-            className="fixed inset-0 bg-black/50 bg-opacity-70 z-40 lg:hidden"
-            onClick={() => setIsOpen(false)}
-          />
+        {isOpen && (
+          <React.Fragment>
+            {/* Mobile backdrop */}
+            <div
+              key="backdrop"
+              className="fixed inset-0 bg-black/50 bg-opacity-70 z-40 lg:hidden"
+              onClick={() => setIsOpen(false)}
+            />
 
-          {/* Dropdown */}
-          <div
-            key="dropdown"
-            className="fixed lg:absolute right-0 lg:right-0 mt-2 w-screen lg:w-80 max-w-[calc(100vw-2rem)] lg:max-w-none bg-white rounded-lg shadow-lg border border-gray-200 z-50 lg:z-50 mx-4 lg:mx-0 top-16 lg:top-full"
-          >
-            <div className="p-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <h3 className="text-lg font-semibold">Notifications</h3>
-                  {!wsConnected && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                      Connecting...
-                    </span>
+            {/* Dropdown */}
+            <div
+              key="dropdown"
+              className="fixed lg:absolute right-0 lg:right-0 mt-2 w-screen lg:w-80 max-w-[calc(100vw-2rem)] lg:max-w-none bg-white rounded-lg shadow-lg border border-gray-200 z-50 lg:z-50 mx-4 lg:mx-0 top-16 lg:top-full"
+            >
+              <div className="p-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <h3 className="text-lg font-semibold">Notifications</h3>
+                    {!wsConnected && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                        Connecting...
+                      </span>
+                    )}
+                  </div>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={markAllAsRead}
+                      className="text-sm text-blue-600 hover:text-blue-500"
+                    >
+                      Mark all as read
+                    </button>
                   )}
                 </div>
-                {unreadCount > 0 && (
-                  <button
-                    onClick={markAllAsRead}
-                    className="text-sm text-blue-600 hover:text-blue-500"
-                  >
-                    Mark all as read
-                  </button>
-                )}
               </div>
-            </div>
 
-            {error && (
-              <div className="p-4 text-red-600 bg-red-50 text-sm">{error}</div>
-            )}
+              {error && (
+                <div className="p-4 text-red-600 bg-red-50 text-sm">{error}</div>
+              )}
 
-            <div className="max-h-100 lg:max-h-96 overflow-y-auto">
-              {notifications.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">
-                  <p>No notifications</p>
-                  {!wsConnected && (
-                    <p className="text-xs mt-1">Waiting for connection...</p>
-                  )}
-                </div>
-              ) : (
-                notifications.map((notification, index) => (
-                  <div
-                    key={notification.id || `notification-${index}`}
-                    className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
-                      !notification.is_read ? 'bg-blue-50' : ''
-                    }`}
-                    onClick={() => markAsRead(notification.id)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">
-                          {notification.title}
-                        </p>
-                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                          {notification.message}
-                        </p>
-                        <div className="flex items-center space-x-2 mt-2 flex-wrap gap-1">
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                              notification.type === 'low_stock'
+              <div className="max-h-100 lg:max-h-96 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    <p>No notifications</p>
+                    {!wsConnected && (
+                      <p className="text-xs mt-1">Waiting for connection...</p>
+                    )}
+                  </div>
+                ) : (
+                  notifications.map((notification, index) => (
+                    <div
+                      key={notification.id || `notification-${index}`}
+                      className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${!notification.is_read ? 'bg-blue-50' : ''
+                        }`}
+                      onClick={() => {
+                        if (!notification.is_read) {
+                          markAsRead(notification.id);
+                        }
+                        setSelectedNotification(notification);
+                        setIsOpen(false);
+                      }}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 truncate">
+                            {notification.title}
+                          </p>
+                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                            {notification.message}
+                          </p>
+                          <div className="flex items-center space-x-2 mt-2 flex-wrap gap-1">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${notification.type === 'low_stock'
                                 ? 'bg-red-100 text-red-800'
                                 : notification.type === 'new_job'
                                   ? 'bg-green-100 text-green-800'
                                   : notification.type === 'payment_update'
                                     ? 'bg-blue-100 text-blue-800'
                                     : 'bg-gray-100 text-gray-800'
-                            }`}
-                          >
-                            {notification.type.replace('_', ' ')}
-                          </span>
-                          {notification.priority === 'high' && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                              High Priority
+                                }`}
+                            >
+                              {notification.type.replace('_', ' ')}
                             </span>
-                          )}
+                            {notification.priority === 'high' && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                High Priority
+                              </span>
+                            )}
+                          </div>
                         </div>
+                        {!notification.is_read && (
+                          <div className="w-2 h-2 bg-blue-600 rounded-full ml-2 shrink-0 mt-1"></div>
+                        )}
                       </div>
-                      {!notification.is_read && (
-                        <div className="w-2 h-2 bg-blue-600 rounded-full ml-2 shrink-0 mt-1"></div>
-                      )}
+                      <p className="text-xs text-gray-500 mt-2">
+                        {new Date(notification.created_at).toLocaleDateString()}{' '}
+                        at{' '}
+                        {new Date(notification.created_at).toLocaleTimeString()}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {new Date(notification.created_at).toLocaleDateString()}{' '}
-                      at{' '}
-                      {new Date(notification.created_at).toLocaleTimeString()}
-                    </p>
-                  </div>
-                ))
+                  ))
+                )}
+              </div>
+            </div>
+          </React.Fragment>
+        )}
+      </div>
+
+      {/* Notification Detail Modal */}
+      {selectedNotification && (
+        <div
+          className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"
+          onClick={() => setSelectedNotification(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between p-5 border-b">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">
+                  {selectedNotification.title}
+                </h2>
+                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                  <span>
+                    {new Date(selectedNotification.created_at).toLocaleDateString()}{' '}
+                    at {new Date(selectedNotification.created_at).toLocaleTimeString()}
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded font-medium ${selectedNotification.type === 'low_stock'
+                      ? 'bg-red-100 text-red-800'
+                      : selectedNotification.type === 'new_job'
+                        ? 'bg-green-100 text-green-800'
+                        : selectedNotification.type === 'payment_update'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                  >
+                    {selectedNotification.type.replace(/_/g, ' ')}
+                  </span>
+                  {selectedNotification.priority && (
+                    <span
+                      className={`px-2 py-0.5 rounded font-medium ${selectedNotification.priority === 'urgent'
+                        ? 'bg-red-100 text-red-800'
+                        : selectedNotification.priority === 'high'
+                          ? 'bg-orange-100 text-orange-800'
+                          : selectedNotification.priority === 'medium'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                    >
+                      {selectedNotification.priority}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedNotification(null)}
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                  {selectedNotification.message}
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-2 p-5 border-t">
+              {!selectedNotification.is_read && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    markAsRead(selectedNotification.id);
+                    setSelectedNotification(null);
+                  }}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Mark as Read
+                </Button>
               )}
+              <Button size="sm" onClick={() => setSelectedNotification(null)}>
+                Close
+              </Button>
             </div>
           </div>
-        </React.Fragment>
+        </div>
       )}
-    </div>
+    </>
   );
 };

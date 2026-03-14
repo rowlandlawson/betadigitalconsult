@@ -1,5 +1,5 @@
 // Service Worker for Print Press Management System
-const CACHE_NAME = 'print-press-v2';
+const CACHE_NAME = 'print-press-v3';
 const urlsToCache = [
   '/auth/login',
   '/admin/dashboard',
@@ -24,7 +24,7 @@ self.addEventListener('install', (event) => {
         console.log('[SW] Opened cache:', CACHE_NAME);
         // Don't fail the install if some URLs can't be cached
         return Promise.allSettled(
-          urlsToCache.map(url => 
+          urlsToCache.map(url =>
             cache.add(url).catch(err => {
               console.warn(`[SW] Failed to cache ${url}:`, err);
               return Promise.resolve();
@@ -52,12 +52,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip API calls - always fetch from network
+  if (event.request.url.includes('/api/')) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
         // Return cached version if available
         if (response) {
-          console.log('[SW] Serving from cache:', event.request.url);
           return response;
         }
 
@@ -83,7 +87,6 @@ self.addEventListener('fetch', (event) => {
           })
           .catch(() => {
             console.warn('[SW] Fetch failed for:', event.request.url);
-            // Could return a offline page here
             return new Response('Offline - Page not available', {
               status: 503,
               statusText: 'Service Unavailable',
@@ -110,12 +113,93 @@ self.addEventListener('activate', (event) => {
         })
       );
     })
-    .then(() => {
-      console.log('[SW] Cache cleanup complete');
-      // Claim all clients immediately
-      return self.clients.claim();
-    })
+      .then(() => {
+        console.log('[SW] Cache cleanup complete');
+        // Claim all clients immediately
+        return self.clients.claim();
+      })
   );
 });
 
-console.log('[SW] Service Worker loaded successfully');
+// ==========================================
+// PUSH NOTIFICATION HANDLERS
+// ==========================================
+
+// Handle incoming push notifications
+self.addEventListener('push', (event) => {
+  console.log('[SW] Push notification received');
+
+  let data = {
+    title: 'Print Press',
+    body: 'You have a new notification',
+    icon: '/logo.png',
+    badge: '/logo.png',
+    url: '/admin/notifications',
+    tag: 'default'
+  };
+
+  if (event.data) {
+    try {
+      data = { ...data, ...event.data.json() };
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon || '/logo.png',
+    badge: data.badge || '/logo.png',
+    tag: data.tag,
+    renotify: true,
+    requireInteraction: false,
+    vibrate: [200, 100, 200],
+    data: {
+      url: data.url || data.data?.url || '/admin/notifications',
+    },
+    actions: [
+      { action: 'open', title: 'View' },
+      { action: 'dismiss', title: 'Dismiss' }
+    ]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// Handle notification click
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked:', event.action);
+  event.notification.close();
+
+  if (event.action === 'dismiss') {
+    return;
+  }
+
+  // Get the URL to open
+  const urlToOpen = event.notification.data?.url || '/admin/notifications';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // If the app is already open, focus it and navigate
+        for (const client of clientList) {
+          if (client.url.includes(self.location.origin)) {
+            client.focus();
+            client.navigate(urlToOpen);
+            return;
+          }
+        }
+        // Otherwise open a new window
+        return clients.openWindow(urlToOpen);
+      })
+  );
+});
+
+// Handle notification close
+self.addEventListener('notificationclose', (event) => {
+  console.log('[SW] Notification dismissed');
+});
+
+console.log('[SW] Service Worker loaded successfully (with push support)');

@@ -42,11 +42,14 @@ interface RetryableAxiosRequestConfig extends InternalAxiosRequestConfig {
 }
 
 // Request interceptor to add auth token
+// NOTE: We intentionally just read the stored token here instead of calling
+// getValidToken() which would trigger a proactive refresh. Token refresh
+// is handled by the response interceptor when a 401 is actually received.
 api.interceptors.request.use(
-  async (
+  (
     config: InternalAxiosRequestConfig
-  ): Promise<InternalAxiosRequestConfig> => {
-    const token = await getValidToken();
+  ): InternalAxiosRequestConfig => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

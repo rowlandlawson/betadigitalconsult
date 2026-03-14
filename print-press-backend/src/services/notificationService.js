@@ -1,5 +1,6 @@
 import { pool } from '../config/database.js';
 import emailService from './emailService.js';
+import pushService from './pushService.js';
 
 export class NotificationService {
   // Database notification methods - notify all admins
@@ -28,6 +29,18 @@ export class NotificationService {
     );
 
     await Promise.all(notificationPromises);
+
+    // Send push notification to all admins
+    try {
+      await pushService.sendPushToAdmins({
+        title: data.title,
+        body: data.message,
+        tag: `${data.type}-${data.relatedEntityId || Date.now()}`,
+        url: data.url || '/admin/notifications'
+      });
+    } catch (pushErr) {
+      console.error('Push notification failed (non-fatal):', pushErr.message);
+    }
   }
 
   // Create notification for a specific user only
@@ -46,6 +59,18 @@ export class NotificationService {
         new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
       ]
     );
+
+    // Send push notification to the specific user
+    try {
+      await pushService.sendPushToUser(userId, {
+        title: data.title,
+        body: data.message,
+        tag: `${data.type}-${data.relatedEntityId || Date.now()}`,
+        url: data.url || '/admin/notifications'
+      });
+    } catch (pushErr) {
+      console.error('Push notification failed (non-fatal):', pushErr.message);
+    }
   }
 
   // Create notification for user AND copy to all admins (for worker actions admin should know about)
@@ -77,6 +102,18 @@ export class NotificationService {
     );
 
     await Promise.all(adminNotificationPromises);
+
+    // Send push to both the user and all admins
+    try {
+      await pushService.sendPushToUserAndAdmins(userId, {
+        title: data.title,
+        body: data.message,
+        tag: `${data.type}-${data.relatedEntityId || Date.now()}`,
+        url: data.url || '/admin/notifications'
+      });
+    } catch (pushErr) {
+      console.error('Push notification failed (non-fatal):', pushErr.message);
+    }
   }
 
 
@@ -127,8 +164,23 @@ export class NotificationService {
 
   // Business logic notification methods
   async notifyNewJob(job, worker) {
-    const title = 'New Job Created';
-    const message = `New job ${job.ticket_id} created by ${worker.name} for customer`;
+    // Fetch customer name for the notification
+    let customerName = 'a customer';
+    try {
+      const custResult = await pool.query(
+        'SELECT name FROM customers WHERE id = $1',
+        [job.customer_id]
+      );
+      if (custResult.rows.length > 0) customerName = custResult.rows[0].name;
+    } catch (e) { /* use default */ }
+
+    const deliveryInfo = job.delivery_deadline
+      ? `\nDelivery: ${new Date(job.delivery_deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+      : '';
+    const costInfo = job.total_cost ? `\nTotal Cost: ₦${Number(job.total_cost).toLocaleString()}` : '';
+
+    const title = `New Job: ${job.ticket_id}`;
+    const message = `Customer: ${customerName}\nJob: ${job.description || 'No description'}${costInfo}${deliveryInfo}\nCreated by: ${worker.name}`;
 
     await this.createNotification({
       title,
@@ -141,8 +193,30 @@ export class NotificationService {
   }
 
   async notifyPaymentUpdate(payment, job, updatedBy) {
-    const title = 'Payment Received';
-    const message = `Payment of ₦${payment.amount.toLocaleString()} recorded for job ${job.ticket_id} by ${updatedBy.name}`;
+    // Fetch customer name
+    let customerName = 'Unknown';
+    let totalCost = 0;
+    let amountPaid = 0;
+    let balance = 0;
+    try {
+      const custResult = await pool.query(
+        `SELECT c.name, j.total_cost, 
+                COALESCE((SELECT SUM(amount) FROM payments WHERE job_id = j.id), 0) as amount_paid
+         FROM jobs j
+         JOIN customers c ON j.customer_id = c.id
+         WHERE j.id = $1`,
+        [payment.job_id]
+      );
+      if (custResult.rows.length > 0) {
+        customerName = custResult.rows[0].name;
+        totalCost = Number(custResult.rows[0].total_cost);
+        amountPaid = Number(custResult.rows[0].amount_paid);
+        balance = totalCost - amountPaid;
+      }
+    } catch (e) { /* use defaults */ }
+
+    const title = `Payment: ₦${Number(payment.amount).toLocaleString()} — ${job.ticket_id}`;
+    const message = `Customer: ${customerName}\nAmount: ₦${Number(payment.amount).toLocaleString()} (${payment.payment_type || 'N/A'})\nMethod: ${payment.payment_method || 'N/A'}\nTotal Paid: ₦${amountPaid.toLocaleString()} / ₦${totalCost.toLocaleString()}\nBalance: ₦${balance.toLocaleString()}\nRecorded by: ${updatedBy.name}`;
 
     await this.createNotification({
       title,
@@ -187,8 +261,32 @@ export class NotificationService {
   }
 
   async notifyStatusChange(job, oldStatus, newStatus, updatedBy) {
-    const title = 'Job Status Updated';
-    const message = `Job ${job.ticket_id} status changed from ${oldStatus} to ${newStatus} by ${updatedBy.name}`;
+    // Fetch customer name and description
+    let customerName = 'Unknown';
+    let description = '';
+    let deliveryDeadline = null;
+    try {
+      const custResult = await pool.query(
+        `SELECT c.name, j.description, j.delivery_deadline
+         FROM jobs j
+         JOIN customers c ON j.customer_id = c.id
+         WHERE j.id = $1`,
+        [job.id]
+      );
+      if (custResult.rows.length > 0) {
+        customerName = custResult.rows[0].name;
+        description = custResult.rows[0].description;
+        deliveryDeadline = custResult.rows[0].delivery_deadline;
+      }
+    } catch (e) { /* use defaults */ }
+
+    const statusLabel = (s) => s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const deliveryInfo = deliveryDeadline
+      ? `\nDelivery: ${new Date(deliveryDeadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+      : '';
+
+    const title = `Status: ${statusLabel(newStatus)} — ${job.ticket_id}`;
+    const message = `Customer: ${customerName}\nJob: ${description || 'No description'}\nStatus: ${statusLabel(oldStatus)} → ${statusLabel(newStatus)}${deliveryInfo}\nUpdated by: ${updatedBy.name}`;
 
     await this.createNotification({
       title,

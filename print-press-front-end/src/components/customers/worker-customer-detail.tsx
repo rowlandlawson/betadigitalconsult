@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   ChevronLeft,
   Briefcase,
+  Plus,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -137,7 +138,13 @@ export const WorkerCustomerDetail: React.FC<WorkerCustomerDetailProps> = ({
             </div>
           </div>
         </div>
-        <div className="hidden md:block">
+        <div className="hidden md:flex items-center space-x-2">
+          <Link href={`/worker/jobs/create?customer=${customerId}&customer_name=${encodeURIComponent(customer.name)}&customer_phone=${encodeURIComponent(customer.phone || '')}`}>
+            <Button size="sm" className="bg-[#AABD77] hover:bg-[#96ab63] text-white">
+              <Plus className="h-4 w-4 mr-1" />
+              New Job
+            </Button>
+          </Link>
           <Button variant="outline" size="sm" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
@@ -238,14 +245,14 @@ export const WorkerCustomerDetail: React.FC<WorkerCustomerDetailProps> = ({
                   <p className="text-xl sm:text-2xl font-bold text-orange-600">
                     {customer.total_jobs_count > 0
                       ? Math.round(
-                          (customer.jobs.filter(
-                            (job) =>
-                              job.status === 'completed' ||
-                              job.status === 'delivered'
-                          ).length /
-                            customer.total_jobs_count) *
-                            100
-                        )
+                        (customer.jobs.filter(
+                          (job) =>
+                            job.status === 'completed' ||
+                            job.status === 'delivered'
+                        ).length /
+                          customer.total_jobs_count) *
+                        100
+                      )
                       : 0}
                     %
                   </p>
@@ -343,7 +350,7 @@ export const WorkerCustomerDetail: React.FC<WorkerCustomerDetailProps> = ({
                   {Math.floor(
                     (new Date().getTime() -
                       new Date(customer.last_interaction_date).getTime()) /
-                      (1000 * 60 * 60 * 24)
+                    (1000 * 60 * 60 * 24)
                   )}{' '}
                   days
                 </p>

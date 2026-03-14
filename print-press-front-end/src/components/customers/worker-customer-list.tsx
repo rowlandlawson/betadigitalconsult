@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { api, isApiError } from '@/lib/api';
 import { Customer } from '@/types/customers';
 import { formatDate } from '@/lib/utils';
-import { Search, Users, Phone, Mail, Calendar, Briefcase } from 'lucide-react';
+import { Search, Users, Phone, Mail, Calendar, Briefcase, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 // Define the API response type
@@ -203,7 +203,13 @@ export const WorkerCustomerList: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-4 mt-4 lg:mt-0">
+                  <div className="flex items-center space-x-2 mt-4 lg:mt-0">
+                    <Link href={`/worker/jobs/create?customer=${customer.id}&customer_name=${encodeURIComponent(customer.name)}&customer_phone=${encodeURIComponent(customer.phone || '')}`}>
+                      <Button size="sm" className="bg-[#AABD77] hover:bg-[#96ab63] text-white">
+                        <Plus className="h-4 w-4 mr-1" />
+                        New Job
+                      </Button>
+                    </Link>
                     <Link href={`/worker/customers/${customer.id}`}>
                       <Button variant="outline" size="sm">
                         View Details

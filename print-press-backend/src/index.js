@@ -19,11 +19,19 @@ import companySettingsRoutes from './routes/companySettings.js';
 import salaryRoutes from './routes/salary.js';
 import workerStatsRoutes from './routes/workerStats.js';
 import landingRoutes from './routes/landing.js';
+import pushRoutes from './routes/push.js';
+
+// Import Push Service
+import pushService from './services/pushService.js';
 
 // Import WebSocket
 import { setupNotificationWebSocket } from './websocket/notificationServer.js';
 
 dotenv.config();
+
+// Initialize push service (generates VAPID keys if needed, creates table)
+pushService.init();
+pushService.ensureTable();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -66,6 +74,7 @@ app.use('/api/company-settings', companySettingsRoutes);
 app.use('/api/salary', salaryRoutes); // Mounted salaryRoutes
 app.use('/api/worker-stats', workerStatsRoutes); // Worker dashboard stats
 app.use('/api/landing', landingRoutes);
+app.use('/api/push', pushRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

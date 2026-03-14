@@ -65,7 +65,7 @@ const checkIsStandalone = (): boolean => {
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
     (window.navigator as unknown as { standalone?: boolean }).standalone ===
-      true
+    true
   );
 };
 
@@ -109,7 +109,11 @@ type PWAInstallPromptProps = {
 
 const hasStaffInstallAccess = (): boolean => {
   if (typeof window === 'undefined') return false;
-  return localStorage.getItem('staff_device_eligible') === 'true';
+  // Check either the explicit flag OR if user is authenticated (has auth token)
+  return (
+    localStorage.getItem('staff_device_eligible') === 'true' ||
+    !!localStorage.getItem('auth_token')
+  );
 };
 
 export const PWAInstallPrompt = ({ staffOnly = false }: PWAInstallPromptProps) => {
@@ -169,6 +173,17 @@ export const PWAInstallPrompt = ({ staffOnly = false }: PWAInstallPromptProps) =
     if (os === 'ios') {
       const timer = setTimeout(() => setShowBanner(true), 1000);
       return () => clearTimeout(timer);
+    }
+
+    // For non-iOS (Chrome, Edge etc.), show banner after a short delay
+    // even if beforeinstallprompt hasn't fired (it may not fire in dev/HTTP)
+    if (supportsNativeInstall()) {
+      const fallbackTimer = setTimeout(() => {
+        if (!isDismissedThisSession() && !checkIsStandalone()) {
+          setShowBanner(true);
+        }
+      }, 3000);
+      return () => clearTimeout(fallbackTimer);
     }
   }, []);
 
@@ -280,7 +295,7 @@ export const PWAInstallPrompt = ({ staffOnly = false }: PWAInstallPromptProps) =
   const isIOS = currentOS === 'ios';
   const hasNativePrompt = promptReady || !!window.__pwaInstallPrompt;
 
-  // Don't show banner on non-iOS if no prompt available (PWA criteria not met)
+  // Don't show banner on non-iOS if no prompt and browser doesn't support install at all
   if (!isIOS && !hasNativePrompt && !supportsNativeInstall()) {
     return null;
   }

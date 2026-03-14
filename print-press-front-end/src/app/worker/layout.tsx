@@ -5,6 +5,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { User } from '@/types';
+import { PWAInstallPrompt } from '@/components/pwa-install';
+import { usePushNotifications } from '@/lib/usePushNotifications';
 
 export default function WorkerLayout({
   children,
@@ -16,6 +18,20 @@ export default function WorkerLayout({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, subscribe: subscribePush } = usePushNotifications();
+
+  // Auto-subscribe to push notifications after authentication
+  useEffect(() => {
+    if (user && pushSupported && !pushSubscribed && !sessionStorage.getItem('push_prompted')) {
+      sessionStorage.setItem('push_prompted', 'true');
+      const timer = setTimeout(() => {
+        subscribePush().then(ok => {
+          if (ok) console.log('✅ Worker auto-subscribed to push notifications');
+        });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, pushSupported, pushSubscribed, subscribePush]);
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -71,20 +87,23 @@ export default function WorkerLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar
-        userRole="worker"
-        isMobileOpen={isSidebarOpen}
-        onToggleSidebar={toggleSidebar}
-      />
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0 min-w-0">
-        <Header
-          user={user}
-          onLogout={handleLogout}
+    <>
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar
+          userRole="worker"
+          isMobileOpen={isSidebarOpen}
           onToggleSidebar={toggleSidebar}
         />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
+        <div className="flex-1 flex flex-col overflow-hidden lg:ml-0 min-w-0">
+          <Header
+            user={user}
+            onLogout={handleLogout}
+            onToggleSidebar={toggleSidebar}
+          />
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
+        </div>
       </div>
-    </div>
+      <PWAInstallPrompt staffOnly />
+    </>
   );
 }

@@ -120,7 +120,15 @@ export const CreateJobForm: React.FC = () => {
       await jobService.createJob(submitData);
 
       toast.success('Job Created Successfully');
-      router.push('/admin/jobs');
+
+      // Redirect to the correct jobs page based on user role
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      if (user?.role === 'worker') {
+        router.push('/worker/jobs');
+      } else {
+        router.push('/admin/jobs');
+      }
     } catch (err: any) {
       console.error('Failed to create job:', err);
 
@@ -224,11 +232,10 @@ export const CreateJobForm: React.FC = () => {
           {/* Enhanced Error Display */}
           {error && (
             <div
-              className={`p-4 rounded-md border flex items-start space-x-3 ${
-                isNetworkError
+              className={`p-4 rounded-md border flex items-start space-x-3 ${isNetworkError
                   ? 'bg-yellow-50 border-yellow-200'
                   : 'bg-red-50 border-red-200'
-              }`}
+                }`}
             >
               {isNetworkError ? (
                 <WifiOff className="h-5 w-5 text-yellow-600 mt-0.5" />
@@ -236,9 +243,8 @@ export const CreateJobForm: React.FC = () => {
                 <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
               )}
               <div
-                className={`text-sm font-medium ${
-                  isNetworkError ? 'text-yellow-700' : 'text-red-700'
-                }`}
+                className={`text-sm font-medium ${isNetworkError ? 'text-yellow-700' : 'text-red-700'
+                  }`}
               >
                 {error}
               </div>

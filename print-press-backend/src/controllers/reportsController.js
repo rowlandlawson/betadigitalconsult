@@ -9,45 +9,57 @@ export class ReportsController {
       // Get period from query, default to 'all'
       const { period = "all" } = req.query;
       const currentDate = new Date();
+
+      // Helper: format a Date as YYYY-MM-DD using LOCAL time (not UTC)
+      const toLocalDateStr = (d) => {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      };
+
+      const today = toLocalDateStr(currentDate); // e.g. "2026-03-10"
+      const endDate = today; // Always end at today
+
       let startDate;
-      // End date is always "now" (end of today)
-      const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 23, 59, 59, 999);
 
       // Determine the start date based on the period
       switch (period) {
         case "day":
-          startDate = new Date();
-          startDate.setDate(currentDate.getDate() - 1);
+          // Today only
+          startDate = today;
           break;
         case "week":
-          startDate = new Date();
-          startDate.setDate(currentDate.getDate() - 7);
+          // Last 7 days
+          {
+            const d = new Date(currentDate);
+            d.setDate(d.getDate() - 7);
+            startDate = toLocalDateStr(d);
+          }
           break;
         case "year":
-          startDate = new Date(currentDate.getFullYear(), 0, 1);
+          // From Jan 1st of current year
+          startDate = `${currentDate.getFullYear()}-01-01`;
           break;
         case "month":
-          startDate = new Date(
-            currentDate.getFullYear(),
-            currentDate.getMonth(),
-            1
-          );
+          // From 1st of current month
+          {
+            const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+            startDate = `${currentDate.getFullYear()}-${m}-01`;
+          }
           break;
         default: // 'all'
-          startDate = new Date("1970-01-01");
+          startDate = "1970-01-01";
       }
 
       // For "new customers this month", we always use the start of the current calendar month
-      const startOfMonth = new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth(),
-        1
-      );
+      const som = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const startOfMonth = `${currentDate.getFullYear()}-${som}-01`;
 
       // 1. Total Customers
       const totalCustomersQuery = `
       SELECT COUNT(*) as total_customers,
-      COUNT(CASE WHEN created_at >= $1 THEN 1 END) as new_customers_this_month
+      COUNT(CASE WHEN created_at::DATE >= $1 THEN 1 END) as new_customers_this_month
       FROM customers
     `;
 
@@ -64,7 +76,7 @@ export class ReportsController {
         COUNT(CASE WHEN payment_status = 'pending' THEN 1 END) as unpaid_jobs,
         COALESCE(SUM(total_cost), 0) as total_revenue
       FROM jobs
-      WHERE created_at BETWEEN $1 AND $2
+      WHERE created_at::DATE BETWEEN $1 AND $2
     `;
 
       // Separate query for actual revenue (payments received in period) - UPDATED to use BETWEEN
@@ -158,8 +170,8 @@ export class ReportsController {
         COALESCE(SUM(p.amount), 0) as total_paid,
         (COALESCE(SUM(j.total_cost), 0) - COALESCE(SUM(p.amount), 0)) as outstanding_balance
       FROM customers c
-      LEFT JOIN jobs j ON c.id = j.customer_id AND j.created_at >= $1
-      LEFT JOIN payments p ON j.id = p.job_id AND p.date >= $1
+      LEFT JOIN jobs j ON c.id = j.customer_id AND j.created_at::DATE >= $1
+      LEFT JOIN payments p ON j.id = p.job_id AND p.date::DATE >= $1
       GROUP BY c.id, c.name, c.phone, c.email
       ORDER BY total_paid DESC NULLS LAST
       LIMIT 5

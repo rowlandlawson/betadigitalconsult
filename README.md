@@ -2,7 +2,7 @@
 
 A comprehensive web-based management system designed specifically for printing press businesses. This application streamlines operations by managing jobs, customers, inventory, payments, and expenses, while providing real-time notifications and separate dashboards for administrators and workers.
 
-## 🌟 Key Features
+## Key Features
 
 ### Role-Based Access Control (RBAC)
 - **Admin Dashboard:** Full oversight of the business, financial reports, inventory management, and user/worker management.
